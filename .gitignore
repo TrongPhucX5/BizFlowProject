@@ -1,0 +1,8 @@
+# Ignore folder rác hệ thống
+.DS_Store
+node_modules/
+.idea/
+*.iml
+build/
+.dart_tool/
+target/
