@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.3
+  sdk: '>=3.0.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -35,6 +35,24 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # 1. Gọi API (Giống Axios bên Web)
+  dio: ^5.4.0
+
+  # 2. Quản lý trạng thái (State Management)
+  # Dùng Provider cho dễ, hoặc flutter_bloc nếu team cứng tay. Tui chọn Provider cho nhanh.
+  provider: ^6.1.1
+
+  # 3. Điều hướng trang (Giống NextJS App Router)
+  go_router: ^13.0.0
+
+  # 4. Lưu Token đăng nhập dưới máy
+  shared_preferences: ^2.2.2
+
+  # 5. Tiện ích UI (Icon, Toast thông báo)
+  google_fonts: ^6.1.0
+  fluttertoast: ^8.2.4
+  intl: ^0.19.0 # Để format tiền tệ VNĐ
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -44,7 +62,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^6.0.0
+  flutter_lints: ^3.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
