@@ -1,94 +1,80 @@
-# BizFlow - Platform to Support Digital Transformation for Household Businesses
-
-**Vietnamese:** Nền tảng hỗ trợ chuyển đổi số cho hộ kinh doanh.
-
-## 📖 1. Context & Problem Statement
-
-In Vietnam, household businesses play a critical role in the local economy, especially in traditional sectors like building materials and hardware retail. Most fall under Group 1 or Group 2 (Ministry of Finance's Decision 3389/QĐ-BTC - 2025).
-
-**The Pain Points:**
-
-- **Manual Workflows:** Relying on handwritten notebooks or simple Excel files for sales, inventory, and debt tracking.
-- **Unique Operations:** Commercial POS systems fail to address multi-channel orders (Phone/Zalo), long-term customer debt, and low digital literacy.
-- **Hardware Constraints:** Lack of budget for computers, barcode scanners, or receipt printers. Most operate with a single smartphone.
-- **Compliance Issues:** Difficulty in generating reports compliant with **Circular 88/2021/TT-BTC**.
-
-## 🚀 2. Our Solution: BizFlow
-
-BizFlow is a specialized platform designed for traditional stores. It integrates an **AI-powered assistant** capable of understanding natural language (text or voice) to automate order creation and bookkeeping.
-
-**Key Value Propositions:**
-
-- **AI Automation:** Convert natural language (e.g., "get 5 cement bags for Mr. Ba") into draft orders.
-- **Auto-Bookkeeping:** Automatically populates financial reports required by Circular 88/2021/TT-BTC.
-- **Mobile-First:** Fully functional on smartphones without needing expensive POS hardware.
-
-## ✨ 3. Key Features
-
-### 🧑‍💼 Employee App
-
-- **Smart Order Creation:** Create orders via UI or Voice/Chat command.
-- **Debt Recording:** Record debt directly during order creation.
-- **Printing:** Generate and print sales orders using pre-designed templates.
-- **Real-time Notifications:** Receive alerts when AI generates a draft order from a message.
-
-### 🏪 Owner Dashboard
-
-- **Everything in Employee App**, plus:
-- **Catalog Management:** Manage products, prices, and multiple units of measure.
-- **Inventory Management:** Real-time stock tracking and import history.
-- **Customer & Debt Management:** Track purchase history and outstanding debts.
-- **Analytics:** Interactive dashboards for revenue, best-sellers, and debt.
-- **Staff Management:** Create accounts and manage permissions.
-
-### ⚙️ System & AI
-
-- **NLP Engine:** Converts natural language voice/text into structured draft orders.
-- **Automated Accounting:** Generates detailed revenue ledgers and business operation reports automatically.
-
-### 🛡️ Admin Portal
-
-- Manage household business accounts (Owners).
-- Configure subscription pricing.
-- Update global financial report templates (Circular 88/2021/TT-BTC).
-
-## 🛠️ 4. Tech Stack
-
-### Server-side
-
-- **Architecture:** Clean Architecture
-- **Database:** MySQL, PostgreSQL
-- **Caching:** Redis
-
-### AI & Machine Learning
-
-- **Language:** Python
-- **RAG:** ChromaDB, `text-embedding-3-small`
-- **LLM:** OpenAI / Gemini
-- **Speech-to-Text:** Google Speech-to-Text / Whisper
-
-### Client-side
-
-- **Mobile Application:** Flutter (with Notifications)
-- **Web Client:** NextJS, Tanstack Query, Shadcn UI, TailwindCSS
-
-## 📂 5. Project Deliverables
-
-This project applies standard software development processes and UML 2.0 modeling. The repository includes:
-
-- Source code (Mobile & Web)
-- User Requirement & SRS
-- Architecture & Detailed Design Documents
-- System Implementation & Testing Documents
-- Installation Guide
-
-## 🗓️ 6. Roadmap / Tasks
-
-- [ ] **Task Package 1:** Deploy databases (MySQL and PostgreSQL).
-- [ ] **Task Package 2:** Set up Clean Architecture backend.
-- [ ] **Task Package 3:** Develop and deploy the Mobile Application (Flutter).
-- [ ] **Task Package 4:** Develop and deploy the Web Application (NextJS).
+#  BIZFLOW - NỀN TẢNG HỖ TRỢ CHUYỂN ĐỔI SỐ CHO HỘ KINH DOANH
 
 ---
 
-_Note: This project is designed to comply with Vietnam's accounting standards for household businesses._
+## 1. GIỚI THIỆU & BỐI CẢNH DỰ ÁN
+
+Dự án **BizFlow** đề xuất xây dựng nền tảng chuyên biệt nhằm giải quyết các khó khăn trong quản lý vận hành của các hộ kinh doanh truyền thống (vật liệu xây dựng, kim khí) tại Việt Nam.
+
+Hiện tại, đa số hộ kinh doanh vẫn ghi chép thủ công bằng sổ tay hoặc Excel, dẫn đến sai sót, khó kiểm soát tồn kho và công nợ không nhất quán. Đặc thù của nhóm khách hàng này là thiếu ngân sách thuê kế toán và thường chỉ sử dụng một chiếc smartphone để làm việc.
+
+**Giải pháp đề xuất:** BizFlow tích hợp giao diện kèm trợ lý AI có khả năng hiểu yêu cầu ngôn ngữ tự nhiên (qua văn bản hoặc giọng nói), tự động tạo đơn nháp và điền dữ liệu vào biểu mẫu, giúp tự động hóa và cung cấp báo cáo theo thời gian thực.
+
+---
+
+## 2. KIẾN TRÚC & CÔNG NGHỆ SỬ DỤNG
+
+BizFlow được xây dựng dựa trên kiến trúc phân tán (Distributed Architecture) với 4 thành phần chính:
+
+### ⚙️ Tổng quan hệ thống
+* **Backend (Java + Spring Boot)**: Trung tâm xử lý nghiệp vụ.
+* **Mobile App (Flutter)**: Ứng dụng cho Chủ cửa hàng & Nhân viên.
+* **Web Admin (NextJS)**: Ứng dụng quản trị và báo cáo.
+* **AI Assistant (Gemini)**: Trợ lý tạo đơn nháp và phân tích dữ liệu.
+
+### 💻 Tech Stack chi tiết
+| Lớp | Công nghệ chính | Mục đích |
+| :--- | :--- | :--- |
+| **Backend** | Java 23, Spring Boot 3 | REST API chuẩn, JWT Auth, Role-based Access Control |
+| **Database** | MySQL (Chính), Redis cache | Dữ liệu nghiệp vụ, Tăng tốc độ truy vấn |
+| **Mobile** | Flutter, Provider, Shared Preferences | Tạo đơn tại quầy, Ghi nợ, Xem báo cáo nhanh |
+| **Web Admin** | NextJS, Tanstack Query, Shadcn UI, TailwindCSS | Dashboard thống kê, CRUD Sản phẩm/Nhân viên |
+| **AI** | Python, Gemini, Whisper | Xử lý ngôn ngữ tự nhiên, Tạo Draft Order |
+
+---
+
+## 3. PHẠM VI CHỨC NĂNG CHÍNH (SCOPE)
+
+### 📱 BizFlow Mobile (Employee/Owner)
+* **Giao dịch:** Tạo đơn tại quầy, Ghi nợ khách, Tạo / in hóa đơn bán hàng.
+* **AI:** Nhận & xác nhận draft order từ AI tạo (Ví dụ: “bán 10 bao xi măng cho anh Hòa, ghi nợ nha”).
+* **Quản lý:** Quản lý khách hàng, Quản lý tồn kho (Owner).
+* **Thông báo:** Thông báo real-time (Firebase).
+
+### 🖥 BizFlow Web Admin (Owner/Admin)
+* Thực hiện CRUD (Sản phẩm, Khách hàng, Đơn hàng, Nhân viên).
+* Dashboard thống kê doanh thu, công nợ, tồn kho.
+* Quản lý phân quyền và gói subscription.
+
+---
+
+## 4. HƯỚNG DẪN THIẾT LẬP MÔI TRƯỜNG DEV
+
+Các bước cần thiết để khởi động hệ thống trên máy local (Windows/Mac/Linux):
+
+### 4.1. Khởi động Database (Docker)
+1.  Đảm bảo Docker Desktop đã được khởi động.
+2.  Mở Terminal tại thư mục **`backend/`**.
+3.  Chạy lệnh:
+    ```bash
+    docker-compose up -d
+    ```
+    *(Lệnh này sẽ khởi tạo MySQL và Redis Cache).*
+
+### 4.2. Khởi động Backend (Spring Boot)
+1.  Mở project **`backend/`** trong IntelliJ IDEA.
+2.  Bấm nút **Run** (Tam giác xanh) để khởi động ứng dụng Java trên cổng **8080**.
+
+### 4.3. Khởi động Web Admin (NextJS)
+1.  Mở Terminal tại thư mục **`web-admin/`**.
+2.  Chạy lệnh:
+    ```bash
+    npm install
+    npm run dev
+    ```
+3.  Truy cập giao diện tại `http://localhost:3000`.
+
+### 4.4. Khởi động Mobile App (Flutter)
+1.  Chạy lệnh `flutter pub get` trong thư mục **`mobile/`**.
+2.  Chạy ứng dụng trên Android Emulator hoặc thiết bị thực.
+---
