@@ -1,11 +1,18 @@
 package com.bizflow.backend.infrastructure.persistence.repository;
 
 import com.bizflow.backend.core.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    // Spring Data JPA tự động hiểu, không cần viết SQL
+    Optional<User> findByUsername(String username);
     boolean existsByUsername(String username);
+    Optional<User> findByEmail(String email);
+    Page<User> findByStoreId(Long storeId, Pageable pageable);
+    Page<User> findByRole(User.UserRole role, Pageable pageable);
 }
