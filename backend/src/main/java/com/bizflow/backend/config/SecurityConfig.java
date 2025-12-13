@@ -69,11 +69,12 @@ public class SecurityConfig {
                 // 4. Define authorization rules
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints (no authentication required)
+                        // Use ant patterns to match with or without context path /api
                         .requestMatchers(
-                                "/api/v1/auth/login",
-                                "/api/v1/auth/register",
-                                "/api/v1/auth/refresh",
-                                "/api/v1/health",
+                                "/v1/auth/login",
+                                "/v1/auth/register",
+                                "/v1/auth/refresh",
+                                "/v1/health",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"

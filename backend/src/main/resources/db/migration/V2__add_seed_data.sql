@@ -171,7 +171,7 @@ SELECT
     0,
     o.total_amount,
     'UNPAID',
-    DATE_ADD(NOW(), INTERVAL 30 DAY)
+    DATE_ADD(CURDATE(), INTERVAL 30 DAY)
 FROM stores s
 CROSS JOIN orders o
 CROSS JOIN customers c
