@@ -1,29 +1,31 @@
 import 'package:flutter/material.dart';
-import 'features/auth/presentation/login_screen.dart';
-import 'package:flutter/widgets.dart';
+import 'package:mobile/features/auth/presentation/login_screen.dart';
+import 'package:mobile/features/home/presentation/main_screen.dart';
 
-// Phải thêm 'async' và gọi 'ensureInitialized'
-void main() async {
-  // 1. Dòng này bắt buộc phải gọi khi sử dụng các plugin (như shared_preferences)
-  WidgetsFlutterBinding.ensureInitialized();
-
-  print("App bắt đầu chạy...");
-  runApp(const MyApp());
+void main() {
+  runApp(const BizFlowApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class BizFlowApp extends StatelessWidget {
+  const BizFlowApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BizFlow Mobile',
-      debugShowCheckedModeBanner: false, // Tắt cái chữ DEBUG ở góc
+      title: 'BizFlow',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: const LoginScreen(),
+      // Màn hình đầu tiên khi mở app
+      home: const LoginScreen(), 
+      
+      // Định nghĩa các tuyến đường (Routes) để tiện gọi tên
+      routes: {
+        '/login': (context) => const LoginScreen(),
+        '/home': (context) => const MainScreen(),
+      },
     );
   }
 }
