@@ -1,4 +1,4 @@
-package com.bizflow.backend.infrastructure.persistence;
+package com.bizflow.backend.infrastructure.persistence.repository;
 
 import com.bizflow.backend.core.domain.User;
 import org.springframework.data.domain.Page;
