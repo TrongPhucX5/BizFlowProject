@@ -1,5 +1,6 @@
 package com.bizflow.backend.presentation.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty; // <--- 1. NHỚ CÓ DÒNG NÀY
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -11,7 +12,6 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class RegisterRequest {
     @NotBlank(message = "Username không được rỗng")
     @Size(min = 3, max = 30, message = "Username phải từ 3-30 ký tự")
@@ -23,6 +23,7 @@ public class RegisterRequest {
 
     @NotBlank(message = "Tên đầy đủ không được rỗng")
     @Size(max = 100)
+    @JsonProperty("fullName") // <--- 2. QUAN TRỌNG NHẤT LÀ DÒNG NÀY
     private String fullName;
 
     @Email(message = "Email không hợp lệ")

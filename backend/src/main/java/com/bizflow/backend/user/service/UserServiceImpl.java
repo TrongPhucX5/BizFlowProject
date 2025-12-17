@@ -2,7 +2,6 @@ package com.bizflow.backend.service.impl;
 
 import com.bizflow.backend.core.domain.User;
 import com.bizflow.backend.core.usecase.UserService;
-// Sửa Import UserRepository
 import com.bizflow.backend.infrastructure.persistence.repository.UserRepository;
 import com.bizflow.backend.infrastructure.security.CustomUserDetails;
 import com.bizflow.backend.infrastructure.security.JwtUtil;
@@ -10,15 +9,12 @@ import com.bizflow.backend.presentation.dto.request.LoginRequest;
 import com.bizflow.backend.presentation.dto.request.RegisterRequest;
 import com.bizflow.backend.presentation.dto.response.LoginResponse;
 import com.bizflow.backend.presentation.dto.response.UserDTO;
-import com.bizflow.backend.presentation.exception.BusinessException;
-import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
 import com.bizflow.backend.presentation.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,13 +26,12 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil; // Cần thiết để login
+    private final JwtUtil jwtUtil;
 
     // --- Implementing UserService methods ---
 
     @Override
     public LoginResponse login(LoginRequest request) {
-        // Logic đăng nhập tối giản để fix lỗi build trước
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
 
@@ -55,14 +50,26 @@ public class UserServiceImpl implements UserService {
                 .token(token)
                 .username(user.getUsername())
                 .role(user.getRole().toString())
-                .build();
+                .build(); // Lưu ý: Nếu LoginResponse có field userId thì nên thêm vào đây
     }
 
     @Override
     public UserDTO register(RegisterRequest request) {
         User user = new User();
+
+        // --- ĐÂY LÀ PHẦN BẠN BỊ THIẾU TRƯỚC ĐÓ ---
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+
+        // !!! QUAN TRỌNG: Phải set fullName nếu không sẽ lỗi SQL NOT NULL !!!
+        user.setFullName(request.getFullName());
+
+        // Set thêm các trường khác cho đủ data
+        user.setEmail(request.getEmail());
+        user.setPhone(request.getPhone());
+        user.setStoreId(request.getStoreId());
+
+        // Mặc định
         user.setRole(User.UserRole.EMPLOYEE);
         user.setStatus(User.UserStatus.ACTIVE);
 
@@ -72,7 +79,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public LoginResponse refreshToken(String refreshToken) {
-        return null; // Tạm thời return null để build được
+        return null;
     }
 
     @Override
@@ -92,12 +99,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDTO> getUsersByStore(Long storeId) {
-        return List.of(); // Trả về list rỗng tạm thời
+        return List.of();
     }
 
     @Override
     public List<UserDTO> getAllUsers() {
-        // Sửa lỗi return type: Chuyển User Entity sang UserDTO
         return userRepository.findAll().stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
@@ -114,7 +120,6 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void deleteUser(Long userId) {
-        // Đây là hàm bạn bị thiếu Override
         if (userRepository.existsById(userId)) {
             userRepository.deleteById(userId);
         }
@@ -129,17 +134,19 @@ public class UserServiceImpl implements UserService {
         return org.springframework.security.core.userdetails.User
                 .withUsername(user.getUsername())
                 .password(user.getPassword())
-                // SỬA LỖI: .toString() vì role là Enum
                 .roles(user.getRole().toString())
                 .build();
     }
 
-    // Helper
+    // Helper: Map Entity -> DTO
     private UserDTO mapToDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .fullName(user.getFullName()) // Mapping thêm fullName để trả về cho đẹp
+                .email(user.getEmail())       // Mapping thêm email
                 .role(user.getRole().toString())
+                .storeId(user.getStoreId())
                 .build();
     }
 }
