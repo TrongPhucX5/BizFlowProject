@@ -1,21 +1,16 @@
 import 'dart:io';
 
 class ApiConstants {
-  // 1. Tự động chọn IP đúng
   static String get baseUrl {
     if (Platform.isAndroid) {
-      // Nếu chạy trên Máy ảo Android
-      return "http://10.0.2.2:8080";
+      // BẮT BUỘC PHẢI LÀ 10.0.2.2 KHI CHẠY MÁY ẢO
+      return "http://10.0.2.2:8080/api";
     } else {
-      // Nếu chạy trên Windows (Máy tính)
-      return "http://localhost:8080";
+      // Windows hoặc iOS thì dùng localhost
+      return "http://localhost:8080/api";
     }
   }
 
-  // 2. Định nghĩa các endpoints
-  static const String loginEndpoint = "/auth/login";
-  static const String registerEndpoint = "/auth/register";
-
-  // Ví dụ endpoint lấy user
-  static const String userEndpoint = "/users";
+  // Nhớ kiểm tra kỹ cái đuôi này, backend của bạn có /v1
+  static const String loginEndpoint = "/v1/auth/login";
 }
