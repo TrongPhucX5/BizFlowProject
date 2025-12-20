@@ -66,23 +66,22 @@ public class SecurityConfig {
                 // 3. Stateless session policy (no session cookies)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 
-                // 4. Define authorization rules
-                .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (no authentication required)
+                // 4. Define authorization rules// Public endpoints (no authentication required)
                         // Use ant patterns to match with or without context path /api
-                        .requestMatchers(
-                                "/v1/auth/login",
-                                "/v1/auth/register",
-                                "/v1/auth/refresh",
-                                "/v1/health",
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        ).permitAll()
-                        
-                        // All other endpoints require authentication
-                        .anyRequest().authenticated()
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(
+                        "/v1/auth/login",
+                        "/v1/auth/register",
+                        "/v1/auth/refresh",
+                        "/v1/health",
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/api/ai/**"
+                    ).permitAll()
+                    .anyRequest().authenticated()
                 )
+
                 
                 // 5. Add JWT filter BEFORE UsernamePasswordAuthenticationFilter
                 // This ensures token is processed before Spring's default authentication
@@ -90,7 +89,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
     /**
      * CORS Configuration: Allow web and mobile clients
      * 
@@ -125,4 +123,4 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-}
+} 
