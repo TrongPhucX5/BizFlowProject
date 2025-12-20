@@ -18,11 +18,14 @@ public class ProductDTO {
     private String sku;
     private BigDecimal price;
     private BigDecimal costPrice;
+    private Long categoryId; // Added categoryId
+    private Long unitId;     // Added unitId
     private Integer reorderLevel;
     private String unitName;
     private String description;
     private String status;
     private String imageUrl;
+    private Long storeId;    // Added storeId
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

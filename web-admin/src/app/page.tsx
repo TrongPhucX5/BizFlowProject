@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { userService } from "@/services/user.service";
+// SỬA 1: Import trực tiếp hàm getUsers (không dùng userService.)
+import { getUsers } from "@/services/user.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -18,10 +19,12 @@ import { Plus } from "lucide-react";
 export default function DashboardPage() {
   const { data: apiResponse, isLoading } = useQuery({
     queryKey: ["users"],
-    queryFn: userService.getUsers,
+    // SỬA 2: Gọi trực tiếp tên hàm
+    queryFn: getUsers,
   });
 
   // Backend trả về apiResponse.result là danh sách user
+  // Lưu ý: apiResponse có thể undefined lúc đầu, nên cần check kỹ
   const users = apiResponse?.result || [];
 
   return (
@@ -66,31 +69,39 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user: any) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">#{user.id}</TableCell>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>{user.fullName}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          user.role === "OWNER" ? "default" : "secondary"
-                        }
-                      >
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-blue-600"
-                      >
-                        Sửa
-                      </Button>
+                {users.length > 0 ? (
+                  users.map((user: any) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">#{user.id}</TableCell>
+                      <TableCell>{user.username}</TableCell>
+                      <TableCell>{user.fullName}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            user.role === "OWNER" ? "default" : "secondary"
+                          }
+                        >
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-600"
+                        >
+                          Sửa
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-4">
+                      Chưa có nhân viên nào
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           )}

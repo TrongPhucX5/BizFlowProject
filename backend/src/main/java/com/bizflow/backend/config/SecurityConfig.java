@@ -104,45 +104,22 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Allowed origins (clients that can call this API)
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",           // NextJS web admin
-                "http://localhost:8081",           // Flutter web
-                "http://10.0.2.2:8080",            // Android emulator
-                "http://localhost:8100"            // Ionic dev
-        ));
-        
-        // Allowed HTTP methods
-        configuration.setAllowedMethods(Arrays.asList(
-                HttpMethod.GET.toString(),
-                HttpMethod.POST.toString(),
-                HttpMethod.PUT.toString(),
-                HttpMethod.DELETE.toString(),
-                HttpMethod.PATCH.toString(),
-                HttpMethod.OPTIONS.toString()
-        ));
-        
-        // Allowed headers (including Authorization for JWT)
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Content-Type",
-                "Authorization",
-                "X-Requested-With",
-                "Accept",
-                "Origin"
-        ));
-        
-        // Allow credentials (cookies, authorization headers)
+
+        // SỬA ĐOẠN NÀY: Dùng originPatterns("*") thay vì liệt kê cứng
+        // Cho phép mọi nguồn (Web, Mobile, Postman...) đều gọi được
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+
+        // Cho phép mọi Method (GET, POST, PUT, DELETE...)
+        configuration.setAllowedMethods(Arrays.asList("*"));
+
+        // Cho phép mọi Header
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // Cho phép gửi kèm Credentials (Cookie, Token)
         configuration.setAllowCredentials(true);
-        
-        // Cache preflight requests for 1 hour
+
+        // Cache cấu hình này trong 1 giờ
         configuration.setMaxAge(3600L);
-        
-        // Expose headers to client (e.g., for custom response headers)
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type"
-        ));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
