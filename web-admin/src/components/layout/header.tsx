@@ -1,5 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import LogoutButton from "@/components/logout-button";
 
 export function Header() {
   return (
@@ -17,6 +18,7 @@ export function Header() {
           <AvatarImage src="https://github.com/shadcn.png" />
           <AvatarFallback>AD</AvatarFallback>
         </Avatar>
+        <LogoutButton />
       </div>
     </header>
   );
