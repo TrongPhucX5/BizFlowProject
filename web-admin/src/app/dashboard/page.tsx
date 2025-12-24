@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
+// --- Interfaces ---
 interface User {
     id: number;
     username: string;
@@ -28,43 +29,44 @@ interface ApiResponse {
     result: User[];
 }
 
+// --- Component Chính ---
 export default function DashboardPage() {
     const router = useRouter();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isChecking, setIsChecking] = useState(true);
 
-    // Check token khi component mount
+    // 1. Kiểm tra đăng nhập (Auth Check)
     useEffect(() => {
-        // Chỉ chạy ở client-side
-        if (typeof window !== "undefined") {
-            const token = localStorage.getItem("accessToken");
-            if (!token) {
-                router.push("/auth/login");
-                return;
-            }
-            setIsAuthenticated(true);
+        const token = localStorage.getItem("accessToken"); // Hoặc nơi bạn lưu token
+        if (!token) {
+            router.push("/auth/login"); // Redirect nếu chưa login
+        } else {
+            setIsChecking(false); // Đã login, tắt loading check
         }
-        setIsChecking(false);
     }, [router]);
 
+    // 2. Lấy dữ liệu user
     const { data: apiResponse, isLoading } = useQuery<ApiResponse>({
         queryKey: ["users"],
-        queryFn: userService.getUsers,
-        enabled: isAuthenticated, // Chỉ gọi API khi đã login
+        queryFn: userService.getUsers, // Đảm bảo hàm này trả về đúng format
+        enabled: !isChecking, // Chỉ fetch khi đã check auth xong
     });
 
     const users: User[] = apiResponse?.result || [];
 
+    // 3. Màn hình Loading khi đang check auth
     if (isChecking) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <p className="text-slate-500">Đang tải...</p>
+            <div className="flex items-center justify-center h-screen">
+                <p>Đang kiểm tra đăng nhập...</p>
             </div>
         );
     }
 
+    // 4. Màn hình chính
     return (
-        <div className="space-y-6">
+        <div className="p-6 space-y-6">
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+
             {/* Thống kê nhanh */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="bg-blue-600 text-white">
