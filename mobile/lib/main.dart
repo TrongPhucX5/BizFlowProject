@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/features/auth/presentation/login_screen.dart';
 import 'package:mobile/features/home/presentation/main_screen.dart';
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-// sales (POS)
-=======
->>>>>>> ffc0dc1206b1cabcb15caeb053411f8b8d1c50ea
->>>>>>> 1f7ef7d (Update mobile and backend)
+// Sales (POS)
 import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 import 'package:mobile/features/order/presentation/order_screen.dart'; // Đổi đường dẫn nếu bạn lưu chỗ khác
+import 'package:mobile/features/product/presentation/product_screen.dart';
+
 void main() {
   runApp(const BizFlowApp());
 }
@@ -35,6 +31,7 @@ class BizFlowApp extends StatelessWidget {
         '/home': (context) => const MainScreen(),
         '/sales': (context) => const SalesScreen(),
         '/order': (context) => const OrderScreen(),
+        '/product': (context) => const ProductScreen(),
       },
     );
   }

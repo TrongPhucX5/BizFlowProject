@@ -3,13 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 // 2. Import Màn hình Đơn hàng (Cực kỳ quan trọng, thiếu dòng này là lỗi)
 import 'package:mobile/features/order/presentation/order_screen.dart';
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
 import 'package:mobile/features/product/presentation/product_screen.dart';
-=======
->>>>>>> ffc0dc1206b1cabcb15caeb053411f8b8d1c50ea
->>>>>>> 1f7ef7d (Update mobile and backend)
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -25,22 +19,9 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _widgetOptions = <Widget>[
     // Vị trí 0: Bán hàng
     const SalesScreen(),
-
-    // Vị trí 1: Đơn hàng (Anh kiểm tra kỹ dòng này nhé)
+    // Vị trí 1: Đơn hàng
     const OrderScreen(),
-
-    // Vị trí 2: Sản phẩm (Cái icon màu xanh lá cây hiện tại của anh đang nằm ở đây)
-    const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.inventory_2, size: 64, color: Colors.green),
-          SizedBox(height: 10),
-          Text('Quản lý Sản phẩm', style: TextStyle(fontSize: 18)),
-        ],
-      ),
-    ),
-
+    const ProductScreen(),
     // Vị trí 3: Khách hàng
     const Center(
       child: Column(
