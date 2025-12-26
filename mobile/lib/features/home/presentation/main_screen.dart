@@ -3,6 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 // 2. Import Màn hình Đơn hàng (Cực kỳ quan trọng, thiếu dòng này là lỗi)
 import 'package:mobile/features/order/presentation/order_screen.dart';
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+import 'package:mobile/features/product/presentation/product_screen.dart';
+=======
+>>>>>>> ffc0dc1206b1cabcb15caeb053411f8b8d1c50ea
+>>>>>>> 1f7ef7d (Update mobile and backend)
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
