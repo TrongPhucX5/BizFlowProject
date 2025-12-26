@@ -6,7 +6,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/v1/ai")
+@CrossOrigin(origins = "http://localhost:3000", allowCredentials = "true")
 public class GeminiController {
 
     private final GeminiChatUseCase geminiChatUseCase;
