@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/features/auth/presentation/login_screen.dart';
 import 'package:mobile/features/home/presentation/main_screen.dart';
-
+import 'package:mobile/features/Sales/presentation/sales_screen.dart';
+import 'package:mobile/features/order/presentation/order_screen.dart'; // Đổi đường dẫn nếu bạn lưu chỗ khác
 void main() {
   runApp(const BizFlowApp());
 }
@@ -25,6 +26,8 @@ class BizFlowApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MainScreen(),
+        '/sales': (context) => const SalesScreen(),
+        '/order': (context) => const OrderScreen(),
       },
     );
   }
