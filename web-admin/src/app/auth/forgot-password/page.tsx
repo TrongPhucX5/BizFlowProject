@@ -5,7 +5,7 @@ import Link from "next/link";
 import axiosClient from "@/lib/axios-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, ArrowLeft, ArrowRight, Store, CheckCircle2, Building2 } from "lucide-react";
+import { ArrowLeft, Store, CheckCircle2, Building2 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
@@ -19,10 +19,9 @@ export default function ForgotPasswordPage() {
 
         try {
             await axiosClient.post("/v1/auth/forgot-password", { email });
-
             setMessage({
                 type: 'success',
-                text: "Đã gửi hướng dẫn! Vui lòng kiểm tra email của bạn."
+                text: "Hướng dẫn đã được gửi! Vui lòng kiểm tra email của bạn."
             });
         } catch (err: any) {
             setMessage({ type: 'error', text: "Email không tồn tại hoặc có lỗi xảy ra." });
@@ -33,7 +32,8 @@ export default function ForgotPasswordPage() {
 
     return (
         <div className="flex min-h-screen w-full bg-white font-sans overflow-hidden">
-            {/* 1. CỘT TRÁI (GIỮ NGUYÊN) */}
+
+            {/* 1. CỘT TRÁI - BRANDING (GIỮ NGUYÊN) */}
             <div className="hidden lg:flex lg:w-[60%] bg-blue-700 flex-col justify-center px-20 xl:px-32 text-white relative lg:rounded-r-[80px] z-10 shadow-2xl">
                 <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_30%_20%,_rgba(255,255,255,0.1)_0%,_transparent_50%)] rounded-r-[80px]"></div>
                 <div className="absolute top-10 right-20 opacity-10 transform rotate-12">
@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
                     </h1>
 
                     <p className="text-blue-100 text-xl max-w-lg mb-10 leading-relaxed font-light">
-                        Lấy lại mật khẩu nhanh chóng để tiếp tục công việc quản lý.
+                        Chúng tôi sẽ giúp bạn lấy lại mật khẩu nhanh chóng để tiếp tục công việc quản lý.
                     </p>
 
                     <div className="space-y-6">
@@ -68,27 +68,24 @@ export default function ForgotPasswordPage() {
                 </div>
             </div>
 
-            {/* 2. CỘT PHẢI (ĐÃ CHỈNH SỬA) */}
+            {/* 2. CỘT PHẢI - FORM */}
             <div className="w-full lg:w-[40%] flex items-center justify-center p-8 bg-white relative">
                 <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-blue-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
-                {/* Thêm class lg:-mt-20 để kéo cả khối này lên cao hơn trên màn hình lớn */}
-                <div className="w-full max-w-[450px] relative z-20 lg:-mt-20">
+                <div className="w-full max-w-[450px] relative z-20">
 
-                    <Link href="/auth/login" className="inline-flex items-center text-sm text-slate-500 hover:text-blue-600 mb-6 transition-colors group font-medium">
-                        <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                        Quay lại Đăng nhập
-                    </Link>
-
-                    <div className="mb-8">
-                        <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-indigo-600 mb-2">
-                            Quên mật khẩu?
-                        </h2>
-                        {/* Văn bản ngắn gọn hơn */}
-                        <p className="text-slate-500 text-base">
-                            Nhập email để nhận link đặt lại mật khẩu mới.
+                    <div className="mb-6 text-center lg:text-left">
+                        {/* Đã sửa dòng này: Thêm hiệu ứng Gradient giống hệt trang Login */}
+                        <h1 className="text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600 mb-4 pb-1">
+                            Khôi phục mật khẩu
+                        </h1>
+                        <p className="text-slate-500 text-[15px] leading-relaxed">
+                            Hãy nhập thông tin của bạn. Hướng dẫn khôi phục mật khẩu sẽ được gửi đến email của bạn.
                         </p>
                     </div>
+
+                    {/* Đường kẻ mờ */}
+                    <div className="w-full border-t border-slate-100 mb-8"></div>
 
                     {message && (
                         <div className={`p-4 rounded-xl text-sm flex items-start gap-3 shadow-sm mb-6 ${
@@ -99,32 +96,40 @@ export default function ForgotPasswordPage() {
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Email</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
-                                <Input
-                                    type="email"
-                                    placeholder="admin@bizflow.com"
-                                    className="pl-12 h-12 rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all text-base shadow-sm"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    required
-                                    disabled={isLoading}
-                                />
-                            </div>
+                            <label className="text-sm font-bold text-slate-800 ml-1">
+                                Email <span className="text-red-500">*</span>
+                            </label>
+
+                            <Input
+                                type="email"
+                                placeholder="Email của bạn"
+                                className="h-12 rounded-lg border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-base shadow-sm px-4"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                disabled={isLoading}
+                            />
                         </div>
 
                         <Button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold text-base rounded-xl shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all duration-300 transform hover:-translate-y-0.5"
+                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-lg shadow-md transition-all"
                         >
-                            {isLoading ? "Đang gửi..." : "Gửi yêu cầu"}
-                            {!isLoading && <ArrowRight className="ml-2 w-5 h-5" />}
+                            {isLoading ? "Đang xử lý..." : "Khôi phục mật khẩu"}
                         </Button>
                     </form>
+
+                    {/* Nút quay lại */}
+                    <div className="mt-8 flex justify-center lg:justify-start">
+                        <Link href="/auth/login" className="flex items-center text-slate-500 hover:text-blue-600 font-medium transition-colors text-sm">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Quay lại đăng nhập
+                        </Link>
+                    </div>
+
                 </div>
             </div>
         </div>
