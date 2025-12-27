@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+// 1. Import Màn hình Bán hàng
+import 'package:mobile/features/Sales/presentation/sales_screen.dart';
+// 2. Import Màn hình Đơn hàng (Cực kỳ quan trọng, thiếu dòng này là lỗi)
+import 'package:mobile/features/order/presentation/order_screen.dart';
+import 'package:mobile/features/product/presentation/product_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -8,19 +13,40 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  // Chỉ số tab đang chọn (Mặc định là 0 - Trang chủ/POS)
   int _selectedIndex = 0;
 
-  // Danh sách các màn hình tương ứng với các tab
-  // (Tạm thời dùng Placeholder để giữ chỗ, sau này sẽ thay bằng màn hình thật)
-  static const List<Widget> _widgetOptions = <Widget>[
-    PlaceholderTab(title: 'Bán hàng tại quầy (POS)', icon: Icons.point_of_sale, color: Colors.blue),
-    PlaceholderTab(title: 'Quản lý Sản phẩm', icon: Icons.inventory_2, color: Colors.green),
-    PlaceholderTab(title: 'Quản lý Khách hàng', icon: Icons.people_alt, color: Colors.orange),
-    PlaceholderTab(title: 'Cá nhân & Cài đặt', icon: Icons.person, color: Colors.purple),
+  // --- SỬA LẠI DANH SÁCH NÀY ---
+  final List<Widget> _widgetOptions = <Widget>[
+    // Vị trí 0: Bán hàng
+    const SalesScreen(),
+    // Vị trí 1: Đơn hàng
+    const OrderScreen(),
+    const ProductScreen(),
+    // Vị trí 3: Khách hàng
+    const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_alt, size: 64, color: Colors.orange),
+          SizedBox(height: 10),
+          Text('Quản lý Khách hàng', style: TextStyle(fontSize: 18)),
+        ],
+      ),
+    ),
+
+    // Vị trí 4: Cá nhân
+    const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person, size: 64, color: Colors.blue),
+          SizedBox(height: 10),
+          Text('Cá nhân & Cài đặt', style: TextStyle(fontSize: 18)),
+        ],
+      ),
+    ),
   ];
 
-  // Hàm xử lý khi bấm vào tab
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -30,95 +56,28 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // AppBar phía trên
-      appBar: AppBar(
-        title: const Text('BizFlow Mobile'),
-        centerTitle: false, // Để tiêu đề lệch trái cho hiện đại
-        automaticallyImplyLeading: false, // Ẩn nút back vì đây là màn hình chính
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
-        actions: [
-          // Thêm nút thông báo demo (Firebase sau này)
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Chưa có thông báo mới!")),
-              );
-            },
-          )
+      // Body sẽ lấy widget theo index tương ứng
+      body: _widgetOptions.elementAt(_selectedIndex),
+
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, // Quan trọng vì có 5 tab
+        items: const <BottomNavigationBarItem>[
+          // 0
+          BottomNavigationBarItem(icon: Icon(Icons.point_of_sale), label: 'Bán hàng'),
+          // 1 (Phải khớp với vị trí OrderScreen ở trên)
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Đơn hàng'),
+          // 2
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Sản phẩm'),
+          // 3
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Khách hàng'),
+          // 4
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Cá nhân'),
         ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: Colors.blue,
+        unselectedItemColor: Colors.grey,
+        onTap: _onItemTapped,
       ),
-
-      // Nội dung chính giữa (Thay đổi theo tab)
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
-      ),
-
-      // Thanh menu dưới đáy
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: _onItemTapped,
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            selectedIcon: Icon(Icons.point_of_sale),
-            icon: Icon(Icons.point_of_sale_outlined),
-            label: 'Bán hàng',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.inventory_2),
-            icon: Icon(Icons.inventory_2_outlined),
-            label: 'Sản phẩm',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.people_alt),
-            icon: Icon(Icons.people_alt_outlined),
-            label: 'Khách hàng',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.person),
-            icon: Icon(Icons.person_outline),
-            label: 'Cá nhân',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// --- Widget giữ chỗ tạm thời (Demo cho đẹp) ---
-class PlaceholderTab extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-
-  const PlaceholderTab({
-    super.key,
-    required this.title,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(icon, size: 100, color: color.withOpacity(0.5)),
-        const SizedBox(height: 20),
-        Text(
-          title,
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color),
-          textAlign: TextAlign.center,
-        ),
-        const Padding(
-          padding: EdgeInsets.all(20.0),
-          child: Text(
-            "Chức năng này đang được phát triển...",
-            style: TextStyle(color: Colors.grey),
-          ),
-        ),
-      ],
     );
   }
 }
