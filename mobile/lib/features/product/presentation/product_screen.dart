@@ -6,7 +6,7 @@ class ProductScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Màu xanh lá chủ đạo theo thiết kế
-    const Color kPrimaryGreen = Color(0xff2871a7);
+    const Color kPrimaryGreen = Color(0xff289ca7);
     const Color kGreyBg = Color(0xFFF5F5F5);
     const Color kGreyText = Colors.grey;
 
@@ -19,10 +19,7 @@ class ProductScreen extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0.5, // Bóng mờ nhẹ
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.black87),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+
           // Phần bottom chứa thanh tìm kiếm và TabBar
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(100.0), // Chiều cao tổng cho phần bottom

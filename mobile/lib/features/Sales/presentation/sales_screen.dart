@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/features/home/presentation/management_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -29,12 +30,6 @@ class _SalesScreenState extends State<SalesScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: kContentColor),
-          onPressed: () {
-            Navigator.of(context).pop(); // Quay lại
-          },
-        ),
         title: const Text(
           'Bán hàng',
           style: TextStyle(color: kContentColor, fontWeight: FontWeight.bold),

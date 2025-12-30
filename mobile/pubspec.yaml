@@ -21,7 +21,7 @@ dependencies:
   dio: ^5.4.0
   go_router: ^13.0.0
   shared_preferences: ^2.2.2
-
+  google_sign_in: ^6.2.1
 
   # 3. Tiện ích
   font_awesome_flutter: ^10.7.0 # Icon Facebook, Google...

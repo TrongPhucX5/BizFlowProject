@@ -5,6 +5,9 @@ import 'package:mobile/common/widgets/CustomTextField.dart'; // Import Component
 import 'package:mobile/common/widgets/PrimaryButton.dart';   // Import Component
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/features/home/presentation/main_screen.dart';
+import 'package:google_sign_in/google_sign_in.dart'; // Thư viện Google
+import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // Icon Google
+import 'package:mobile/features/home/presentation/management_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,11 +22,36 @@ class _LoginScreenState extends State<LoginScreen> {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   bool _isPasswordVisible = false;
   bool _isLoading = false;
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      setState(() => _isLoading = true);
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser != null) {
+        // Log để kiểm tra thông tin nhận về
+        debugPrint("User: ${googleUser.displayName} - Email: ${googleUser.email}");
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const ManagementScreen()),
+          );
+        }
+      }
+    } catch (error) {
+      debugPrint("Lỗi Google Sign-In: $error");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void initState() {
@@ -146,6 +174,34 @@ class _LoginScreenState extends State<LoginScreen> {
                   text: "ĐĂNG NHẬP HỆ THỐNG",
                   isLoading: _isLoading,
                   onPressed: _login,
+                ),
+
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text("Hoặc", style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // 5. Nút Đăng nhập Google
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  icon: const FaIcon(FontAwesomeIcons.google, color: Colors.red, size: 18),
+                  label: Text(
+                    "Đăng nhập bằng Google",
+                    style: GoogleFonts.poppins(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 14),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
 
                 const SizedBox(height: 32),

@@ -5,7 +5,7 @@ class OrderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color kPrimaryColor = Color(0xff2885a7); // Màu xanh lá
+    const Color kPrimaryColor = Color(0xff289ca7); // Màu xanh lá
 
     return Scaffold(
       backgroundColor: Colors.white,

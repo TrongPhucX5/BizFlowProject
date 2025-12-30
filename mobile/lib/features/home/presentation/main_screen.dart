@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
-// 1. Import Màn hình Bán hàng
 import 'package:mobile/features/Sales/presentation/sales_screen.dart';
-// 2. Import Màn hình Đơn hàng (Cực kỳ quan trọng, thiếu dòng này là lỗi)
 import 'package:mobile/features/order/presentation/order_screen.dart';
 import 'package:mobile/features/product/presentation/product_screen.dart';
+import 'package:mobile/features/home/presentation/management_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
+
+  // Hàm static này cực kỳ quan trọng để các trang con có thể gọi
+  static _MainScreenState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_MainScreenState>();
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -15,68 +18,45 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
-  // --- SỬA LẠI DANH SÁCH NÀY ---
-  final List<Widget> _widgetOptions = <Widget>[
-    // Vị trí 0: Bán hàng
-    const SalesScreen(),
-    // Vị trí 1: Đơn hàng
-    const OrderScreen(),
-    const ProductScreen(),
-    // Vị trí 3: Khách hàng
-    const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.people_alt, size: 64, color: Colors.orange),
-          SizedBox(height: 10),
-          Text('Quản lý Khách hàng', style: TextStyle(fontSize: 18)),
-        ],
-      ),
-    ),
-
-    // Vị trí 4: Cá nhân
-    const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.person, size: 64, color: Colors.blue),
-          SizedBox(height: 10),
-          Text('Cá nhân & Cài đặt', style: TextStyle(fontSize: 18)),
-        ],
-      ),
-    ),
-  ];
-
-  void _onItemTapped(int index) {
+  // Hàm đổi Tab từ bên ngoài
+  void setTabIndex(int index) {
     setState(() {
       _selectedIndex = index;
     });
   }
 
+  // Danh sách Widget phải khớp số lượng với BottomNavigationBar (6 items)
+  final List<Widget> _widgetOptions = <Widget>[
+    const ManagementScreen(), // Index 0
+    const SalesScreen(),      // Index 1
+    const OrderScreen(),      // Index 2
+    const ProductScreen(),    // Index 3
+    const Center(child: Text('Trang Khách hàng')), // Index 4
+    const Center(child: Text('Trang Cá nhân')),   // Index 5
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Body sẽ lấy widget theo index tương ứng
-      body: _widgetOptions.elementAt(_selectedIndex),
-
+      // Dùng IndexedStack để khi chuyển tab không bị load lại trang từ đầu
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
       bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed, // Quan trọng vì có 5 tab
-        items: const <BottomNavigationBarItem>[
-          // 0
-          BottomNavigationBarItem(icon: Icon(Icons.point_of_sale), label: 'Bán hàng'),
-          // 1 (Phải khớp với vị trí OrderScreen ở trên)
-          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Đơn hàng'),
-          // 2
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Sản phẩm'),
-          // 3
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Khách hàng'),
-          // 4
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Cá nhân'),
-        ],
+        type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blue,
+        selectedItemColor: Colors.green[700], // Chỉnh màu xanh cho giống mẫu của bạn
         unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
+        onTap: (index) => setTabIndex(index),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Quản lý'),
+          BottomNavigationBarItem(icon: Icon(Icons.storefront_outlined), label: 'Bán hàng'),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Đơn hàng'),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Sản phẩm'),
+          BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Khách hàng'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Cá nhân'),
+        ],
       ),
     );
   }

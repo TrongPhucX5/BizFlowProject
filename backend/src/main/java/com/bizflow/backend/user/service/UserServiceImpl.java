@@ -1,4 +1,5 @@
-package com.bizflow.backend.service.impl;
+//package com.bizflow.backend.service.impl;
+package com.bizflow.backend.user.service;
 
 import com.bizflow.backend.core.domain.User;
 import com.bizflow.backend.core.usecase.UserService;
@@ -22,7 +23,8 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class
+UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
