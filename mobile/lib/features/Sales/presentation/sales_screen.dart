@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/features/home/presentation/management_screen.dart';
+import 'package:mobile/features/Sales/presentation/quick_sale_screen.dart';
+import 'package:mobile/features/order/presentation/order_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
@@ -10,6 +11,7 @@ class SalesScreen extends StatefulWidget {
 
 class _SalesScreenState extends State<SalesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  bool _isGridView = false;
 
   @override
   void dispose() {
@@ -17,153 +19,152 @@ class _SalesScreenState extends State<SalesScreen> {
     super.dispose();
   }
 
+  void _openQuickSale() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const QuickSaleScreen()),
+    );
+  }
+
+  void _openSortMenu() {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildSortItem("Mới nhất"),
+            _buildSortItem("Bán chạy"),
+            _buildSortItem("Giá thấp → cao"),
+            _buildSortItem("Giá cao → thấp"),
+            ListTile(
+              leading: Icon(_isGridView ? Icons.list : Icons.grid_view),
+              title: Text(_isGridView ? "Xem dạng danh sách" : "Xem dạng lưới"),
+              onTap: () {
+                setState(() => _isGridView = !_isGridView);
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortItem(String title) {
+    return ListTile(
+      title: Text(title),
+      onTap: () => Navigator.pop(context),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // --- KHAI BÁO MÀU SẮC ---
-    const Color kContentColor = Colors.black87;
-    // Sửa thành màu xanh biển (dùng Colors.blue hoặc mã màu cụ thể)
     const Color kPrimaryColor = Colors.blue;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      // === 1. APPBAR ===
       appBar: AppBar(
+        title: const Text("Bán hàng", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Bán hàng',
-          style: TextStyle(color: kContentColor, fontWeight: FontWeight.bold),
-        ),
         actions: [
-          _buildAppBarActionButton(Icons.flash_on, "Bán nhanh", kContentColor),
-          _buildAppBarActionButton(Icons.receipt_long, "Đơn hàng", kContentColor),
+          _buildAction("Bán nhanh", Icons.flash_on, _openQuickSale),
+          _buildAction(
+            "Đơn hàng",
+            Icons.receipt_long,
+                () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const OrderScreen()),
+            ),
+          ),
           IconButton(
-            icon: const Icon(Icons.more_vert, color: kContentColor),
-            onPressed: () {},
+            icon: const Icon(Icons.more_vert, color: Colors.black),
+            onPressed: _openSortMenu,
           ),
         ],
       ),
-      // === 2. BODY ===
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- Thanh tìm kiếm & Quét mã ---
-          Container(
-            padding: const EdgeInsets.all(12.0),
-            decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(bottom: BorderSide(color: Colors.grey.shade200))
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: "Tìm theo tên, barcode, SKU",
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: () {
-                    debugPrint("Mở quét mã");
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.qr_code_scanner, color: kContentColor),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // --- Nút Thêm sản phẩm (Màu Xanh Biển) ---
+          _buildSearchBar(),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: _buildAddProductCard(kPrimaryColor),
           ),
-
-          Expanded(child: Container()),
+          Expanded(
+            child: Center(
+              child: Text(
+                _isGridView ? "Chế độ xem lưới" : "Chế độ xem danh sách",
+                style: const TextStyle(color: Colors.grey),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // Widget nút nhỏ trên AppBar
-  Widget _buildAppBarActionButton(IconData icon, String label, Color color) {
+  Widget _buildAction(String label, IconData icon, VoidCallback onTap) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 22),
-            Text(
-              label,
-              style: TextStyle(fontSize: 10, color: color),
-            ),
+            Icon(icon, size: 20, color: Colors.black),
+            Text(label, style: const TextStyle(fontSize: 10)),
           ],
         ),
       ),
     );
   }
 
-  // Widget Thẻ "Thêm sản phẩm" (Được truyền màu vào)
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                hintText: "Tìm theo tên, barcode, SKU",
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          IconButton(
+            icon: const Icon(Icons.qr_code_scanner),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Mở quét QR (demo)")),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAddProductCard(Color primaryColor) {
     return InkWell(
-      onTap: () {
-        debugPrint("Bấm thêm sản phẩm");
-      },
-      borderRadius: BorderRadius.circular(12),
+      onTap: _openQuickSale,
       child: Container(
-        width: 130,
-        height: 130,
+        width: 140,
+        height: 140,
         decoration: BoxDecoration(
-          color: Colors.white,
+          border: Border.all(color: primaryColor),
           borderRadius: BorderRadius.circular(12),
-          // Bóng đổ màu xanh biển nhạt
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withOpacity(0.15),
-              spreadRadius: 2,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          // Viền màu xanh biển
-          border: Border.all(color: primaryColor.withOpacity(0.5), width: 1.5),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Icon dấu cộng
             Icon(Icons.add, size: 40, color: primaryColor),
             const SizedBox(height: 8),
-            // Chữ bên dưới
-            Text(
-              "Thêm sản phẩm",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text("Thêm sản phẩm", style: TextStyle(color: primaryColor)),
           ],
         ),
       ),
