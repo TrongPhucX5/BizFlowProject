@@ -3,6 +3,7 @@ import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 import 'package:mobile/features/order/presentation/order_screen.dart';
 import 'package:mobile/features/product/presentation/product_screen.dart';
 import 'package:mobile/features/home/presentation/management_screen.dart';
+import 'package:mobile/features/customer/presentation/customer_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -31,7 +32,7 @@ class _MainScreenState extends State<MainScreen> {
     const SalesScreen(),      // Index 1
     const OrderScreen(),      // Index 2
     const ProductScreen(),    // Index 3
-    const Center(child: Text('Trang Khách hàng')), // Index 4
+    const CustomerScreen(),   // Index 4:
     const Center(child: Text('Trang Cá nhân')),   // Index 5
   ];
 

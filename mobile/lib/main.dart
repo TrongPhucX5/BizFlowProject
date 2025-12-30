@@ -5,6 +5,7 @@ import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 import 'package:mobile/features/order/presentation/order_screen.dart';
 import 'package:mobile/features/product/presentation/product_screen.dart';
 import 'package:mobile/features/home/presentation/management_screen.dart';
+import 'package:mobile/features/customer/presentation/customer_screen.dart';
 
 void main() {
   runApp(const BizFlowApp());
@@ -33,6 +34,7 @@ class BizFlowApp extends StatelessWidget {
         '/sales': (context) => const SalesScreen(),
         '/order': (context) => const OrderScreen(),
         '/product': (context) => const ProductScreen(),
+        '/customer': (context) => const CustomerScreen(),
       },
     );
   }
