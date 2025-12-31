@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:mobile/features/product/presentation/product_create_screen.dart';
 class ProductScreen extends StatelessWidget {
   const ProductScreen({super.key});
 
@@ -134,7 +134,10 @@ class ProductScreen extends StatelessWidget {
             height: 50,
             child: ElevatedButton(
               onPressed: () {
-                // TODO: Mở màn hình tạo sản phẩm
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProductCreateScreen()),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
