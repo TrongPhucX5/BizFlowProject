@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/features/Sales/presentation/sales_screen.dart';
+import 'package:mobile/features/order/presentation/payment_screen.dart';
 
 class OrderScreen extends StatelessWidget {
   const OrderScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    const Color kPrimaryColor = Color(0xff289ca7); // Màu xanh lá
+    const Color kPrimaryColor = Color(0xff289ca7);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -15,13 +17,12 @@ class OrderScreen extends StatelessWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: Center( // Dùng Center để căn giữa toàn bộ
+      body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Icon Bảng kẹp giấy (Checklist)
               Container(
                 width: 100, height: 100,
                 decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
@@ -34,22 +35,37 @@ class OrderScreen extends StatelessWidget {
                 style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
               const SizedBox(height: 30),
+
+              // === NÚT 1: TẠO ĐƠN HÀNG -> Sang SalesScreen ===
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      // Chuyển sang SalesScreen
+                      MaterialPageRoute(builder: (context) => const SalesScreen()),
+                    );
+                  },
                   child: const Text("Tạo đơn hàng", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 15),
+
+              // === NÚT 2: THU TIỀN -> Sang màn hình Bàn phím số ===
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: kPrimaryColor)),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PaymentScreen()),
+                    );
+                  },
                   child: const Text("Thu tiền", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
                 ),
               ),
