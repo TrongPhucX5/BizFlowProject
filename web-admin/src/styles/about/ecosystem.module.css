@@ -1,0 +1,203 @@
+.ecosystemSection {
+  margin: 4rem 0;
+  padding: 3rem;
+  border-radius: 2rem;
+  background: linear-gradient(135deg, #0a1a12 0%, #050c09 50%, #000000 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .ecosystemSection {
+    flex-direction: row;
+    padding: 4rem;
+  }
+}
+
+.content {
+  flex: 1;
+}
+
+.subTitle {
+  color: #22c55e; /* green-500 */
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.mainTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.25;
+}
+
+.featureList {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.iconWrapper {
+  margin-top: 0.25rem;
+  background-color: rgba(34, 197, 94, 0.2);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+}
+
+.featureText h5 {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.featureText p {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.footerIcons {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footerIconItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #d1d5db;
+}
+
+.mockupContainer {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+}
+
+.visualCard {
+  position: relative;
+  background-color: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  height: 100%;
+}.ecosystemSection {
+  margin: 4rem 0;
+  padding: 3rem;
+  border-radius: 2rem;
+  background: linear-gradient(135deg, #0a1a12 0%, #050c09 50%, #000000 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .ecosystemSection {
+    flex-direction: row;
+    padding: 4rem;
+  }
+}
+
+.content {
+  flex: 1;
+}
+
+.subTitle {
+  color: #22c55e; /* green-500 */
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.mainTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.25;
+}
+
+.featureList {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.iconWrapper {
+  margin-top: 0.25rem;
+  background-color: rgba(34, 197, 94, 0.2);
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+}
+
+.featureText h5 {
+  color: #e5e7eb;
+  font-weight: 500;
+}
+
+.featureText p {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.footerIcons {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.footerIconItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #d1d5db;
+}
+
+.mockupContainer {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+}
+
+.visualCard {
+  position: relative;
+  background-color: #111;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  height: 100%;
+}
