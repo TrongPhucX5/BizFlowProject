@@ -51,6 +51,7 @@ public class ProductController {
                             .costPrice(product.getCostPrice()) // Changed from getCost to getCostPrice
                             .categoryId(product.getCategoryId())
                             .unitId(product.getUnitId())
+                            .unitName(product.getUnitName())
                             .description(product.getDescription())
                             .imageUrl(product.getImageUrl())
                             .status(product.getStatus().toString())
