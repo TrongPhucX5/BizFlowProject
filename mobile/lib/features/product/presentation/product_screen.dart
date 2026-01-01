@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/features/product/presentation/product_create_screen.dart'; // Giữ nguyên import của bạn
 import 'package:mobile/features/product/presentation/combo_create_screen.dart';
+import 'package:mobile/features/product/presentation/hourly_service_screen.dart';
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -278,7 +279,9 @@ class _ProductScreenState extends State<ProductScreen> {
           SizedBox(
             width: double.infinity, height: 50,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const HourlyProductCreateScreen()));
+              },
               style: OutlinedButton.styleFrom(foregroundColor: primaryColor, side: BorderSide(color: primaryColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               child: const Text("Tạo dịch vụ theo giờ", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),

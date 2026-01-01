@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 // Đảm bảo bạn đã import đúng đường dẫn các file này
 import 'attribute_modal.dart';
 import 'add_hourly_price_screen.dart';
-// import 'combo_create_screen.dart'; // Import nếu bạn đã tạo file này
+// Lưu ý: Class PriceGroup và TimeSlot cần được public ở file add_hourly_price_screen hoặc file models riêng
 
-class ProductCreateScreen extends StatefulWidget {
-  const ProductCreateScreen({super.key});
+class HourlyProductCreateScreen extends StatefulWidget {
+  const HourlyProductCreateScreen({super.key});
 
   @override
-  State<ProductCreateScreen> createState() => _ProductCreateScreenState();
+  State<HourlyProductCreateScreen> createState() => _HourlyProductCreateScreenState();
 }
 
-class _ProductCreateScreenState extends State<ProductCreateScreen> {
+class _HourlyProductCreateScreenState extends State<HourlyProductCreateScreen> {
   // --- 1. KHAI BÁO BIẾN ---
   final Color kPrimaryGreen = const Color(0xff289ca7);
   final TextEditingController _unitController = TextEditingController();
@@ -21,11 +21,10 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
   bool _trackStock = false;
   String _stockStatus = 'available';
 
-  // Biến lưu trữ dữ liệu bảng giá (Giả lập)
-  List<Map<String, String>> _hourlyPrices = [];
+  // [THAY ĐỔI QUAN TRỌNG]: Dùng List<PriceGroup> để hứng dữ liệu thật thay vì Map giả
+  List<PriceGroup> _priceGroups = [];
 
   // Danh sách thuộc tính đã thêm
-  // Cấu trúc: [{'name': 'Màu sắc', 'values': ['Đỏ', 'Vàng']}]
   List<Map<String, dynamic>> _attributes = [];
 
   @override
@@ -40,41 +39,37 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      // Truyền dữ liệu cũ vào nếu là Sửa
       builder: (context) => AttributeModalContent(initialData: existingData),
     );
 
-    // Xử lý kết quả trả về
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         if (index != null) {
-          // Trường hợp SỬA: Cập nhật tại vị trí index
           _attributes[index] = result;
         } else {
-          // Trường hợp THÊM MỚI
           _attributes.add(result);
         }
       });
     }
   }
 
-  // --- 3. HÀM ĐIỀU HƯỚNG BẢNG GIÁ ---
+  // --- 3. HÀM ĐIỀU HƯỚNG BẢNG GIÁ (LOGIC THẬT) ---
   void _navigateToAddHourlyPrice() async {
-    await Navigator.push(
+    // Await kết quả trả về
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const AddHourlyPriceScreen()),
     );
-    // Demo cập nhật UI sau khi quay lại
-    setState(() {
-      if (_hourlyPrices.isEmpty) {
-        _hourlyPrices = [
-          {"day": "Thứ Ba", "time": "Từ 00:00 đến 23:59", "price": "0"}
-        ];
-      }
-    });
+
+    // Kiểm tra và cập nhật dữ liệu thật
+    if (result != null && result is List<PriceGroup>) {
+      setState(() {
+        _priceGroups.addAll(result);
+      });
+    }
   }
 
-  // --- 4. HÀM XỬ LÝ NÚT BACK (HIỆN DIALOG) ---
+  // --- 4. HÀM XỬ LÝ NÚT BACK ---
   Future<bool> _onWillPop() async {
     return (await showDialog(
       context: context,
@@ -83,11 +78,11 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
         content: const Text("Bạn có muốn thoát mà không lưu không?"),
         actions: <Widget>[
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Ở lại
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text("Không", style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Thoát luôn
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text("Đồng ý", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
@@ -98,7 +93,6 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
   // --- 5. GIAO DIỆN CHÍNH ---
   @override
   Widget build(BuildContext context) {
-    // WillPopScope để chặn nút Back cứng của Android
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -109,14 +103,13 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
             onPressed: () async {
-              // Gọi dialog khi bấm nút Back trên AppBar
               if (await _onWillPop()) {
                 if (!mounted) return;
                 Navigator.of(context).pop();
               }
             },
           ),
-          title: const Text("Tạo sản phẩm", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+          title: const Text("Tạo sản phẩm theo giờ", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         ),
 
         body: Column(
@@ -140,7 +133,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                     // --- TÊN SẢN PHẨM ---
                     RichText(
                       text: const TextSpan(
-                        text: "Tên sản phẩm ",
+                        text: "Tên dịch vụ/sản phẩm ",
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
                         children: [TextSpan(text: "*", style: TextStyle(color: Colors.red))],
                       ),
@@ -158,10 +151,10 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                     const Text("Thông tin bắt buộc", style: TextStyle(color: Colors.red, fontSize: 11)),
                     const SizedBox(height: 20),
 
-                    // --- GIÁ BÁN & GIÁ VỐN ---
+                    // --- GIÁ BÁN & GIÁ VỐN (Giữ nguyên cấu trúc mới) ---
                     Row(
                       children: [
-                        Expanded(child: _buildSimpleInput("Giá bán")),
+                        Expanded(child: _buildSimpleInput("Giá bán mặc định")),
                         const SizedBox(width: 16),
                         Expanded(child: _buildSimpleInput("Giá vốn")),
                       ],
@@ -188,9 +181,9 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          _buildSuggestionChip("Cái"),
+                          _buildSuggestionChip("Phòng"), // Đổi thành Giờ/Suất cho hợp context
                           const SizedBox(width: 8),
-                          _buildSuggestionChip("Hộp"),
+                          _buildSuggestionChip("Giờ"),
                         ],
                       ),
                     ],
@@ -199,7 +192,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                     const Divider(thickness: 1, color: Color(0xFFEEEEEE)),
                     const SizedBox(height: 10),
 
-                    // --- NÚT BẤM ẨN / HIỆN THÔNG TIN ---
+                    // --- ẨN / HIỆN THÔNG TIN ---
                     GestureDetector(
                       onTap: () => setState(() => _isExpanded = !_isExpanded),
                       child: Padding(
@@ -215,10 +208,8 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                       ),
                     ),
 
-                    // --- PHẦN MỞ RỘNG ---
                     if (_isExpanded) ...[
                       const SizedBox(height: 10),
-
                       // Mã sản phẩm & Mã vạch
                       Row(
                         children: [
@@ -243,10 +234,8 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 20),
                       _buildSimpleInput("Giá khuyến mãi"),
-
                       const SizedBox(height: 20),
 
                       // Danh mục
@@ -268,11 +257,13 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                           )
                         ],
                       ),
-
                       const SizedBox(height: 24),
 
-                      // --- BẢNG GIÁ THEO GIỜ ---
-                      if (_hourlyPrices.isEmpty)
+                      // ==========================================================
+                      // --- PHẦN BẢNG GIÁ THEO KHUNG GIỜ (ĐÃ CẬP NHẬT LOGIC) ---
+                      // ==========================================================
+
+                      if (_priceGroups.isEmpty)
                         GestureDetector(
                           onTap: _navigateToAddHourlyPrice,
                           child: Container(
@@ -300,30 +291,63 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text("BẢNG GIÁ THEO KHUNG GIỜ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  // Nút thêm tiếp
                                   InkWell(
                                     onTap: _navigateToAddHourlyPrice,
-                                    child: const Icon(Icons.edit, size: 18, color: Colors.grey),
+                                    child: Row(
+                                      children: const [
+                                        Icon(Icons.add, size: 16, color: Colors.blue),
+                                        Text("Thêm", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13)),
+                                      ],
+                                    ),
                                   )
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              ..._hourlyPrices.map((item) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
+
+                              // Loop qua các nhóm giá thật
+                              ..._priceGroups.asMap().entries.map((entry) {
+                                int groupIdx = entry.key;
+                                PriceGroup group = entry.value;
+                                String dayText = group.selectedDays.isEmpty ? "Chưa chọn ngày" : group.selectedDays.join(", ");
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  decoration: const BoxDecoration(
+                                      border: Border(bottom: BorderSide(color: Colors.black12, width: 0.5))
+                                  ),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(item['day']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                      const SizedBox(height: 8),
+                                      // Tiêu đề: Ngày + Nút xóa
                                       Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const Icon(Icons.subdirectory_arrow_right, color: Colors.grey, size: 20),
-                                          const SizedBox(width: 8),
-                                          Text(item['time']!, style: const TextStyle(fontSize: 15)),
-                                          const Spacer(),
-                                          Text(item['price']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                          Expanded(child: Text(dayText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.blueGrey))),
+                                          InkWell(
+                                            onTap: () => setState(() => _priceGroups.removeAt(groupIdx)),
+                                            child: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                          )
                                         ],
-                                      )
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // List các khung giờ trong nhóm này
+                                      ...group.timeSlots.map((slot) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 8.0, left: 12.0),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.subdirectory_arrow_right, color: Colors.grey, size: 18),
+                                              const SizedBox(width: 8),
+                                              Text("${slot.startTime} - ${slot.endTime}", style: const TextStyle(fontSize: 15)),
+                                              const Spacer(),
+                                              Text("${slot.price.toInt()} đ", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                      const SizedBox(height: 8),
                                     ],
                                   ),
                                 );
@@ -334,7 +358,6 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
 
                       const SizedBox(height: 20),
                       _buildDropdownInput("Nhóm bán kèm"),
-
                       const SizedBox(height: 24),
 
                       // TỒN KHO
@@ -375,12 +398,9 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 20),
 
-                      // ===============================================
-                      // --- HIỂN THỊ DANH SÁCH THUỘC TÍNH ---
-                      // ===============================================
+                      // --- THUỘC TÍNH (Giữ nguyên) ---
                       if (_attributes.isNotEmpty) ...[
                         Container(
                           width: double.infinity,
@@ -391,12 +411,9 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                             children: [
                               const Text("THUỘC TÍNH", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
                               const SizedBox(height: 16),
-
-                              // List các thuộc tính
                               ..._attributes.asMap().entries.map((entry) {
                                 int idx = entry.key;
                                 Map<String, dynamic> attr = entry.value;
-
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 16.0),
                                   child: Column(
@@ -407,15 +424,9 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                                         children: [
                                           Text("${attr['name']} (${(attr['values'] as List).length})",
                                               style: const TextStyle(fontSize: 15, color: Colors.black87)),
-
-                                          // NÚT SỬA -> GỌI MODAL VỚI DATA CŨ
                                           InkWell(
                                             onTap: () {
-                                              _showAddAttributeModal(
-                                                  context,
-                                                  index: idx,
-                                                  existingData: attr
-                                              );
+                                              _showAddAttributeModal(context, index: idx, existingData: attr);
                                             },
                                             child: const Text("Sửa", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 14)),
                                           ),
@@ -442,7 +453,6 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      // --- NÚT THÊM THUỘC TÍNH MỚI ---
                       GestureDetector(
                         onTap: () => _showAddAttributeModal(context),
                         child: Row(
@@ -510,10 +520,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
     );
   }
 
-  // ==========================================
-  // CÁC WIDGET CON (HELPER)
-  // ==========================================
-
+  // --- WIDGETS HELPER (Giữ nguyên) ---
   Widget _buildImagePlaceholder(IconData icon, String label) {
     return Container(
       width: 90, height: 90,
