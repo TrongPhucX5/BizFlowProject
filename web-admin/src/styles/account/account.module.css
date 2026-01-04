@@ -1,0 +1,155 @@
+@import "../about/_variables.css";
+
+/* Nền đen thuần phía sau */
+.container {
+    max-width: 100%;
+    margin: 0;
+    padding: 60px 24px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000000; /* Đổi sang màu đen thuần */
+    font-family: 'Inter', sans-serif;
+}
+
+/* Thẻ Card chính với hiệu ứng kính mờ (Glassmorphism) */
+.accountCard {
+    width: 100%;
+    max-width: 900px;
+    background: rgba(22, 28, 45, 0.7);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
+    overflow: hidden;
+}
+
+/* Header chứa Avatar và Tên */
+.cardHeader {
+    padding: 60px;
+    display: flex;
+    align-items: center;
+    gap: 40px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+}
+
+.avatarCircle {
+    width: 110px;
+    height: 110px;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 44px;
+    font-weight: 800;
+    color: white;
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.5); /* Hiệu ứng phát sáng xanh */
+    border: 4px solid rgba(255, 255, 255, 0.1);
+}
+
+.headerText h1 {
+    font-size: 36px;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0 0 8px 0;
+}
+
+.roleBadge {
+    display: inline-block;
+    padding: 6px 20px;
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border-radius: 99px;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    text-transform: uppercase;
+}
+
+/* Chia lưới thông tin 2 cột */
+.cardBody {
+    padding: 0 60px 60px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 35px;
+}
+
+.infoGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+/* Ô giá trị với nền tối nhẹ */
+.value {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 18px 24px;
+    border-radius: 16px;
+    color: #e2e8f0;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.value:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.statusActive {
+    color: #10b981;
+    font-weight: 700;
+}
+
+/* Căn chỉnh các nút bấm */
+.actions {
+    grid-column: span 2;
+    display: flex;
+    justify-content: flex-end;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.btnEdit {
+    background: #3b82f6;
+    color: white;
+    padding: 16px 36px;
+    border-radius: 14px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+    transition: 0.3s;
+}
+
+.btnEdit:hover {
+    transform: translateY(-2px);
+    background: #2563eb;
+    box-shadow: 0 15px 35px rgba(59, 130, 246, 0.5);
+}
+
+.btnSecurity {
+    background: transparent;
+    color: #64748b;
+    padding: 16px 24px;
+    border-radius: 14px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.btnSecurity:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
