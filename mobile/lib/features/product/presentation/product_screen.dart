@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/product/presentation/product_create_screen.dart'; // Giữ nguyên import của bạn
 import 'package:mobile/features/product/presentation/combo_create_screen.dart';
 import 'package:mobile/features/product/presentation/hourly_service_screen.dart';
+import 'package:mobile/features/product/presentation/batch_product_create_screen.dart';
+import 'category_select_products_screen.dart';
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -207,7 +209,7 @@ class _ProductScreenState extends State<ProductScreen> {
     );
   }
 
-  // --- WIDGET TAB 4: DANH MỤC ---
+  // --- WIDGET TAB 4: DANH MỤC (Đã sửa logic) ---
   Widget _buildCategoryTab(BuildContext context, Color primaryColor) {
     return Center(
       child: Column(
@@ -224,13 +226,108 @@ class _ProductScreenState extends State<ProductScreen> {
           SizedBox(
             width: 200, height: 48,
             child: ElevatedButton(
-              onPressed: () {}, // TODO: Logic tạo danh mục
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+              // --- GỌI HÀM HIỆN POPUP TẠI ĐÂY ---
+              onPressed: () {
+                _showCreateCategoryModal(context);
+              },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               child: const Text("Tạo danh mục", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // --- HÀM LOGIC: HIỆN BOTTOM SHEET NHẬP TÊN DANH MỤC ---
+  void _showCreateCategoryModal(BuildContext context) {
+    final TextEditingController nameController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Quan trọng: Đẩy sheet lên khi hiện bàn phím
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Padding(
+          // Padding bottom theo bàn phím (viewInsets)
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 16,
+            right: 16,
+            top: 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Ôm sát nội dung
+            children: [
+              // Handle bar (thanh ngang nhỏ)
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+              ),
+
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Tạo danh mục", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Input field
+              TextField(
+                controller: nameController,
+                autofocus: true, // Tự động focus để gõ luôn
+                decoration: const InputDecoration(
+                  hintText: "Nhập tên danh mục",
+                  border: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xff289ca7))),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Nút Tạo -> Chuyển sang màn chọn sản phẩm
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final name = nameController.text.trim();
+                    if (name.isNotEmpty) {
+                      Navigator.pop(context); // 1. Đóng popup nhập tên
+
+                      // 2. Chuyển sang màn hình chọn sản phẩm (đã tạo ở bước trước)
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CategorySelectProductsScreen(categoryName: name),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xff289ca7),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text("Tạo", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -290,7 +387,12 @@ class _ProductScreenState extends State<ProductScreen> {
           SizedBox(
             width: double.infinity, height: 50,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BatchProductCreateScreen()),
+                );
+              },
               style: OutlinedButton.styleFrom(foregroundColor: primaryColor, side: BorderSide(color: primaryColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
               child: const Text("Tạo sản phẩm hàng loạt", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
