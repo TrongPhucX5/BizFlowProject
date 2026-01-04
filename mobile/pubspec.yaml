@@ -11,23 +11,23 @@ dependencies:
     sdk: flutter
 
   # 1. Quản lý trạng thái & UI
-  provider: ^6.1.1        # Giúp quản lý dữ liệu (State Management) đơn giản, hiệu quả
-  google_fonts: ^6.1.0    # Font chữ đẹp
+  provider: ^6.1.1
+  google_fonts: ^6.1.0
 
   # 2. Gọi API & Xử lý dữ liệu
-  http: ^1.2.0            # Gọi API Backend
-  # shared_preferences: ^2.2.2 # (Dùng cái này lưu Token đơn giản cho người mới)
-  flutter_secure_storage: ^9.0.0 # (Nên dùng cái này: Lưu Token bảo mật cao hơn)
+  http: ^1.2.0
+  flutter_secure_storage: ^9.0.0
   dio: ^5.4.0
   go_router: ^13.0.0
   shared_preferences: ^2.2.2
   google_sign_in: ^6.2.1
 
   # 3. Tiện ích
-  font_awesome_flutter: ^10.7.0 # Icon Facebook, Google...
+  font_awesome_flutter: ^10.7.0
   fluttertoast: ^8.2.4
-  intl: ^0.19.0 # Để format tiền tệ VNĐ
+  intl: ^0.19.0
   cupertino_icons: ^1.0.8
+  image_picker: ^1.0.4
 
 dev_dependencies:
   flutter_test:

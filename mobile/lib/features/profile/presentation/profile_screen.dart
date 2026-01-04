@@ -1,116 +1,206 @@
 import 'package:flutter/material.dart';
+import 'edit_profile_screen.dart';
 import 'widgets/profile_section.dart';
 import 'widgets/profile_grid_item.dart';
+import 'package:mobile/features/auth/presentation/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  static const Color _textColor = Color(0xFF333333);
-  static const Color _primaryBlue = Color(0xFF3B66FF);
+  final String userFullName = 'Pham Minh Dung';
+  final String userRole = 'Business Owner';
+  final String memberSince = '04/2023';
+  final String servicePlan = 'BizFlow Pro';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-
-      // ===== APP BAR =====
+      backgroundColor: const Color(0xFFF6F8FB),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
+        title: const Text('Cá nhân'),
         centerTitle: true,
-        leading: const BackButton(color: Colors.black),
-        title: const Text(
-          "Kho ứng dụng",
-          style: TextStyle(
-            color: _textColor,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.black),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black),
-            onPressed: () {},
-          ),
-        ],
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
       ),
-
-      // ===== BODY =====
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ===== TIỀN BẠC =====
-            const ProfileSection(
-              title: "Quản lý tiền",
-              items: [
-                ProfileGridItemData(Icons.account_balance_wallet, "Thu / Chi", Colors.orange),
-                ProfileGridItemData(Icons.account_balance, "Ngân hàng", Colors.blue),
-                ProfileGridItemData(Icons.bar_chart, "Báo cáo", Colors.green),
-                ProfileGridItemData(Icons.receipt_long, "Hóa đơn", Colors.purple),
-              ],
-            ),
-
-            // ===== BÁN HÀNG =====
-            const ProfileSection(
-              title: "Quản lý bán hàng",
-              items: [
-                ProfileGridItemData(Icons.storefront, "Bán hàng", Colors.red),
-                ProfileGridItemData(Icons.people, "Khách hàng", Colors.blue),
-                ProfileGridItemData(Icons.person_outline, "Nhân viên", Colors.green),
-                ProfileGridItemData(Icons.campaign, "Marketing", Colors.orange),
-              ],
-            ),
-
-            // ===== KHO =====
-            const ProfileSection(
-              title: "Kho & Sản phẩm",
-              items: [
-                ProfileGridItemData(Icons.inventory_2, "Sản phẩm", Colors.orange),
-                ProfileGridItemData(Icons.warehouse, "Kho hàng", Colors.blue),
-                ProfileGridItemData(Icons.qr_code, "Barcode", Colors.green),
-                ProfileGridItemData(Icons.category, "Danh mục", Colors.purple),
-              ],
-            ),
-
-            // ===== ONLINE =====
-            const ProfileSection(
-              title: "Kênh online",
-              items: [
-                ProfileGridItemData(Icons.public, "Website", Colors.blue),
-                ProfileGridItemData(Icons.shopping_cart, "Sàn TMĐT", Colors.green),
-                ProfileGridItemData(Icons.chat, "Chat bán hàng", Colors.orange),
-                ProfileGridItemData(Icons.share, "Mạng xã hội", Colors.purple),
-              ],
-            ),
-
+            _buildHeader(context),
+            const SizedBox(height: 16),
+            _buildAccountStats(),
             const SizedBox(height: 24),
 
-            // ===== NÚT SỬA THANH ĐIỀU HƯỚNG =====
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _primaryBlue,
-                  side: const BorderSide(color: _primaryBlue),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  "Sửa thanh điều hướng",
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
+            ProfileSection(
+              title: 'Tài khoản',
+              items: [
+                ProfileGridItemData(Icons.person_outline, 'Thông tin cá nhân', Colors.blue),
+                ProfileGridItemData(Icons.storefront_outlined, 'Hộ kinh doanh', Colors.deepPurple),
+                ProfileGridItemData(Icons.verified_user_outlined, 'Xác thực KYC', Colors.green),
+                ProfileGridItemData(Icons.email_outlined, 'Email', Colors.orange),
+              ],
             ),
+
+            ProfileSection(
+              title: 'Cài đặt',
+              items: [
+                ProfileGridItemData(Icons.notifications_outlined, 'Thông báo', Colors.blue),
+                ProfileGridItemData(Icons.lock_outline, 'Bảo mật', Colors.redAccent),
+                ProfileGridItemData(Icons.face_retouching_natural, 'Face ID', Colors.teal),
+                ProfileGridItemData(Icons.settings_outlined, 'Tuỳ chỉnh', Colors.grey),
+              ],
+            ),
+
+            ProfileSection(
+              title: 'Hỗ trợ',
+              items: [
+                ProfileGridItemData(Icons.help_outline, 'Trợ giúp', Colors.blue),
+                ProfileGridItemData(Icons.description_outlined, 'Điều khoản', Colors.purple),
+                ProfileGridItemData(Icons.privacy_tip_outlined, 'Chính sách', Colors.green),
+                ProfileGridItemData(Icons.headset_mic_outlined, 'Liên hệ', Colors.orange),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+            _buildLogoutButton(context),
           ],
         ),
+      ),
+    );
+  }
+
+  // ================= HEADER =================
+  Widget _buildHeader(BuildContext context) {
+    return Column(
+      children: [
+        const CircleAvatar(
+          radius: 48,
+          backgroundColor: Colors.white,
+          child: Icon(Icons.person, size: 48, color: Colors.grey),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          userFullName,
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        Text(userRole, style: const TextStyle(color: Colors.grey)),
+        const SizedBox(height: 12),
+
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            child: const Text(
+              'Chỉnh sửa hồ sơ',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ================= ACCOUNT STATS =================
+  Widget _buildAccountStats() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _statItem('Gói dịch vụ', servicePlan, verified: true),
+          _statItem('Thành viên từ', memberSince),
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(String title, String value, {bool verified = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Row(
+          children: [
+            Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+            if (verified)
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Icon(Icons.verified, size: 16, color: Colors.blue),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ================= LOGOUT =================
+  Widget _buildLogoutButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: () => _confirmLogout(context),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+        child: const Text('Đăng xuất'),
+      ),
+    );
+  }
+
+  // ================= CONFIRM DIALOG =================
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Xác nhận đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi BizFlow không?'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+              );
+            },
+            child: const Text('Đăng xuất'),
+          ),
+        ],
       ),
     );
   }
