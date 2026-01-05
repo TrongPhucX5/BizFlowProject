@@ -1,104 +1,126 @@
 import 'package:flutter/material.dart';
-// Đảm bảo bạn đã import đúng đường dẫn các file này
 import 'attribute_modal.dart';
-import 'add_hourly_price_screen.dart';
-// import 'combo_create_screen.dart'; // Import nếu bạn đã tạo file này
 
 class ProductCreateScreen extends StatefulWidget {
-  const ProductCreateScreen({super.key});
+  // Tham số tùy chọn: Nếu có -> Chế độ Sửa, Nếu null -> Chế độ Tạo
+  final Map<String, dynamic>? existingProduct;
+
+  const ProductCreateScreen({super.key, this.existingProduct});
 
   @override
   State<ProductCreateScreen> createState() => _ProductCreateScreenState();
 }
 
 class _ProductCreateScreenState extends State<ProductCreateScreen> {
-  // --- 1. KHAI BÁO BIẾN ---
   final Color kPrimaryGreen = const Color(0xff289ca7);
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _costController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
+  final TextEditingController _skuController = TextEditingController();
+  final TextEditingController _barcodeController = TextEditingController();
 
   bool _showUnitSuggestions = true;
-  bool _isExpanded = false; // Mặc định ẩn thông tin
+  bool _isExpanded = false;
   bool _trackStock = false;
   String _stockStatus = 'available';
 
-  // Biến lưu trữ dữ liệu bảng giá (Giả lập)
-  List<Map<String, String>> _hourlyPrices = [];
-
-  // Danh sách thuộc tính đã thêm
-  // Cấu trúc: [{'name': 'Màu sắc', 'values': ['Đỏ', 'Vàng']}]
   List<Map<String, dynamic>> _attributes = [];
 
   @override
+  void initState() {
+    super.initState();
+    // FILL DỮ LIỆU NẾU ĐANG SỬA
+    if (widget.existingProduct != null) {
+      final p = widget.existingProduct!;
+      _nameController.text = p['name'] ?? '';
+      _priceController.text = p['price'] ?? '';
+      _costController.text = p['cost'] ?? '';
+      _unitController.text = p['unit'] ?? '';
+      _skuController.text = p['sku'] ?? '';
+      _barcodeController.text = p['barcode'] ?? '';
+      _trackStock = p['trackStock'] ?? false;
+      _stockStatus = p['stockStatus'] ?? 'available';
+
+      if (p['attributes'] != null) {
+        _attributes = List<Map<String, dynamic>>.from(p['attributes']);
+      }
+      _showUnitSuggestions = _unitController.text.isEmpty;
+    }
+  }
+
+  @override
   void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _costController.dispose();
     _unitController.dispose();
+    _skuController.dispose();
+    _barcodeController.dispose();
     super.dispose();
   }
 
-  // --- 2. HÀM HIỆN MODAL THUỘC TÍNH (THÊM & SỬA) ---
+  // Hiện modal thuộc tính
   void _showAddAttributeModal(BuildContext context, {int? index, Map<String, dynamic>? existingData}) async {
     final result = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      // Truyền dữ liệu cũ vào nếu là Sửa
       builder: (context) => AttributeModalContent(initialData: existingData),
     );
 
-    // Xử lý kết quả trả về
     if (result != null && result is Map<String, dynamic>) {
       setState(() {
         if (index != null) {
-          // Trường hợp SỬA: Cập nhật tại vị trí index
           _attributes[index] = result;
         } else {
-          // Trường hợp THÊM MỚI
           _attributes.add(result);
         }
       });
     }
   }
 
-  // --- 3. HÀM ĐIỀU HƯỚNG BẢNG GIÁ ---
-  void _navigateToAddHourlyPrice() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AddHourlyPriceScreen()),
-    );
-    // Demo cập nhật UI sau khi quay lại
-    setState(() {
-      if (_hourlyPrices.isEmpty) {
-        _hourlyPrices = [
-          {"day": "Thứ Ba", "time": "Từ 00:00 đến 23:59", "price": "0"}
-        ];
-      }
-    });
+  // Hàm LƯU SẢN PHẨM
+  void _saveProduct() {
+    if (_nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập tên sản phẩm")));
+      return;
+    }
+
+    // Đóng gói dữ liệu trả về
+    final productData = {
+      'name': _nameController.text,
+      'price': _priceController.text,
+      'cost': _costController.text,
+      'unit': _unitController.text,
+      'sku': _skuController.text,
+      'barcode': _barcodeController.text,
+      'trackStock': _trackStock,
+      'stockStatus': _stockStatus,
+      'attributes': _attributes, // <-- Lưu mảng thuộc tính
+    };
+
+    Navigator.pop(context, productData);
   }
 
-  // --- 4. HÀM XỬ LÝ NÚT BACK (HIỆN DIALOG) ---
   Future<bool> _onWillPop() async {
+    if (_nameController.text.isEmpty) return true;
     return (await showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Xác nhận thoát"),
-        content: const Text("Bạn có muốn thoát mà không lưu không?"),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false), // Ở lại
-            child: const Text("Không", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true), // Thoát luôn
-            child: const Text("Đồng ý", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
+        title: const Text("Xác nhận"),
+        content: const Text("Thoát mà không lưu?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Không")),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Thoát", style: TextStyle(color: Colors.red))),
         ],
       ),
     )) ?? false;
   }
 
-  // --- 5. GIAO DIỆN CHÍNH ---
   @override
   Widget build(BuildContext context) {
-    // WillPopScope để chặn nút Back cứng của Android
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -109,16 +131,14 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: Colors.black87),
             onPressed: () async {
-              // Gọi dialog khi bấm nút Back trên AppBar
               if (await _onWillPop()) {
-                if (!mounted) return;
-                Navigator.of(context).pop();
+                if(!mounted) return;
+                Navigator.pop(context);
               }
             },
           ),
-          title: const Text("Tạo sản phẩm", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+          title: Text(widget.existingProduct != null ? "Sửa sản phẩm" : "Tạo sản phẩm", style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         ),
-
         body: Column(
           children: [
             Expanded(
@@ -127,498 +147,128 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // --- ẢNH SẢN PHẨM ---
-                    Row(
-                      children: [
-                        _buildImagePlaceholder(Icons.image, "Thêm ảnh"),
-                        const SizedBox(width: 12),
-                        _buildImagePlaceholder(Icons.camera_alt, "Chụp ảnh"),
-                      ],
-                    ),
+                    Row(children: [
+                      _buildImageBox(Icons.image, "Thêm ảnh"),
+                      const SizedBox(width: 12),
+                      _buildImageBox(Icons.camera_alt, "Chụp ảnh"),
+                    ]),
                     const SizedBox(height: 24),
 
-                    // --- TÊN SẢN PHẨM ---
-                    RichText(
-                      text: const TextSpan(
-                        text: "Tên sản phẩm ",
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                        children: [TextSpan(text: "*", style: TextStyle(color: Colors.red))],
-                      ),
-                    ),
+                    _buildLabel("Tên sản phẩm", isRequired: true),
                     TextFormField(
-                      decoration: const InputDecoration(
-                        hintText: "Nhập tên sản phẩm",
-                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
-                        enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.redAccent)),
-                        focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.redAccent, width: 2)),
-                        contentPadding: EdgeInsets.symmetric(vertical: 8),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text("Thông tin bắt buộc", style: TextStyle(color: Colors.red, fontSize: 11)),
-                    const SizedBox(height: 20),
-
-                    // --- GIÁ BÁN & GIÁ VỐN ---
-                    Row(
-                      children: [
-                        Expanded(child: _buildSimpleInput("Giá bán")),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildSimpleInput("Giá vốn")),
-                      ],
+                      controller: _nameController,
+                      decoration: const InputDecoration(hintText: "Nhập tên sản phẩm", enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.redAccent))),
                     ),
                     const SizedBox(height: 20),
 
-                    // --- ĐƠN VỊ TÍNH ---
-                    _buildSimpleInput(
-                      "Đơn vị",
-                      controller: _unitController,
-                      onChanged: (val) {
-                        setState(() {
-                          _showUnitSuggestions = val.isEmpty;
-                        });
-                      },
-                      onClear: () {
-                        setState(() {
-                          _unitController.clear();
-                          _showUnitSuggestions = true;
-                        });
-                      },
-                    ),
+                    Row(children: [
+                      Expanded(child: _buildInput("Giá bán", _priceController, isNumber: true)),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildInput("Giá vốn", _costController, isNumber: true)),
+                    ]),
+                    const SizedBox(height: 20),
+
+                    _buildInput("Đơn vị", _unitController, onChanged: (v) => setState(() => _showUnitSuggestions = v.isEmpty)),
                     if (_showUnitSuggestions) ...[
                       const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          _buildSuggestionChip("Cái"),
-                          const SizedBox(width: 8),
-                          _buildSuggestionChip("Hộp"),
-                        ],
-                      ),
+                      Row(children: [_buildChip("Cái"), const SizedBox(width: 8), _buildChip("Hộp")]),
                     ],
 
                     const SizedBox(height: 20),
-                    const Divider(thickness: 1, color: Color(0xFFEEEEEE)),
-                    const SizedBox(height: 10),
+                    const Divider(color: Color(0xFFEEEEEE), thickness: 1),
 
-                    // --- NÚT BẤM ẨN / HIỆN THÔNG TIN ---
-                    GestureDetector(
+                    InkWell(
                       onTap: () => setState(() => _isExpanded = !_isExpanded),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Row(
-                          children: [
-                            Text(_isExpanded ? "Ẩn thông tin" : "Thông tin thêm",
-                                style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(width: 4),
-                            Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.blue),
-                          ],
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(children: [
+                          Text(_isExpanded ? "Ẩn thông tin" : "Thông tin thêm", style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 4),
+                          Icon(_isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: Colors.blue),
+                        ]),
                       ),
                     ),
 
-                    // --- PHẦN MỞ RỘNG ---
                     if (_isExpanded) ...[
-                      const SizedBox(height: 10),
-
-                      // Mã sản phẩm & Mã vạch
-                      Row(
-                        children: [
-                          Expanded(child: _buildSimpleInput("Mã sản phẩm")),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Mã vạch", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
-                                TextFormField(
-                                  decoration: const InputDecoration(
-                                    isDense: true,
-                                    suffixIcon: Icon(Icons.qr_code_scanner, color: Colors.black54),
-                                    contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12)),
-                                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-                      _buildSimpleInput("Giá khuyến mãi"),
-
+                      Row(children: [
+                        Expanded(child: _buildInput("Mã SKU", _skuController)),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildInput("Mã vạch", _barcodeController)),
+                      ]),
                       const SizedBox(height: 20),
 
-                      // Danh mục
-                      const Text("Danh mục (1)", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.menu, color: Colors.grey),
-                          const SizedBox(width: 12),
-                          OutlinedButton.icon(
-                            onPressed: (){},
-                            icon: const Icon(Icons.add, size: 16),
-                            label: const Text("Tạo mới"),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.blue,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              side: const BorderSide(color: Colors.blue),
-                            ),
-                          )
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // --- BẢNG GIÁ THEO GIỜ ---
-                      if (_hourlyPrices.isEmpty)
-                        GestureDetector(
-                          onTap: _navigateToAddHourlyPrice,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Colors.black12))),
-                            child: Row(
-                              children: const [
-                                Icon(Icons.add_circle_outline, color: Colors.blue),
-                                SizedBox(width: 8),
-                                Text("Thêm bảng giá theo khung giờ", style: TextStyle(color: Colors.blue, fontSize: 15, fontWeight: FontWeight.w500)),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          color: const Color(0xFFF9F9F9),
-                          padding: const EdgeInsets.all(16),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text("BẢNG GIÁ THEO KHUNG GIỜ", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
-                                  InkWell(
-                                    onTap: _navigateToAddHourlyPrice,
-                                    child: const Icon(Icons.edit, size: 18, color: Colors.grey),
-                                  )
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              ..._hourlyPrices.map((item) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(item['day']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.subdirectory_arrow_right, color: Colors.grey, size: 20),
-                                          const SizedBox(width: 8),
-                                          Text(item['time']!, style: const TextStyle(fontSize: 15)),
-                                          const Spacer(),
-                                          Text(item['price']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                                        ],
-                                      )
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ],
-                          ),
-                        ),
-
-                      const SizedBox(height: 20),
-                      _buildDropdownInput("Nhóm bán kèm"),
-
-                      const SizedBox(height: 24),
-
-                      // TỒN KHO
+                      // Tồn kho
                       Container(
                         color: const Color(0xFFF9F9F9),
                         padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            SwitchListTile(
-                              contentPadding: EdgeInsets.zero,
-                              activeColor: kPrimaryGreen,
-                              title: Row(
-                                children: const [
-                                  Text("THEO DÕI SỐ LƯỢNG TỒN KHO", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 12)),
-                                  SizedBox(width: 4),
-                                  Icon(Icons.info_outline, size: 16, color: Colors.black54)
-                                ],
-                              ),
-                              value: _trackStock,
-                              onChanged: (v) => setState(() => _trackStock = v),
-                            ),
-                            Row(
-                              children: [
-                                const Text("Tình trạng tồn kho", style: TextStyle(fontSize: 14)),
-                                const Spacer(),
-                                Container(
-                                  height: 36,
-                                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8)),
-                                  child: Row(
-                                    children: [
-                                      _buildStockBtn("Còn hàng", 'available'),
-                                      _buildStockBtn("Hết hàng", 'out_of_stock'),
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ),
-                          ],
-                        ),
+                        child: Column(children: [
+                          SwitchListTile(contentPadding: EdgeInsets.zero, activeColor: kPrimaryGreen, title: const Text("THEO DÕI TỒN KHO", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)), value: _trackStock, onChanged: (v) => setState(() => _trackStock = v)),
+                          Row(children: [
+                            const Text("Tình trạng"), const Spacer(),
+                            _buildStockBtn("Còn hàng", 'available'),
+                            _buildStockBtn("Hết hàng", 'out_of_stock'),
+                          ]),
+                        ]),
                       ),
-
                       const SizedBox(height: 20),
 
-                      // ===============================================
-                      // --- HIỂN THỊ DANH SÁCH THUỘC TÍNH ---
-                      // ===============================================
-                      if (_attributes.isNotEmpty) ...[
+                      // Danh sách thuộc tính
+                      if (_attributes.isNotEmpty)
                         Container(
                           width: double.infinity,
                           color: const Color(0xFFF9F9F9),
                           padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text("THUỘC TÍNH", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(height: 16),
-
-                              // List các thuộc tính
-                              ..._attributes.asMap().entries.map((entry) {
-                                int idx = entry.key;
-                                Map<String, dynamic> attr = entry.value;
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text("${attr['name']} (${(attr['values'] as List).length})",
-                                              style: const TextStyle(fontSize: 15, color: Colors.black87)),
-
-                                          // NÚT SỬA -> GỌI MODAL VỚI DATA CŨ
-                                          InkWell(
-                                            onTap: () {
-                                              _showAddAttributeModal(
-                                                  context,
-                                                  index: idx,
-                                                  existingData: attr
-                                              );
-                                            },
-                                            child: const Text("Sửa", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 14)),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 8,
-                                        children: (attr['values'] as List).map<Widget>((val) {
-                                          return Chip(
-                                            label: Text(val),
-                                            backgroundColor: Colors.white,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4), side: BorderSide(color: Colors.grey.shade300)),
-                                          );
-                                        }).toList(),
-                                      )
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ],
-                          ),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            const Text("THUỘC TÍNH", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                            const SizedBox(height: 12),
+                            ..._attributes.asMap().entries.map((entry) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Text(entry.value['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    Text((entry.value['values'] as List).join(", "), style: const TextStyle(color: Colors.grey)),
+                                  ]),
+                                  InkWell(onTap: () => _showAddAttributeModal(context, index: entry.key, existingData: entry.value), child: const Text("Sửa", style: TextStyle(color: Colors.blue))),
+                                ]),
+                              );
+                            }).toList()
+                          ]),
                         ),
-                        const SizedBox(height: 12),
-                      ],
 
-                      // --- NÚT THÊM THUỘC TÍNH MỚI ---
-                      GestureDetector(
+                      InkWell(
                         onTap: () => _showAddAttributeModal(context),
-                        child: Row(
-                          children: const [
-                            Icon(Icons.add_circle_outline, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text("Thêm thuộc tính (Kích cỡ, màu sắc...)", style: TextStyle(color: Colors.blue, fontSize: 15)),
-                          ],
-                        ),
+                        child: Row(children: const [Icon(Icons.add_circle_outline, color: Colors.blue), SizedBox(width: 8), Text("Thêm thuộc tính", style: TextStyle(color: Colors.blue))]),
                       ),
                     ],
-
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 60),
                   ],
                 ),
               ),
             ),
-
-            // --- FOOTER BUTTONS ---
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))],
+              decoration: const BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -2))]),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saveProduct,
+                  style: ElevatedButton.styleFrom(backgroundColor: kPrimaryGreen, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                  child: Text(widget.existingProduct != null ? "Cập nhật" : "Lưu", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                          foregroundColor: kPrimaryGreen,
-                          side: BorderSide(color: kPrimaryGreen),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))
-                      ),
-                      child: const Text("Lưu và thêm mới", style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        // Logic lưu
-                        if (await _onWillPop()) {
-                          if (!mounted) return;
-                          Navigator.pop(context);
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))
-                      ),
-                      child: const Text("Lưu", style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                ],
-              ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ==========================================
-  // CÁC WIDGET CON (HELPER)
-  // ==========================================
-
-  Widget _buildImagePlaceholder(IconData icon, String label) {
-    return Container(
-      width: 90, height: 90,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: Colors.blue, size: 28),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54))
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleInput(String label, {
-    TextEditingController? controller,
-    Function(String)? onChanged,
-    VoidCallback? onClear,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
-        TextFormField(
-          controller: controller,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12)),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-            suffixIcon: (onClear != null && controller != null && controller.text.isNotEmpty)
-                ? IconButton(
-              icon: const Icon(Icons.cancel, color: Colors.grey, size: 20),
-              onPressed: onClear,
-              constraints: const BoxConstraints(),
-              padding: EdgeInsets.zero,
-            )
-                : null,
-          ),
-        )
-      ],
-    );
-  }
-
-  Widget _buildDropdownInput(String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.black12))
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text(" ", style: TextStyle(fontSize: 14)),
-              Icon(Icons.keyboard_arrow_down, color: Colors.grey),
-            ],
-          ),
-        )
-      ],
-    );
-  }
-
-  Widget _buildSuggestionChip(String text) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _unitController.text = text;
-          _showUnitSuggestions = false;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(4)),
-        child: Text(text, style: const TextStyle(color: Colors.black87)),
-      ),
-    );
-  }
-
-  Widget _buildStockBtn(String text, String statusValue) {
-    bool isSelected = _stockStatus == statusValue;
-    return GestureDetector(
-      onTap: () => setState(() => _stockStatus = statusValue),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          boxShadow: isSelected ? [const BoxShadow(color: Colors.black12, blurRadius: 2)] : [],
-        ),
-        child: Text(text, style: TextStyle(
-            color: isSelected ? kPrimaryGreen : Colors.black54,
-            fontWeight: FontWeight.bold, fontSize: 12)
-        ),
-      ),
-    );
-  }
+  // Helpers
+  Widget _buildLabel(String text, {bool isRequired = false}) => RichText(text: TextSpan(text: text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey), children: [if (isRequired) const TextSpan(text: " *", style: TextStyle(color: Colors.red))]));
+  Widget _buildInput(String label, TextEditingController ctrl, {bool isNumber = false, Function(String)? onChanged}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel(label), TextFormField(controller: ctrl, onChanged: onChanged, keyboardType: isNumber ? TextInputType.number : TextInputType.text, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12))))]);
+  Widget _buildChip(String text) => InkWell(onTap: () => setState(() { _unitController.text = text; _showUnitSuggestions = false; }), child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4)), child: Text(text)));
+  Widget _buildStockBtn(String text, String val) { bool sel = _stockStatus == val; return InkWell(onTap: () => setState(() => _stockStatus = val), child: Container(margin: const EdgeInsets.only(left: 8), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: sel ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(6), boxShadow: sel ? [const BoxShadow(color: Colors.black12, blurRadius: 2)] : []), child: Text(text, style: TextStyle(color: sel ? kPrimaryGreen : Colors.black54, fontWeight: FontWeight.bold, fontSize: 12)))); }
+  Widget _buildImageBox(IconData icon, String label) => Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFFF8F9FA), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: Colors.blue), Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54))]));
 }

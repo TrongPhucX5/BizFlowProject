@@ -1,391 +1,169 @@
 import 'package:flutter/material.dart';
 
 class ComboCreateScreen extends StatefulWidget {
-  const ComboCreateScreen({super.key});
+  // Nhận danh sách sản phẩm từ màn hình trước
+  final List<Map<String, dynamic>> availableProducts;
+
+  const ComboCreateScreen({super.key, required this.availableProducts});
 
   @override
   State<ComboCreateScreen> createState() => _ComboCreateScreenState();
 }
 
 class _ComboCreateScreenState extends State<ComboCreateScreen> {
-  // --- KHAI BÁO BIẾN ---
-  final Color kPrimaryGreen = const Color(0xff289ca7);
-  final Color kBlueButton = const Color(0xFF2F80ED); // Màu xanh dương giống ảnh
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
 
-  // Controller tên nhóm
-  final TextEditingController _groupNameController = TextEditingController();
+  // Danh sách sản phẩm đã được chọn vào Combo
+  List<Map<String, dynamic>> _selectedProducts = [];
 
-  // Danh sách các tùy chọn đã thêm (Lưu tạm vào List)
-  final List<Map<String, dynamic>> _options = [];
-
-  // Các biến checkbox cài đặt
-  bool _isRequired = false;      // Bắt buộc chọn
-  bool _allowMultiple = false;   // Chọn nhiều
-  bool _allowQuantity = false;   // Chọn số lượng nhiều
-
-  @override
-  void dispose() {
-    _groupNameController.dispose();
-    super.dispose();
-  }
-
-  // --- HÀM HIỆN MODAL THÊM TÙY CHỌN (Giống ảnh 2) ---
-  void _showAddOptionModal() {
+  void _openProductSelector() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _AddOptionModal(
-        onAdd: (name, price, cost) {
-          setState(() {
-            _options.add({
-              'name': name,
-              'price': price,
-              'cost': cost,
-            });
-          });
-          Navigator.pop(context); // Đóng modal sau khi thêm
-        },
-      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+            initialChildSize: 0.9,
+            builder: (_, scrollController) {
+              return Column(
+                children: [
+                  AppBar(
+                    title: const Text("Chọn sản phẩm"),
+                    leading: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                  ),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: widget.availableProducts.length,
+                      separatorBuilder: (_,__) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final product = widget.availableProducts[index];
+                        // Kiểm tra xem sản phẩm này đã được chọn chưa
+                        final isSelected = _selectedProducts.any((p) => p == product);
+
+                        return CheckboxListTile(
+                          title: Text(product['name'] ?? ''),
+                          subtitle: Text("${product['price']} đ"),
+                          value: isSelected,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              if (value == true) {
+                                _selectedProducts.add(product);
+                              } else {
+                                _selectedProducts.remove(product);
+                              }
+                            });
+                            Navigator.pop(context); // Đóng modal để refresh UI cha (hoặc dùng StatefulBuilder trong modal)
+                            _openProductSelector(); // Mở lại để chọn tiếp (cách đơn giản)
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            }
+        );
+      },
     );
+  }
+
+  void _saveCombo() {
+    if (_nameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập tên Combo")));
+      return;
+    }
+    if (_selectedProducts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng chọn ít nhất 1 sản phẩm")));
+      return;
+    }
+
+    // Đóng gói dữ liệu combo trả về
+    final comboData = {
+      'name': _nameController.text,
+      'price': _priceController.text, // Giá bán combo
+      'products': _selectedProducts,
+      'isCombo': true,
+    };
+
+    Navigator.pop(context, comboData);
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color kPrimaryGreen = Color(0xff289ca7);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6F8), // Nền xám nhẹ
       appBar: AppBar(
+        title: const Text("Tạo nhóm bán kèm (Combo)"),
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text("Tạo nhóm bán kèm", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: const BackButton(color: Colors.black),
+        titleTextStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18),
       ),
       body: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 1. KHỐI NHẬP TÊN NHÓM (Nền trắng)
-                  Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: const TextSpan(
-                            text: "Tên nhóm bán kèm ",
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                            children: [TextSpan(text: "*", style: TextStyle(color: Colors.red))],
-                          ),
-                        ),
-                        TextField(
-                          controller: _groupNameController,
-                          decoration: const InputDecoration(
-                            hintText: "Ví dụ: Trân châu",
-                            hintStyle: TextStyle(color: Colors.grey),
-                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12)),
-                            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.blue)),
-                            contentPadding: EdgeInsets.symmetric(vertical: 12),
-                            // Counter text (0/20)
-                            counterText: "",
-                          ),
-                          maxLength: 20,
-                        ),
-                        // Tự làm counter text nằm bên phải cho giống ảnh
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text("${_groupNameController.text.length}/20", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // 2. KHỐI THÊM TÙY CHỌN (Empty State hoặc List)
-                  Container(
-                    color: Colors.white,
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                    child: Column(
-                      children: [
-                        if (_options.isEmpty) ...[
-                          // Trạng thái chưa có tùy chọn (Giống ảnh 1)
-                          const Text(
-                            "Thêm Tuỳ chọn đầu tiên cho nhóm ngay!\nVí dụ: Trân châu trắng",
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey, fontSize: 15),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _showAddOptionModal, // <--- Bấm nút này hiện Modal
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: kBlueButton,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              elevation: 0,
-                            ),
-                            child: const Text("Thêm tuỳ chọn", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                          ),
-                        ] else ...[
-                          // Nếu đã có danh sách (Bonus thêm hiển thị danh sách)
-                          ListView.separated(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: _options.length,
-                            separatorBuilder: (_, __) => const Divider(),
-                            itemBuilder: (context, index) {
-                              final item = _options[index];
-                              return ListTile(
-                                title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text("${item['price']} đ"),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                  onPressed: () => setState(() => _options.removeAt(index)),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: _showAddOptionModal,
-                            icon: const Icon(Icons.add),
-                            label: const Text("Thêm tuỳ chọn khác"),
-                          )
-                        ]
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // 3. KHỐI CÀI ĐẶT (Checkbox)
-                  Container(
-                    color: Colors.white,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Cài đặt nhóm bán kèm", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black54)),
-                        const SizedBox(height: 8),
-
-                        _buildCheckboxRow("Bắt buộc phải chọn tuỳ chọn?", _isRequired, (v) => setState(() => _isRequired = v!)),
-                        const Divider(height: 1),
-                        _buildCheckboxRow("Có thể chọn nhiều tuỳ chọn cùng lúc?", _allowMultiple, (v) => setState(() => _allowMultiple = v!)),
-                        const Divider(height: 1),
-                        _buildCheckboxRow("Thêm số lượng nhiều cho 1 tuỳ chọn?", _allowQuantity, (v) => setState(() => _allowQuantity = v!)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
-          ),
-
-          // 4. FOOTER (Nút Tiếp tục)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(color: Colors.white),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: null, // Disabled (xám) như trong ảnh, khi nào validate xong thì enable
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[200],
-                  foregroundColor: Colors.grey,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                ),
-                child: const Text("Tiếp tục", style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-            ),
-          )
-        ],
-      ),
-    );
-  }
-
-  // Widget checkbox custom cho giống layout
-  Widget _buildCheckboxRow(String label, bool value, Function(bool?) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Expanded(child: Text(label, style: const TextStyle(fontSize: 15, color: Colors.black54))),
-          Checkbox(
-            value: value,
-            onChanged: onChanged,
-            activeColor: kPrimaryGreen,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// =======================================================
-// CLASS MODAL THÊM TÙY CHỌN (Giống ảnh 2)
-// =======================================================
-class _AddOptionModal extends StatefulWidget {
-  final Function(String name, String price, String cost) onAdd;
-  const _AddOptionModal({required this.onAdd});
-
-  @override
-  State<_AddOptionModal> createState() => _AddOptionModalState();
-}
-
-class _AddOptionModalState extends State<_AddOptionModal> {
-  final _nameCtrl = TextEditingController();
-  final _priceCtrl = TextEditingController();
-  final _costCtrl = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-
-    return Container(
-      // Cho modal full chiều cao hoặc tự co giãn
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: SingleChildScrollView( // Để cuộn khi bàn phím hiện
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header Modal
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Text("Thêm tuỳ chọn mới", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                  )
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-
-            // Form Fields
-            Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tên tùy chọn
-                  _buildLabel("Tên tùy chọn *"),
-                  TextFormField(
-                    controller: _nameCtrl,
-                    decoration: const InputDecoration(
-                      hintText: "Ví dụ: Trân châu trắng",
-                      enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.green)), // Viền xanh khi focus
-                      focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.green, width: 2)),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                  const Text("Tên Combo *", style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextField(controller: _nameController, decoration: const InputDecoration(hintText: "Ví dụ: Combo Mùa Hè")),
+                  const SizedBox(height: 20),
 
-                  // Giá bán & Giá vốn
+                  const Text("Giá bán Combo", style: TextStyle(fontWeight: FontWeight.bold)),
+                  TextField(controller: _priceController, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: "Nhập giá trọn gói")),
+                  const SizedBox(height: 20),
+
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel("Giá bán *"),
-                            TextFormField(
-                              controller: _priceCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12))),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel("Giá vốn"),
-                            TextFormField(
-                              controller: _costCtrl,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12))),
-                            ),
-                          ],
-                        ),
-                      ),
+                      const Text("Sản phẩm trong combo", style: TextStyle(fontWeight: FontWeight.bold)),
+                      TextButton.icon(
+                        onPressed: _openProductSelector,
+                        icon: const Icon(Icons.add),
+                        label: const Text("Thêm sản phẩm"),
+                      )
                     ],
                   ),
-                  const SizedBox(height: 30),
 
-                  // Footer Buttons (Quay lại / Tạo)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side: const BorderSide(color: Colors.black26),
-                            foregroundColor: Colors.black87,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          ),
-                          child: const Text("Quay lại", style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
+                  // List sản phẩm đã chọn
+                  if (_selectedProducts.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      width: double.infinity,
+                      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                      child: const Text("Chưa chọn sản phẩm nào", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                    )
+                  else
+                    ..._selectedProducts.map((p) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(p['name']),
+                      subtitle: Text("${p['price']} đ"),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        onPressed: () => setState(() => _selectedProducts.remove(p)),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Logic đơn giản: Có tên và giá thì mới cho tạo
-                            if (_nameCtrl.text.isNotEmpty && _priceCtrl.text.isNotEmpty) {
-                              widget.onAdd(_nameCtrl.text, _priceCtrl.text, _costCtrl.text);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey[200], // Mặc định xám (chưa validate)
-                            foregroundColor: Colors.black54, // Chữ xám
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                          ),
-                          child: const Text("Tạo", style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                    ],
-                  )
+                    )).toList(),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return RichText(
-      text: TextSpan(
-        text: text.replaceAll("*", ""),
-        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green, fontSize: 16), // Màu xanh lá như ảnh
-        children: const [TextSpan(text: " *", style: TextStyle(color: Colors.red))],
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _saveCombo,
+                style: ElevatedButton.styleFrom(backgroundColor: kPrimaryGreen),
+                child: const Text("Lưu Combo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
+            ),
+          )
+        ],
       ),
     );
   }
