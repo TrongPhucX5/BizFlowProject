@@ -1,10 +1,12 @@
 package com.bizflow.backend.core.usecase;
 
 import com.bizflow.backend.core.domain.Debt;
+import com.bizflow.backend.presentation.dto.request.PayDebtRequest;
 import com.bizflow.backend.presentation.dto.response.OrderDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -42,7 +44,7 @@ public interface DebtService {
      * @param pageable Pagination info
      * @return Page of debts
      */
-    Page<OrderDTO> getDebtsByCustomer(Long customerId, Pageable pageable);
+    Page<Debt> getDebtsByCustomer(Long customerId, Pageable pageable);
 
     /**
      * List unpaid debts for store (with store filter)
@@ -51,7 +53,7 @@ public interface DebtService {
      * @param pageable Pagination info
      * @return Page of unpaid debts
      */
-    Page<OrderDTO> getUnpaidDebts(Long storeId, Pageable pageable);
+    Page<Debt> getUnpaidDebts(Long storeId, Pageable pageable);
 
     /**
      * List overdue debts (due_date < today)
@@ -60,7 +62,7 @@ public interface DebtService {
      * @param pageable Pagination info
      * @return Page of overdue debts
      */
-    Page<OrderDTO> getOverdueDebts(Long storeId, Pageable pageable);
+    Page<Debt> getOverdueDebts(Long storeId, Pageable pageable);
 
     /**
      * Get debt aging report (0-30, 30-60, 60-90, 90+ days)
@@ -77,7 +79,7 @@ public interface DebtService {
      * @param customerId Customer ID
      * @return Total outstanding amount
      */
-    Double getTotalDebt(Long customerId);
+    BigDecimal getTotalDebt(Long customerId);
 
     /**
      * Calculate total outstanding debt for store
@@ -85,27 +87,16 @@ public interface DebtService {
      * @param storeId Store ID
      * @return Total outstanding amount
      */
-    Double getTotalStoreDebt(Long storeId);
+    BigDecimal getTotalStoreDebt(Long storeId);
 
     /**
-     * Mark debt as paid (full or partial)
+     * Pay debt (Trả nợ)
      * 
      * @param debtId Debt ID
-     * @param paidAmount Amount paid
-     * @param paymentDate Payment date
+     * @param request Payment details
      * @return Updated debt
-     * @throws ResourceNotFoundException if debt not found
      */
-    Debt recordPayment(Long debtId, Double paidAmount, LocalDateTime paymentDate);
-
-    /**
-     * Mark entire debt as paid
-     * 
-     * @param debtId Debt ID
-     * @param paymentDate Payment date
-     * @return Marked-paid debt
-     */
-    Debt markAsFullyPaid(Long debtId, LocalDateTime paymentDate);
+    Debt payDebt(Long debtId, PayDebtRequest request);
 
     /**
      * Search debts by customer name/phone
@@ -115,5 +106,5 @@ public interface DebtService {
      * @param pageable Pagination info
      * @return Page of matching debts
      */
-    Page<OrderDTO> searchDebts(String keyword, Long storeId, Pageable pageable);
+    Page<Debt> searchDebts(String keyword, Long storeId, Pageable pageable);
 }

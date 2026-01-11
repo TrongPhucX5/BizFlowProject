@@ -50,6 +50,8 @@ import {
   Package,
   AlertCircle,
   Download,
+  ArrowDownToLine,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product, ApiResponse, PageResponse } from "@/types/api";
@@ -68,12 +70,22 @@ export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isCheckInventoryOpen, setIsCheckInventoryOpen] = useState(false);
+  const [inventoryCheckResult, setInventoryCheckResult] = useState<any>(null);
+
   const [currentProduct, setCurrentProduct] =
     useState<Partial<ExtendedProduct> | null>(null);
+  const [importData, setImportData] = useState({
+    productId: 0,
+    quantity: 0,
+    unitCost: 0,
+    note: "",
+  });
 
   // --- DATA FETCHING ---
   // QUAN TRỌNG: Lấy thêm hàm refetch để ép tải lại trang khi cần
-  const { data, isLoading, refetch } = useQuery<
+  const { data, isLoading, isError, refetch } = useQuery<
     ApiResponse<PageResponse<ExtendedProduct>>
   >({
     queryKey: ["products-list"],
@@ -81,6 +93,7 @@ export default function ProductsPage() {
       const res = await dashboardService.getProducts();
       return res as unknown as ApiResponse<PageResponse<ExtendedProduct>>;
     },
+    retry: 1, // Chỉ thử lại 1 lần nếu lỗi để tránh đợi lâu
   });
 
   // --- MUTATIONS ---
@@ -125,6 +138,31 @@ export default function ProductsPage() {
     },
   });
 
+  const importMutation = useMutation({
+    mutationFn: dashboardService.importInventory,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["products-list"] });
+      await refetch();
+      setIsImportDialogOpen(false);
+      alert("Nhập kho thành công!");
+    },
+    onError: (error) => {
+      console.error(error);
+      alert("Có lỗi xảy ra khi nhập kho.");
+    },
+  });
+
+  const checkInventoryMutation = useMutation({
+    mutationFn: dashboardService.getInventory,
+    onSuccess: (data) => {
+      setInventoryCheckResult(data);
+      setIsCheckInventoryOpen(true);
+    },
+    onError: () => {
+      alert("Không thể kiểm tra tồn kho. Vui lòng thử lại.");
+    },
+  });
+
   // --- ACTIONS ---
   const handleDelete = (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này không?")) {
@@ -140,6 +178,21 @@ export default function ProductsPage() {
   const handleEdit = (product: ExtendedProduct) => {
     setCurrentProduct(product);
     setIsDialogOpen(true);
+  };
+
+  const handleImport = (product: ExtendedProduct) => {
+    setImportData({
+      productId: product.id,
+      quantity: 0,
+      unitCost: product.costPrice || 0,
+      note: "Nhập hàng",
+    });
+    setIsImportDialogOpen(true);
+  };
+
+  const handleCheckInventory = (product: ExtendedProduct) => {
+    setCurrentProduct(product);
+    checkInventoryMutation.mutate(product.id);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -162,6 +215,11 @@ export default function ProductsPage() {
     } else {
       createMutation.mutate(payload);
     }
+  };
+
+  const handleSaveImport = (e: React.FormEvent) => {
+    e.preventDefault();
+    importMutation.mutate(importData);
   };
 
   // --- XUẤT EXCEL ---
@@ -219,17 +277,6 @@ export default function ProductsPage() {
       statusFilter === "ALL" || item.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[80vh]">
-        <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mb-4" />
-        <p className="text-slate-500 font-medium animate-pulse">
-          Đang đồng bộ dữ liệu kho...
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="p-8 space-y-8 bg-slate-50/50 min-h-screen">
@@ -308,7 +355,32 @@ export default function ProductsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.length > 0 ? (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center text-slate-500">
+                      <Loader2 className="h-8 w-8 mb-2 animate-spin text-indigo-600" />
+                      <p>Đang tải dữ liệu...</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : isError ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center text-red-500">
+                      <AlertCircle className="h-8 w-8 mb-2" />
+                      <p>Không thể kết nối đến server.</p>
+                      <Button
+                        variant="link"
+                        onClick={() => refetch()}
+                        className="mt-2"
+                      >
+                        Thử lại
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredProducts.length > 0 ? (
                 filteredProducts.map((item) => (
                   <TableRow
                     key={item.id}
@@ -393,6 +465,16 @@ export default function ProductsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Hành động</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleImport(item)}>
+                            <ArrowDownToLine className="mr-2 h-4 w-4 text-green-600" />{" "}
+                            Nhập kho
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleCheckInventory(item)}
+                          >
+                            <ClipboardCheck className="mr-2 h-4 w-4 text-amber-600" />{" "}
+                            Kiểm tra tồn kho
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEdit(item)}>
                             <FileEdit className="mr-2 h-4 w-4 text-blue-500" />{" "}
                             Chỉnh sửa
@@ -611,6 +693,125 @@ export default function ProductsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* IMPORT DIALOG */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Nhập kho sản phẩm</DialogTitle>
+            <DialogDescription>
+              Nhập số lượng hàng mới về kho.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveImport} className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="import-quantity">Số lượng nhập</Label>
+              <Input
+                id="import-quantity"
+                type="number"
+                value={importData.quantity}
+                onChange={(e) =>
+                  setImportData({
+                    ...importData,
+                    quantity: Number(e.target.value),
+                  })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="import-cost">Giá vốn nhập vào (VNĐ)</Label>
+              <Input
+                id="import-cost"
+                type="number"
+                value={importData.unitCost}
+                onChange={(e) =>
+                  setImportData({
+                    ...importData,
+                    unitCost: Number(e.target.value),
+                  })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="import-note">Ghi chú</Label>
+              <Input
+                id="import-note"
+                value={importData.note}
+                onChange={(e) =>
+                  setImportData({ ...importData, note: e.target.value })
+                }
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsImportDialogOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                className="bg-green-600 hover:bg-green-700"
+                disabled={importMutation.isPending}
+              >
+                {importMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử lý
+                  </>
+                ) : (
+                  "Xác nhận nhập kho"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* CHECK INVENTORY DIALOG */}
+      <Dialog
+        open={isCheckInventoryOpen}
+        onOpenChange={setIsCheckInventoryOpen}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Kiểm tra tồn kho</DialogTitle>
+            <DialogDescription>
+              Thông tin tồn kho thực tế từ hệ thống.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            {checkInventoryMutation.isPending ? (
+              <div className="flex justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+              </div>
+            ) : inventoryCheckResult ? (
+              <div className="space-y-2">
+                <p className="text-slate-500">Sản phẩm</p>
+                <p className="font-bold text-lg">{currentProduct?.name}</p>
+                <div className="my-4 p-4 bg-slate-50 rounded-lg">
+                  <p className="text-slate-500 text-sm mb-1">
+                    Số lượng tồn kho
+                  </p>
+                  <p className="text-4xl font-bold text-indigo-600">
+                    {inventoryCheckResult.quantity}
+                  </p>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Dữ liệu được cập nhật mới nhất
+                </p>
+              </div>
+            ) : (
+              <p>Không có dữ liệu</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsCheckInventoryOpen(false)}>Đóng</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

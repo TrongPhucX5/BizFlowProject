@@ -1,6 +1,7 @@
 package com.bizflow.backend.core.usecase;
 
 import com.bizflow.backend.core.domain.Inventory;
+import com.bizflow.backend.presentation.dto.request.ImportInventoryRequest;
 import com.bizflow.backend.presentation.dto.response.ProductDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -97,6 +98,14 @@ public interface InventoryService {
      * @throws BusinessException if insufficient stock
      */
     Inventory reduceStock(Long productId, Integer quantity, String reason, Long referenceId);
+
+    /**
+     * Import stock (Nhập hàng)
+     * 
+     * @param request Import details
+     * @return Updated inventory
+     */
+    Inventory importStock(ImportInventoryRequest request);
 
     /**
      * Get stock movement history for product

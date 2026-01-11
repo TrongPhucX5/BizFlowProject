@@ -9,10 +9,13 @@ import com.bizflow.backend.presentation.exception.BusinessException;
 import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -59,6 +62,7 @@ public class OrderService {
     private final StockMovementRepository stockMovementRepository;
     private final DebtRepository debtRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationService notificationService; // Added NotificationService
 
     // ========== PUBLIC METHODS (Main business operations) ==========
 
@@ -114,12 +118,47 @@ public class OrderService {
             createDebtRecord(storeId, savedOrder, customer);
         }
         
-        // 9. Audit log
+        // 9. Send Notification (Async)
+        try {
+            String topic = "store_" + storeId + "_orders";
+            String title = "Đơn hàng mới: " + savedOrder.getOrderNumber();
+            String body = "Khách hàng: " + customer.getName() + " - Tổng tiền: " + totalAmount;
+            notificationService.sendTopicNotification(topic, title, body);
+        } catch (Exception e) {
+            log.warn("Failed to send notification for order {}", savedOrder.getOrderNumber(), e);
+            // Don't rollback transaction if notification fails
+        }
+        
+        // 10. Audit log
         log.info("Order created successfully: orderId={}, orderNumber={}, total={}", 
                 savedOrder.getId(), savedOrder.getOrderNumber(), totalAmount);
 
-        // 10. Convert to DTO and return
+        // 11. Convert to DTO and return
         return mapToDTO(savedOrder, orderItems);
+    }
+
+    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId, Pageable pageable) {
+        Long storeId = UserContext.getCurrentStoreId();
+        // TODO: Implement filtering logic with Specification or QueryDSL
+        // For now, just return all orders for the store
+        Page<Order> orders = orderRepository.findByStoreId(storeId, pageable);
+        return orders.map(order -> {
+            List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+            return mapToDTO(order, items);
+        });
+    }
+
+    public OrderDTO getOrderById(Long id) {
+        Long storeId = UserContext.getCurrentStoreId();
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
+        
+        if (!order.getStoreId().equals(storeId)) {
+            throw new BusinessException(4003, "Order does not belong to your store");
+        }
+
+        List<OrderItem> items = orderItemRepository.findByOrderId(order.getId());
+        return mapToDTO(order, items);
     }
 
     // ========== PRIVATE METHODS (Single responsibility principle) ==========

@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Mic,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 
 import type { ApiResponse, PageResponse } from "@/types/api";
@@ -41,21 +42,27 @@ export default function DashboardPage() {
   }, [router]);
 
   // 1. Fetch dữ liệu Sản phẩm
-  const { data: productsRes, isLoading: isLoadingProd } = useQuery<
-    ApiResponse<PageResponse<any>>
-  >({
+  const {
+    data: productsRes,
+    isLoading: isLoadingProd,
+    isError: isErrorProd,
+  } = useQuery<ApiResponse<PageResponse<any>>>({
     queryKey: ["products-all"],
     queryFn: dashboardService.getProducts,
     enabled: !isChecking,
+    retry: 1,
   });
 
   // 2. Fetch dữ liệu Đơn hàng
-  const { data: ordersRes, isLoading: isLoadingOrders } = useQuery<
-    ApiResponse<PageResponse<any>>
-  >({
+  const {
+    data: ordersRes,
+    isLoading: isLoadingOrders,
+    isError: isErrorOrders,
+  } = useQuery<ApiResponse<PageResponse<any>>>({
     queryKey: ["orders-all"],
     queryFn: dashboardService.getOrders,
     enabled: !isChecking,
+    retry: 1,
   });
 
   // 3. Logic tính toán - Đã hết gạch đỏ nhờ Interface
@@ -85,13 +92,12 @@ export default function DashboardPage() {
     };
   }, [productsRes, ordersRes]);
 
-  if (isChecking || isLoadingProd || isLoadingOrders) {
+  // Nếu đang kiểm tra token thì hiện loading toàn màn hình
+  if (isChecking) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mb-2" />
-        <p className="text-slate-500 font-medium">
-          Đang tải dữ liệu BizFlow...
-        </p>
+        <p className="text-slate-500 font-medium">Đang kiểm tra bảo mật...</p>
       </div>
     );
   }
@@ -117,26 +123,50 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Doanh thu"
-          value={`${stats.totalRevenue.toLocaleString()}đ`}
+          value={
+            isLoadingOrders ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              `${stats.totalRevenue.toLocaleString()}đ`
+            )
+          }
           icon={<TrendingUp className="text-emerald-600" />}
           trend="Tổng các đơn thành công"
         />
         <StatCard
           title="Hàng sắp hết"
-          value={stats.lowStockCount}
+          value={
+            isLoadingProd ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              stats.lowStockCount
+            )
+          }
           icon={<AlertTriangle className="text-amber-500" />}
           trend="Cần nhập hàng ngay"
           alert={stats.lowStockCount > 0}
         />
         <StatCard
           title="Công nợ khách"
-          value={`${stats.pendingDebt.toLocaleString()}đ`}
+          value={
+            isLoadingOrders ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              `${stats.pendingDebt.toLocaleString()}đ`
+            )
+          }
           icon={<Users className="text-blue-600" />}
           trend="Số tiền chưa thu hồi"
         />
         <StatCard
           title="Mã hàng"
-          value={productsRes?.result?.totalElements || 0}
+          value={
+            isLoadingProd ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              productsRes?.result?.totalElements || 0
+            )
+          }
           icon={<PackageSearch className="text-purple-600" />}
           trend="Trong danh mục kho"
         />
@@ -161,7 +191,27 @@ export default function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.lowStockItems.length > 0 ? (
+                {isLoadingProd ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-4">
+                      <div className="flex justify-center items-center gap-2 text-slate-500">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Đang tải dữ
+                        liệu kho...
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : isErrorProd ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="text-center py-4 text-red-500"
+                    >
+                      <div className="flex justify-center items-center gap-2">
+                        <AlertCircle className="h-4 w-4" /> Lỗi kết nối server
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : stats.lowStockItems.length > 0 ? (
                   stats.lowStockItems.map((item: any) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>

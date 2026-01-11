@@ -31,3 +31,77 @@ export interface PageResponse<T> {
   size: number;
   number: number;
 }
+
+// Bổ sung vào file types/api.ts hiện có
+
+export interface Order {
+  id: number;
+  orderCode: string;
+  customerId?: number;
+  customerName?: string;
+  customerPhone?: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status:
+    | "PENDING"
+    | "CONFIRMED"
+    | "PROCESSING"
+    | "COMPLETED"
+    | "CANCELLED"
+    | "UNPAID"
+    | "PAID_PARTIAL"
+    | "PAID";
+  paymentMethod?: "CASH" | "BANK_TRANSFER" | "MOMO" | "VNPAY";
+  storeId: number;
+  createdAt: string;
+  updatedAt: string;
+  items?: OrderItem[];
+}
+
+export interface OrderItem {
+  id: number;
+  productId: number;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Customer {
+  id: number;
+  code: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  totalDebt: number;
+  totalPurchaseAmount: number;
+  status: "ACTIVE" | "INACTIVE";
+  customerType: "REGULAR" | "VIP" | "WHOLESALE";
+  storeId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReportData {
+  date: string;
+  revenue: number;
+  ordersCount: number;
+  averageOrderValue: number;
+}
+
+export interface StockAlert {
+  productId: number;
+  productName: string;
+  currentStock: number;
+  reorderLevel: number;
+  unitName: string;
+}
+
+export interface DebtReport {
+  customerId: number;
+  customerName: string;
+  totalDebt: number;
+  lastPurchaseDate: string;
+}
