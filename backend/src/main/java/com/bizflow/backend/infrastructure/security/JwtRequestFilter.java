@@ -91,6 +91,30 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
+            // Log error but do NOT clear context immediately if it's a Redis connection failure
+            // This allows the request to proceed, potentially failing later if Redis is strictly required,
+            // but preventing a complete blockage if Redis is only used for caching/session storage in a stateless JWT setup.
+            // However, for JWT validation itself, if it fails, we should clear context.
+            // The user reported RedisConnectionFailureException.
+            // If JwtUtil uses Redis (e.g. for blacklisting), then this catch block is hit.
+            // If JwtUtil is purely stateless (which it seems to be based on JwtUtil.java content),
+            // then Redis might be used elsewhere or implicitly by Spring Session/Security if configured.
+
+            // Based on the user log: "Resolved [org.springframework.data.redis.RedisConnectionFailureException: Unable to connect to Redis]"
+            // This exception seems to be bubbling up to the ExceptionHandlerExceptionResolver, meaning it might not be caught here
+            // OR it is caught here, logged, and then something else triggers it or it's rethrown?
+            // Actually, the log says "Resolved ... ExceptionHandlerExceptionResolver", which usually means it was thrown from a Controller
+            // or somewhere further down the chain, NOT swallowed here.
+
+            // BUT, if the filter chain continues (filterChain.doFilter), and the exception happens LATER,
+            // then the issue is likely in a service that uses Redis.
+
+            // Wait, the user says "sao web chạy lên ko có dữ liệu luôn" (why web runs but no data).
+            // And the log shows "JWT authenticated user: admin". So authentication PASSED.
+            // Then "Resolved ... RedisConnectionFailureException".
+            // This means the request went through the filter, got authenticated, reached the controller/service,
+            // and THEN failed because of Redis.
+
             log.error("Error processing JWT token: {}", e.getMessage());
             SecurityContextHolder.clearContext();
         }

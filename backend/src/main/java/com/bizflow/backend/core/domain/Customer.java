@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,10 +22,11 @@ public class Customer {
     @Column(name = "store_id", nullable = false)
     private Long storeId;
 
+    // Giữ nguyên là name để khớp với Database hiện tại
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 15)
+    @Column(length = 20)
     private String phone;
 
     @Column(length = 100)
@@ -34,7 +36,7 @@ public class Customer {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('RETAIL', 'WHOLESALE', 'CORPORATE') DEFAULT 'RETAIL'")
+    @Column(length = 20)
     private CustomerType type;
 
     @Column(name = "tax_code", length = 20)
@@ -43,15 +45,19 @@ public class Customer {
     @Column(name = "contact_person", length = 100)
     private String contactPerson;
 
+    // --- BỔ SUNG TRƯỜNG NÀY ĐỂ HẾT LỖI getTotalDebt() ---
+    @Column(name = "total_debt")
+    private BigDecimal totalDebt;
+    // ----------------------------------------------------
+
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE'")
     private CustomerStatus status;
 
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String notes;
 
     @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
@@ -59,7 +65,7 @@ public class Customer {
     private LocalDateTime updatedAt;
 
     public enum CustomerType {
-        RETAIL, WHOLESALE, CORPORATE
+        RETAIL, WHOLESALE
     }
 
     public enum CustomerStatus {

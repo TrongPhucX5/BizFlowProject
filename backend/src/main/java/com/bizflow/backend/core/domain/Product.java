@@ -51,7 +51,8 @@ public class Product {
     @Column(name = "reorder_level")
     private Integer reorderLevel;
 
-    @Column(name = "image_url", length = 500)
+    // Changed to LONGTEXT to store Base64 image string
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
     private String imageUrl;
 
     @Enumerated(EnumType.STRING)

@@ -10,4 +10,5 @@ import org.springframework.stereotype.Repository;
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Page<Customer> findByStoreId(Long storeId, Pageable pageable);
     Customer findByStoreIdAndPhone(Long storeId, String phone);
+    long countByStoreId(Long storeId);
 }
