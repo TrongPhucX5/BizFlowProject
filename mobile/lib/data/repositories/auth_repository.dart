@@ -1,57 +1,91 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/api_constants.dart';
 
 class AuthRepository {
-  // ❌ KHÔNG DÙNG DÒNG NÀY NỮA (Nó là nguyên nhân gây lỗi)
-  // static const String _baseUrl = 'http://10.0.2.2:8080/auth/login';
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
-  /// Gọi API để đăng nhập
+  // ================== LOGIN ==================
   Future<Map<String, dynamic>> login(String username, String password) async {
-
-    // ✅ DÙNG CÁI NÀY: Lấy URL từ ApiConstants (Đã có sẵn logic chọn IP và /api/v1)
-    final String fullUrl = "${ApiConstants.baseUrl}${ApiConstants.loginEndpoint}";
-    final url = Uri.parse(fullUrl);
-
-    // 1. Đóng gói dữ liệu thành JSON
-    final body = jsonEncode({
-      'username': username,
-      'password': password,
-    });
-
-    print("🚀 Đang gọi API: $fullUrl"); // In ra để kiểm tra
-    print("📦 Body gửi đi: $body");
+    final url = Uri.parse("${ApiConstants.baseUrl}${ApiConstants.loginEndpoint}");
+    final body = jsonEncode({'username': username, 'password': password});
 
     try {
-      // 2. Gửi request POST
       final response = await http.post(
         url,
-        headers: {
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
         body: body,
       );
 
-      print("📩 Server phản hồi: ${response.statusCode}");
-
-      // In luôn nội dung lỗi nếu có để dễ debug
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        print("Chi tiết lỗi: ${response.body}");
-      }
-
-      // 3. Xử lý kết quả
-      if (response.statusCode == 200 || response.statusCode == 201) { // Thêm 201 cho chắc
-        // Thành công
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return jsonDecode(response.body);
       } else {
-        // Thất bại
         final errorData = jsonDecode(response.body);
-        // Lấy message lỗi từ backend (nếu có)
-        throw Exception(errorData['message'] ?? 'Đăng nhập thất bại (${response.statusCode})');
+        throw Exception(errorData['message'] ?? 'Đăng nhập thất bại');
       }
     } catch (e) {
-      print("☠️ Lỗi kết nối: $e");
-      throw Exception('Không thể kết nối đến máy chủ. Hãy kiểm tra lại Backend đang chạy chưa.');
+      throw Exception('Không thể kết nối đến máy chủ');
+    }
+  }
+
+  // ================== LOGOUT ==================
+  Future<void> logout() async {
+    try {
+      await _storage.deleteAll();
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // ================== REGISTER ==================
+  Future<void> register(String username, String email, String password) async {
+    final url = Uri.parse("${ApiConstants.baseUrl}${ApiConstants.registerEndpoint}");
+    final body = jsonEncode({
+      'username': username,
+      'email': email,
+      'password': password,
+    });
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: body,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Đăng ký thất bại');
+      }
+    } catch (e) {
+      throw Exception('Không thể kết nối đến máy chủ');
+    }
+  }
+
+  // ================== FORGOT PASSWORD ==================
+  Future<void> forgotPassword(String email) async {
+    final url = Uri.parse("${ApiConstants.baseUrl}${ApiConstants.forgotPasswordEndpoint}");
+    final body = jsonEncode({'email': email});
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: body,
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        final errorData = jsonDecode(response.body);
+        throw Exception(errorData['message'] ?? 'Gửi email quên mật khẩu thất bại');
+      }
+    } catch (e) {
+      throw Exception('Không thể kết nối đến máy chủ');
     }
   }
 }

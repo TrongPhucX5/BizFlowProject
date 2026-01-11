@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile/common/widgets/CustomTextField.dart'; // Import Component
-import 'package:mobile/common/widgets/PrimaryButton.dart';   // Import Component
+import 'package:mobile/common/widgets/CustomTextField.dart';
+import 'package:mobile/common/widgets/PrimaryButton.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/features/home/presentation/main_screen.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // Thư viện Google
-import 'package:font_awesome_flutter/font_awesome_flutter.dart'; // Icon Google
 import 'package:mobile/features/home/presentation/management_screen.dart';
+import 'package:mobile/features/auth/presentation/forgot_password_screen.dart';
+import 'package:mobile/features/auth/presentation/register_screen.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -36,9 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser != null) {
-        // Log để kiểm tra thông tin nhận về
         debugPrint("User: ${googleUser.displayName} - Email: ${googleUser.email}");
-
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -65,7 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Vui lòng nhập đủ thông tin"), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text("Vui lòng nhập đủ thông tin"),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -90,7 +93,10 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -132,27 +138,28 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   "BizFlow Workspace",
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 26, fontWeight: FontWeight.w700, color: primaryBlue),
+                  style: GoogleFonts.poppins(
+                      fontSize: 26, fontWeight: FontWeight.w700, color: primaryBlue),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   "Hệ thống quản trị nội bộ",
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(fontSize: 15, color: Colors.grey[600]),
+                  style: GoogleFonts.poppins(
+                      fontSize: 15, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 48),
 
-                // 2. Sử dụng Component: CustomTextField cho Username
+                // 2. Username
                 CustomTextField(
                   label: "Tên đăng nhập",
                   hintText: "admin",
                   prefixIcon: Icons.person_outline,
                   controller: _usernameController,
                 ),
-
                 const SizedBox(height: 20),
 
-                // 3. Sử dụng Component: CustomTextField cho Password
+                // 3. Password
                 CustomTextField(
                   label: "Mật khẩu",
                   hintText: "••••••",
@@ -166,17 +173,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 32),
 
-                // 4. Sử dụng Component: PrimaryButton
+                // 4. Login Button
                 PrimaryButton(
                   text: "ĐĂNG NHẬP HỆ THỐNG",
                   isLoading: _isLoading,
                   onPressed: _login,
                 ),
-
                 const SizedBox(height: 24),
+
+                // 5. Or Divider
                 Row(
                   children: [
                     const Expanded(child: Divider()),
@@ -189,13 +196,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 5. Nút Đăng nhập Google
+                // 6. Google Sign-In
                 OutlinedButton.icon(
                   onPressed: _isLoading ? null : _handleGoogleSignIn,
                   icon: const FaIcon(FontAwesomeIcons.google, color: Colors.red, size: 18),
                   label: Text(
                     "Đăng nhập bằng Google",
-                    style: GoogleFonts.poppins(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 14),
+                    style: GoogleFonts.poppins(
+                        color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 14),
                   ),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -203,20 +211,41 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
-
                 const SizedBox(height: 32),
 
-                // 5. Footer
+                // 7. Footer: Forgot Password & Register
                 Center(
                   child: Column(
                     children: [
-                      Text("Quên mật khẩu hoặc chưa có tài khoản?", style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ForgotPasswordScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          "Quên mật khẩu?",
+                          style: GoogleFonts.poppins(
+                              color: primaryBlue, fontWeight: FontWeight.w600, fontSize: 14),
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       GestureDetector(
-                        onTap: () {},
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
+                        },
                         child: Text(
-                          "Liên hệ Quản Trị Viên",
-                          style: GoogleFonts.poppins(color: primaryBlue, fontWeight: FontWeight.w600, fontSize: 14),
+                          "Chưa có tài khoản? Đăng ký",
+                          style: GoogleFonts.poppins(
+                              color: primaryBlue, fontWeight: FontWeight.w600, fontSize: 14),
                         ),
                       ),
                     ],

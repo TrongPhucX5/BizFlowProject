@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/features/auth/presentation/login_screen.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -111,13 +112,12 @@ class AppDrawer extends StatelessWidget {
 
                 const Divider(),
 
+                // ===== LOGOUT =====
                 _drawerItem(
                   icon: Icons.logout,
                   title: "Đăng xuất",
                   isDanger: true,
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
+                  onTap: () => _confirmLogout(context),
                 ),
               ],
             ),
@@ -127,6 +127,7 @@ class AppDrawer extends StatelessWidget {
     );
   }
 
+  // ================= ITEM =================
   Widget _drawerItem({
     required IconData icon,
     required String title,
@@ -145,6 +146,41 @@ class AppDrawer extends StatelessWidget {
         ),
       ),
       onTap: onTap,
+    );
+  }
+
+  // ================= CONFIRM LOGOUT =================
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Xác nhận đăng xuất'),
+        content: const Text(
+          'Bạn có chắc chắn muốn đăng xuất khỏi BizFlow không?',
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Huỷ'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    (route) => false,
+              );
+            },
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
     );
   }
 }
