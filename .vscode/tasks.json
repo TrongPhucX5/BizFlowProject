@@ -1,0 +1,114 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "backend: spring-boot:run",
+			"type": "shell",
+			"command": "d:\\BizFlowProject\\backend\\mvnw.cmd",
+			"args": [
+				"-f",
+				"d:\\BizFlowProject\\backend\\pom.xml",
+				"-DskipTests",
+				"spring-boot:run"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check: port 8080",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Test-NetConnection -ComputerName localhost -Port 8080 | Select-Object -Property TcpTestSucceeded,RemotePort,ComputerName"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "backend: spring-boot:run (bg)",
+			"type": "shell",
+			"command": "d:\\BizFlowProject\\backend\\mvnw.cmd",
+			"args": [
+				"-f",
+				"d:\\BizFlowProject\\backend\\pom.xml",
+				"-DskipTests",
+				"spring-boot:run"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "check: port 8080 (2)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Test-NetConnection -ComputerName localhost -Port 8080 | Select-Object -Property TcpTestSucceeded,RemotePort,ComputerName"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "backend: run to log",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"d:\\BizFlowProject\\backend\\mvnw.cmd -f d:\\BizFlowProject\\backend\\pom.xml -DskipTests spring-boot:run > d:\\BizFlowProject\\logs\\backend-run.log 2>&1"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "backend: spring-boot:run (no flyway)",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"d:\\BizFlowProject\\backend\\mvnw.cmd -f d:\\BizFlowProject\\backend\\pom.xml -DskipTests spring-boot:run > d:\\BizFlowProject\\logs\\backend-run.log 2>&1"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "check: port 8080 (after)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Test-NetConnection -ComputerName localhost -Port 8080 | Select-Object -Property TcpTestSucceeded,RemotePort,ComputerName"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "backend: run to log",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"d:\\BizFlowProject\\backend\\mvnw.cmd -f d:\\BizFlowProject\\backend\\pom.xml -DskipTests spring-boot:run > d:\\BizFlowProject\\logs\\backend-run.log 2>&1"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "check: port 8080 (after)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Test-NetConnection -ComputerName localhost -Port 8080 | Select-Object -Property TcpTestSucceeded,RemotePort,ComputerName"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "check: port 8080 (2)",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Test-NetConnection -ComputerName localhost -Port 8080 | Select-Object -Property TcpTestSucceeded,RemotePort,ComputerName"
+			],
+			"isBackground": false
+		}
+	]
+}

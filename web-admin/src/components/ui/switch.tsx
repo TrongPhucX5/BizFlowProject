@@ -1,4 +1,3 @@
-npm run dev
 "use client"
 
 import * as React from "react"

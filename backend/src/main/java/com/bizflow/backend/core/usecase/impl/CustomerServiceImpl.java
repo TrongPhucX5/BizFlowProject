@@ -1,4 +1,4 @@
-package com.bizflow.backend.infrastructure.service;
+package com.bizflow.backend.core.usecase.impl;
 
 import com.bizflow.backend.core.domain.Customer;
 import com.bizflow.backend.core.usecase.CustomerService;
