@@ -56,9 +56,6 @@ export default function AboutPage() {
               v1.0.0
             </Badge>
 
-            <Button className={styles.btnPrimary} asChild>
-              <Link href="/auth/register">Dùng thử miễn phí</Link>
-            </Button>
 
             <Button variant="outline" className={styles.btnPrimary} asChild>
               <Link
