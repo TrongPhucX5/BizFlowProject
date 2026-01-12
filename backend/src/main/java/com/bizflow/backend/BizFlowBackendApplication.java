@@ -9,7 +9,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @SpringBootApplication
-public class BizFlowBackendApplication {
+public class
+BizFlowBackendApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(BizFlowBackendApplication.class, args);
@@ -34,5 +35,5 @@ public class BizFlowBackendApplication {
 				System.out.println(">>> 🟢 ĐÃ TẠO USER MẪU: admin / 123456");
 			}
 		};
-	}
+}
 }
