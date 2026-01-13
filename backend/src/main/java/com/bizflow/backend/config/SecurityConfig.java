@@ -4,6 +4,7 @@ import com.bizflow.backend.infrastructure.security.JwtRequestFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -37,17 +38,17 @@ public class SecurityConfig {
                 // 3. Quản lý Session là Stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 4. Phân quyền truy cập
+                // 4. Phân quyền truy cập (KHÔNG BAO GỒM /api context-path)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/v1/auth/**",      // <--- Endpoint quan trọng nhất
+                                "/v1/auth/**",
                                 "/v1/health",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/api/ai/**"
+                                "/v3/api-docs/**"
                         ).permitAll()
+                        // Sử dụng hasAuthority để chỉ định rõ ràng tên quyền đầy đủ
+                        .requestMatchers("/v1/**").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated()
                 )
 
@@ -78,6 +79,4 @@ public class SecurityConfig {
             throws Exception {
         return config.getAuthenticationManager();
     }
-
-    // --- ĐÃ XÓA PASSWORD ENCODER (Vì AppConfig đã có) ---
 }

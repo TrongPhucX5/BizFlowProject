@@ -36,7 +36,7 @@ public class Customer {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 25) // Tăng độ dài cho an toàn
     private CustomerType type;
 
     @Column(name = "tax_code", length = 20)
@@ -65,7 +65,9 @@ public class Customer {
     private LocalDateTime updatedAt;
 
     public enum CustomerType {
-        RETAIL, WHOLESALE
+        RETAIL, 
+        WHOLESALE,
+        CORPORATE // Thêm giá trị CORPORATE
     }
 
     public enum CustomerStatus {
