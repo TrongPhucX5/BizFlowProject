@@ -29,7 +29,7 @@ public class CustomerController {
         // Gọi service lấy danh sách (đã được fix trong UserContext/Service)
         // Lưu ý: UserContext.getCurrentStoreId() có thể trả về null, Service đã handle việc này
         Long storeId = com.bizflow.backend.core.common.UserContext.getCurrentStoreId();
-        Page<CustomerDTO> customers = customerService.getCustomersByStore(storeId, pageable);
+        Page<CustomerDTO> customers = customerService.getCustomersByStore(storeId, search, pageable);
         return ResponseEntity.ok(ApiResponse.success(customers, "Lấy danh sách thành công"));
     }
 

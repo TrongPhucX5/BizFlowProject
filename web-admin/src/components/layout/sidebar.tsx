@@ -18,13 +18,13 @@ const menuItems = [
   { title: "Tổng quan", icon: LayoutDashboard, href: "/dashboard" },
 
   // Đổi href="/products" thành "/dashboard/products"
-  { title: "Sản phẩm", icon: Package, href: "/dashboard/products" },
+  { title: "Sản phẩm", icon: Package, href: "/products" },
 
   // Các cái dưới cũng nên sửa luôn để sau này làm cho tiện
-  { title: "Đơn hàng", icon: ShoppingCart, href: "/dashboard/orders" },
-  { title: "Khách hàng", icon: Users, href: "/dashboard/customers" },
-  { title: "Báo cáo", icon: BarChart3, href: "/dashboard/reports" },
-  { title: "Cấu hình", icon: Settings, href: "/dashboard/settings" },
+  { title: "Đơn hàng", icon: ShoppingCart, href: "/orders" },
+  { title: "Khách hàng", icon: Users, href: "/customers" },
+  { title: "Báo cáo", icon: BarChart3, href: "/reports" },
+  { title: "Cấu hình", icon: Settings, href: "/settings" },
 ];
 // -------------------------
 

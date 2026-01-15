@@ -43,5 +43,10 @@ public class CreateOrderRequest {
         @NotNull(message = "Số lượng không được rỗng")
         @DecimalMin(value = "1", message = "Số lượng phải >= 1")
         private Integer quantity;
+
+        // VỊ TRÍ CẦN SỬA: Thêm trường unitPrice để nhận giá từ Frontend
+        @NotNull(message = "Đơn giá không được rỗng")
+        @DecimalMin(value = "0", message = "Đơn giá không được âm")
+        private BigDecimal unitPrice;
     }
 }

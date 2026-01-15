@@ -37,7 +37,7 @@ public class CustomerServiceImpl implements CustomerService {
 
         Customer customer = Customer.builder()
                 .storeId(storeId)
-                .name(request.getName())
+                .name(request.getFullName())
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .address(request.getAddress())
@@ -54,13 +54,6 @@ public class CustomerServiceImpl implements CustomerService {
         return mapToDTO(customerRepository.save(customer));
     }
 
-    @Override
-    public Page<CustomerDTO> getCustomersByStore(Long storeId, Pageable pageable) {
-        if (storeId == null) {
-            return Page.empty(pageable);
-        }
-        return customerRepository.findByStoreId(storeId, pageable).map(this::mapToDTO);
-    }
 
     @Override
     @Transactional
@@ -68,7 +61,7 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
-        customer.setName(request.getName());
+        customer.setName(request.getFullName());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
         customer.setAddress(request.getAddress());
@@ -91,12 +84,34 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
         customer.setStatus(Customer.CustomerStatus.INACTIVE);
+        customer.setUpdatedAt(LocalDateTime.now()); // Nên thêm dòng này
         customerRepository.save(customer);
     }
 
     @Override
-    public Optional<Customer> getCustomerById(Long id) {
-        return customerRepository.findById(id);
+    public Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable) {
+        if (storeId == null) return Page.empty(pageable);
+
+        Page<Customer> customerPage;
+
+        // Nếu có từ khóa tìm kiếm, gọi hàm WithSearch
+        if (search != null && !search.trim().isEmpty()) {
+            customerPage = customerRepository.findByStoreIdAndStatusWithSearch(
+                    storeId,
+                    Customer.CustomerStatus.ACTIVE,
+                    search,
+                    pageable
+            );
+        } else {
+            // Nếu không có tìm kiếm, gọi hàm lấy danh sách mặc định
+            customerPage = customerRepository.findByStoreIdAndStatus(
+                    storeId,
+                    Customer.CustomerStatus.ACTIVE,
+                    pageable
+            );
+        }
+
+        return customerPage.map(this::mapToDTO);
     }
 
     // --- HÀM MAP DỮ LIỆU ĐÃ SỬA LỖI ---
@@ -126,10 +141,40 @@ public class CustomerServiceImpl implements CustomerService {
                 .build();
     }
 
-    // Placeholder methods
-    @Override public Optional<Customer> getCustomerByPhone(String phone) { return Optional.empty(); }
-    @Override public Page<CustomerDTO> searchCustomers(String k, Long s, Pageable p) { return Page.empty(); }
-    @Override public Page<CustomerDTO> getCustomersBySegment(String s, Long st, Pageable p) { return Page.empty(); }
-    @Override public CustomerDTO updateSegment(Long id, String s) { return null; }
-    @Override public Page<CustomerDTO> getAllActiveCustomers(Long s, Pageable p) { return getCustomersByStore(s, p); }
+    @Override
+    public Optional<Customer> getCustomerById(Long id) {
+        // Tìm kiếm khách hàng theo ID thông qua repository
+        return customerRepository.findById(id);
+    }
+
+    // --- CÁC PHƯƠNG THỨC ĐÃ CẬP NHẬT ĐỂ KHỚP VỚI INTERFACE ---
+
+    @Override
+    public Optional<Customer> getCustomerByPhone(String phone) {
+        // Giả định storeId mặc định là 1L hoặc lấy từ context của bạn
+        return Optional.ofNullable(customerRepository.findByStoreIdAndPhone(1L, phone));
+    }
+
+    @Override
+    public Page<CustomerDTO> searchCustomers(String k, Long s, Pageable p) {
+        // TRUYỀN ĐỦ 3 THAM SỐ: storeId (s), keyword (k), pageable (p)
+        return getCustomersByStore(s, k, p);
+    }
+
+    @Override
+    public Page<CustomerDTO> getCustomersBySegment(String s, Long st, Pageable p) {
+        return Page.empty(p);
+    }
+
+    @Override
+    public CustomerDTO updateSegment(Long id, String s) {
+        return null;
+    }
+
+    @Override
+    public Page<CustomerDTO> getAllActiveCustomers(Long s, Pageable p) {
+        // TRUYỀN ĐỦ 3 THAM SỐ: storeId (s), search (null), pageable (p)
+        // Khi lấy tất cả, chúng ta truyền 'null' vào vị trí của tham số search
+        return getCustomersByStore(s, null, p);
+    }
 }
