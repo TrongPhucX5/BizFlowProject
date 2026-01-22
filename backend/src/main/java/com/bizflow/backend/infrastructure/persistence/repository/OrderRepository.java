@@ -17,27 +17,24 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Page<Order> findByStoreId(Long storeId, Pageable pageable);
 
-    Page<Order> findByCustomerId(Long customerId, Pageable pageable);
-
-    // --- PHƯƠNG THỨC LỌC ĐA NĂNG (ĐÃ CẬP NHẬT STOREID) ---
+    // --- PHƯƠNG THỨC LỌC ĐA NĂNG ĐÃ CẬP NHẬT ---
     @Query("SELECT o FROM Order o WHERE " +
-            "o.storeId = :storeId AND " + // Đảm bảo an toàn dữ liệu Multi-Tenancy
-            "(:status IS NULL OR o.status = :status) AND " + // JPA sẽ tự map Enum ở đây
+            "o.storeId = :storeId AND " +
+            "(:status IS NULL OR o.status = :status) AND " + // JPA tự động map Enum
             "(:customerId IS NULL OR o.customerId = :customerId) AND " +
             "(:startDate IS NULL OR o.createdAt >= :startDate) AND " +
-            "(:endDate IS NULL OR o.createdAt <= :endDate) " +
-            "ORDER BY o.createdAt DESC")
+            "(:endDate IS NULL OR o.createdAt <= :endDate)")
     Page<Order> findAllWithFilters(
-            @Param("storeId") Long storeId, // Tham số thứ 1
-            @Param("status") String status,  // Tham số thứ 2
-            @Param("customerId") Long customerId, // Tham số thứ 3
-            @Param("startDate") LocalDateTime startDate, // Tham số thứ 4
-            @Param("endDate") LocalDateTime endDate, // Tham số thứ 5
-            Pageable pageable); // Tham số thứ 6
+            @Param("storeId") Long storeId,
+            @Param("status") Order.OrderStatus status, // Đã đổi từ String sang Enum
+            @Param("customerId") Long customerId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED'")
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED")
     BigDecimal sumTotalRevenue(@Param("storeId") Long storeId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED'")
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED")
     Long countOrders(@Param("storeId") Long storeId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

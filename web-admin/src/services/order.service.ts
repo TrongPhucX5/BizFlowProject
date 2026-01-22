@@ -1,24 +1,21 @@
 import axios from "@/lib/axios-client";
 
-/** * KHỚP 100% VỚI DATABASE ENUM: 'CASH', 'BANK_TRANSFER', 'CREDIT_CARD'
+/** * KHỚP 100% VỚI DATABASE ENUM
  */
-export type PaymentType = 'CASH' | 'BANK_TRANSFER' | 'CREDIT_CARD'; 
+export type PaymentType = 'CASH' | 'CREDIT' | 'TRANSFER'; 
 
 /** * KHỚP VỚI OrderStatus.java TRONG BACKEND
  */
-export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'PAID' | 'PAID_PARTIAL' | 'UNPAID' | 'CANCELLED';
+export type OrderStatus = 'CONFIRMED' | 'PAID' | 'PAID_PARTIAL' | 'UNPAID' | 'CANCELLED';
 
-/**
- * Interface cho tham số lọc - Khớp hoàn toàn với OrderController.java
- */
 export interface OrderFilterParams {
   page?: number;
   size?: number;
   status?: string;     
-  startDate?: string;  // Định dạng chuẩn: yyyy-MM-dd
-  endDate?: string;    // Định dạng chuẩn: yyyy-MM-dd
+  startDate?: string;  
+  endDate?: string;    
   customerId?: number; 
-  sort?: string;       // Thêm sort để linh hoạt (ví dụ: 'createdAt,desc')
+  sort?: string;       
 }
 
 export interface OrderItemDTO {
@@ -45,15 +42,12 @@ export interface OrderDTO {
   items: OrderItemDTO[];
 }
 
-/**
- * CẬP NHẬT: Interface tạo đơn hàng cần có unitPrice cho từng item
- */
 export interface CreateOrderRequest {
   customerId: number;
   items: { 
     productId: number; 
     quantity: number; 
-    unitPrice: number; // TRƯỜNG MỚI: Bắt buộc để Backend tính toán
+    unitPrice: number; 
   }[];
   discountAmount: number;
   paymentType: PaymentType; 
@@ -75,8 +69,6 @@ export interface ApiResponse<T> {
   result: T; 
 }
 
-
-
 export const orderService = {
   /**
    * Lấy danh sách đơn hàng có phân trang và bộ lọc
@@ -84,18 +76,13 @@ export const orderService = {
   getAllOrders: async (params: OrderFilterParams): Promise<ApiResponse<PageResponse<OrderDTO>>> => {
     const cleanParams: Record<string, any> = {};
 
-    // 1. CHUẨN HÓA THAM SỐ GỬI LÊN
     Object.entries(params).forEach(([key, value]) => {
-      // LOẠI BỎ: null, undefined, chuỗi rỗng
       if (value !== undefined && value !== null && value !== "") {
-        // Nếu là trạng thái 'ALL', không gửi tham số này để Backend dùng default (null)
         if (key === 'status' && value === 'ALL') return;
-        
         cleanParams[key] = value;
       }
     });
 
-    // 2. MẶC ĐỊNH SẮP XẾP NẾU CHƯA CÓ
     if (!cleanParams.sort) {
       cleanParams.sort = 'createdAt,desc';
     }
@@ -116,25 +103,61 @@ export const orderService = {
    * Tạo đơn hàng mới
    */
   createOrder: async (data: CreateOrderRequest): Promise<ApiResponse<OrderDTO>> => {
-    // Ép kiểu dữ liệu số để tránh lỗi string từ input form
-    const formattedData = {
-      ...data,
-      customerId: Number(data.customerId),
-      discountAmount: Number(data.discountAmount || 0),
-      items: data.items
-        .filter(item => Number(item.productId) > 0 && Number(item.quantity) > 0)
-        .map(item => ({
-          productId: Number(item.productId),
-          quantity: Number(item.quantity),    // Cho phép số thập phân (ví dụ: 1.5kg)
-          unitPrice: Number(item.unitPrice)   // CẬP NHẬT: Gửi giá bán đã chỉnh sửa lên backend
-        }))
-    };
-
-    if (formattedData.items.length === 0) {
-      throw new Error("Vui lòng chọn ít nhất một sản phẩm hợp lệ.");
-    }
-
+    const formattedData = formatOrderRequest(data);
     const response = await axios.post("/v1/orders", formattedData);
     return response.data;
+  },
+
+  /**
+   * CẬP NHẬT ĐƠN HÀNG (MỚI)
+   * Gọi đến @PutMapping("/{id}") trong Backend
+   */
+  updateOrder: async (id: number, data: CreateOrderRequest): Promise<ApiResponse<OrderDTO>> => {
+    const formattedData = formatOrderRequest(data);
+    const response = await axios.put(`/v1/orders/${id}`, formattedData);
+    return response.data;
+  },
+
+  /**
+   * HỦY ĐƠN HÀNG (MỚI)
+   * Gọi đến @DeleteMapping("/{id}") trong Backend
+   */
+  deleteOrder: async (id: number): Promise<ApiResponse<void>> => {
+    const response = await axios.delete(`/v1/orders/${id}`);
+    return response.data;
+  },
+
+  /**
+   * Cập nhật nhanh trạng thái đơn hàng (Dùng PATCH nếu backend có hỗ trợ)
+   */
+  updateOrderStatus: async (id: number, status: OrderStatus): Promise<ApiResponse<OrderDTO>> => {
+    const response = await axios.patch(`/v1/orders/${id}/status`, null, {
+      params: { status }
+    });
+    return response.data;
   }
+};
+
+/**
+ * Hàm phụ trợ chuẩn hóa dữ liệu gửi lên Backend
+ */
+const formatOrderRequest = (data: CreateOrderRequest) => {
+  if (!data.items || data.items.length === 0) {
+    throw new Error("Vui lòng chọn ít nhất một sản phẩm.");
+  }
+
+  return {
+    customerId: Number(data.customerId),
+    discountAmount: Number(data.discountAmount || 0),
+    paymentType: data.paymentType,
+    status: data.status,
+    notes: data.notes?.trim() || "",
+    items: data.items
+      .filter(item => Number(item.productId) > 0 && Number(item.quantity) > 0)
+      .map(item => ({
+        productId: Number(item.productId),
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice)
+      }))
+  };
 };
