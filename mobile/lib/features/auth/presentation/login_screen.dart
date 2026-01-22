@@ -23,14 +23,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-
-  final TextEditingController _usernameController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
 
   Future<void> _handleGoogleSignIn() async {
     try {
@@ -66,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Vui lòng nhập đủ thông tin"),
+          content: Text("Vui lòng nhập tên đăng nhập và mật khẩu"),
           backgroundColor: Colors.orange,
         ),
       );
@@ -77,14 +76,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final result = await _authRepository.login(
-        _usernameController.text,
+        _usernameController.text.trim(),
         _passwordController.text,
       );
 
-      await _storage.write(key: 'jwt_token', value: result['jwt']);
-      await _storage.write(key: 'user_role', value: result['role']);
+      // Lưu token vào Secure Storage
+      if (result['token'] != null) {
+        await _storage.write(key: 'accessToken', value: result['token']);
+      }
+      if (result['refreshToken'] != null) {
+        await _storage.write(key: 'refreshToken', value: result['refreshToken']);
+      }
 
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Đăng nhập thành công!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -113,25 +124,20 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.all(24.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // 1. Logo Section
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      shape: BoxShape.circle,
-                    ),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.contain,
-                    ),
+                const Icon(Icons.store, size: 80, color: primaryBlue),
+                const SizedBox(height: 16),
+                const Text(
+                  "BizFlow",
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: primaryBlue,
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -148,18 +154,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: GoogleFonts.poppins(
                       fontSize: 15, color: Colors.grey[600]),
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 40),
 
                 // 2. Username
                 CustomTextField(
-                  label: "Tên đăng nhập",
-                  hintText: "admin",
+                  label: "Tên đăng nhập / Email",
+                  hintText: "Nhập email hoặc tên đăng nhập",
                   prefixIcon: Icons.person_outline,
                   controller: _usernameController,
                 ),
                 const SizedBox(height: 20),
 
                 // 3. Password
+                const SizedBox(height: 16),
                 CustomTextField(
                   label: "Mật khẩu",
                   hintText: "••••••",
@@ -168,28 +175,32 @@ class _LoginScreenState extends State<LoginScreen> {
                   isPassword: true,
                   isPasswordVisible: _isPasswordVisible,
                   onVisibilityToggle: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
+                    setState(() => _isPasswordVisible = !_isPasswordVisible);
                   },
                 ),
+                
                 const SizedBox(height: 32),
 
                 // 4. Login Button
+                
                 PrimaryButton(
-                  text: "ĐĂNG NHẬP HỆ THỐNG",
+                  text: "Đăng nhập",
                   isLoading: _isLoading,
                   onPressed: _login,
                 ),
+
                 const SizedBox(height: 24),
 
                 // 5. Or Divider
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Expanded(child: Divider()),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("Hoặc", style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+                    const SizedBox(width: 16),
+                    const Text("Chưa có tài khoản? "),
+                    GestureDetector(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
+                      child: const Text("Đăng ký ngay", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold)),
                     ),
                     const Expanded(child: Divider()),
                   ],

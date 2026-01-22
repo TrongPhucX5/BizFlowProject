@@ -4,6 +4,7 @@ import 'package:mobile/features/product/presentation/hourly_service_screen.dart'
 import 'package:mobile/features/product/presentation/batch_product_create_screen.dart';
 import 'package:mobile/features/product/presentation/combo_create_screen.dart';
 import 'category_select_products_screen.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -14,6 +15,8 @@ class ProductScreen extends StatefulWidget {
 
 class _ProductScreenState extends State<ProductScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final AuthRepository _authRepository = AuthRepository();
+  bool _isLoading = false;
 
   // Trạng thái giao diện
   bool _isGridView = false;
@@ -63,6 +66,20 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
         _searchQuery = _searchController.text;
       });
     });
+
+    _fetchProducts();
+  }
+
+  Future<void> _fetchProducts() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await _authRepository.getProducts();
+      setState(() => _products = data);
+    } catch (e) {
+      print("Lỗi tải sản phẩm: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -74,15 +91,8 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
 
   // --- XỬ LÝ KẾT QUẢ TRẢ VỀ ---
   void _handleProductResult(dynamic result, {int? index}) {
-    if (result != null && result is Map<String, dynamic>) {
-      setState(() {
-        if (index != null) {
-          _products[index] = result;
-        } else {
-          _products.insert(0, result);
-        }
-      });
-    }
+    // Reload lại toàn bộ list từ API để đảm bảo đồng bộ
+    _fetchProducts();
   }
 
   void _handleComboResult(dynamic result) {
@@ -132,7 +142,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
             title: const Text("Tạo sản phẩm hàng loạt"),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const BatchProductCreateScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const BatchProductCreateScreen())).then((_) => _fetchProducts());
             },
           ),
           const SizedBox(height: 24),
@@ -273,6 +283,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
         controller: _tabController,
         children: [
           // TAB 1: SẢN PHẨM
+          _isLoading ? const Center(child: CircularProgressIndicator()) :
           _products.isEmpty
               ? _buildEmptyState(Icons.shopping_bag_outlined, "Chưa có sản phẩm", "Tạo ngay", () => _showProductCreateOptions(context), kPrimaryGreen)
               : (_isGridView
@@ -404,7 +415,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        bool available = item['stockStatus'] == 'available';
+        bool isActive = item['status'] == 'ACTIVE';
         return Card(
           elevation: 0,
           color: Colors.white,
@@ -437,11 +448,11 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                          color: available ? Colors.green[50] : Colors.red[50],
+                          color: isActive ? Colors.green[50] : Colors.red[50],
                           borderRadius: BorderRadius.circular(4)
                       ),
-                      child: Text(available ? "Còn hàng" : "Hết hàng",
-                          style: TextStyle(color: available ? Colors.green : Colors.red, fontSize: 10, fontWeight: FontWeight.bold)
+                      child: Text(isActive ? "Đang bán" : "Ngừng bán",
+                          style: TextStyle(color: isActive ? Colors.green : Colors.red, fontSize: 10, fontWeight: FontWeight.bold)
                       ),
                     )
                   ],

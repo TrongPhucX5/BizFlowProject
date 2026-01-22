@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
 
 class GroupCreateScreen extends StatefulWidget {
   final List<Map<String, dynamic>> existingCustomers; // Nhận danh sách khách hàng từ màn hình cha
@@ -12,6 +13,8 @@ class GroupCreateScreen extends StatefulWidget {
 class _GroupCreateScreenState extends State<GroupCreateScreen> {
   final TextEditingController _nameController = TextEditingController();
   late List<Map<String, dynamic>> _customers; // List cục bộ để xử lý check/uncheck
+  final AuthRepository _authRepository = AuthRepository();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -33,19 +36,36 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
         elevation: 1,
         iconTheme: const IconThemeData(color: Colors.black),
         actions: [
-          TextButton(
-            onPressed: () {
+          _isLoading
+              ? const Padding(
+                  padding: EdgeInsets.only(right: 16),
+                  child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                )
+              : TextButton(
+            onPressed: () async {
               // Lọc ra những khách hàng đã chọn
               final selectedCustomers = _customers.where((e) => e['isSelected']).toList();
               final groupName = _nameController.text;
 
               if (groupName.isNotEmpty && selectedCustomers.isNotEmpty) {
-                // Trả dữ liệu về màn hình trước
-                Navigator.pop(context, {
-                  "name": groupName,
-                  "count": selectedCustomers.length, // Lưu số lượng cho đơn giản
-                  "members": selectedCustomers,
-                });
+                setState(() => _isLoading = true);
+                try {
+                  // Gọi API tạo nhóm
+                  final customerIds = selectedCustomers.map((e) => e['id']).toList();
+                  await _authRepository.createCustomerGroup(groupName, customerIds);
+
+                  if (!mounted) return;
+                  // Trả dữ liệu về màn hình trước để update UI tạm thời (nếu cần)
+                  Navigator.pop(context, {
+                    "name": groupName,
+                    "count": selectedCustomers.length,
+                    "members": selectedCustomers,
+                  });
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red));
+                } finally {
+                  if (mounted) setState(() => _isLoading = false);
+                }
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("Vui lòng nhập tên và chọn ít nhất 1 khách hàng")),
@@ -85,7 +105,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                 return CheckboxListTile(
                   value: _customers[index]['isSelected'],
                   activeColor: const Color(0xFF3B66FF),
-                  title: Text(_customers[index]['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(_customers[index]['fullName'], style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(_customers[index]['phone']),
                   onChanged: (val) {
                     setState(() {

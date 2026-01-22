@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math'; // Để random mã khách hàng
 import 'package:mobile/features/customer/presentation/group_create_screen.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
 
 class CustomerScreen extends StatefulWidget {
   const CustomerScreen({super.key});
@@ -11,21 +12,30 @@ class CustomerScreen extends StatefulWidget {
 
 class _CustomerScreenState extends State<CustomerScreen> {
   int _currentTabIndex = 0;
+  final AuthRepository _authRepository = AuthRepository();
+  bool _isLoading = false;
 
-  // Dữ liệu mẫu mở rộng
-  List<Map<String, dynamic>> customers = [
-    {
-      "id": "KH10239",
-      "name": "Khách lẻ",
-      "phone": "0999988888",
-      "gender": "Nam",
-      "dob": "01/01/1990",
-      "email": "khachle@gmail.com",
-      "address": "TP. Hồ Chí Minh"
-    },
-  ];
-
+  // Dữ liệu từ API
+  List<Map<String, dynamic>> customers = [];
   List<Map<String, dynamic>> groups = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+  }
+
+  Future<void> _fetchData() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await _authRepository.getCustomers();
+      setState(() => customers = data);
+    } catch (e) {
+      print("Lỗi tải khách hàng: $e");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   // --- LOGIC HELPER ---
 
@@ -41,7 +51,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   void _showCustomerForm({Map<String, dynamic>? existingCustomer, int? index}) {
     // Controller quản lý text
     final idController = TextEditingController(text: existingCustomer?['id'] ?? _generateCustomerId());
-    final nameController = TextEditingController(text: existingCustomer?['name'] ?? '');
+    final nameController = TextEditingController(text: existingCustomer?['fullName'] ?? '');
     final phoneController = TextEditingController(text: existingCustomer?['phone'] ?? '');
     final emailController = TextEditingController(text: existingCustomer?['email'] ?? '');
     final dobController = TextEditingController(text: existingCustomer?['dob'] ?? '');
@@ -168,7 +178,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             // Validate cơ bản
                             if (nameController.text.isEmpty || phoneController.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tên và SĐT là bắt buộc")));
@@ -177,7 +187,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
                             final data = {
                               "id": idController.text,
-                              "name": nameController.text,
+                              "fullName": nameController.text,
                               "phone": phoneController.text,
                               "gender": selectedGender,
                               "dob": dobController.text,
@@ -185,14 +195,21 @@ class _CustomerScreenState extends State<CustomerScreen> {
                               "address": addressController.text,
                             };
 
-                            setState(() {
+                            // Gọi API
+                            try {
                               if (existingCustomer == null) {
-                                customers.add(data);
+                                await _authRepository.createCustomer(data);
                               } else {
-                                customers[index!] = data;
+                                await _authRepository.updateCustomer(existingCustomer['id'], data);
                               }
-                            });
-                            Navigator.pop(ctx);
+                              if (mounted) {
+                                Navigator.pop(ctx);
+                                _fetchData(); // Reload list
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lưu thành công!"), backgroundColor: Colors.green));
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
+                            }
                           },
                           style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B66FF)),
                           child: Text(existingCustomer == null ? "Lưu khách hàng" : "Cập nhật",
@@ -221,9 +238,15 @@ class _CustomerScreenState extends State<CustomerScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
           TextButton(
-            onPressed: () {
-              setState(() => customers.removeAt(index));
-              Navigator.pop(ctx);
+            onPressed: () async {
+              try {
+                await _authRepository.deleteCustomer(customers[index]['id']);
+                if (mounted) setState(() => customers.removeAt(index));
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi xóa: $e"), backgroundColor: Colors.red));
+              }
             },
             child: const Text("Xóa", style: TextStyle(color: Colors.red)),
           ),
@@ -275,6 +298,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 
   Widget _buildCustomerList() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (customers.isEmpty) return const Center(child: Text("Chưa có khách hàng nào"));
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: customers.length,
@@ -287,7 +312,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
             backgroundColor: item['gender'] == 'Nữ' ? Colors.pink[50] : Colors.blue[50],
             child: Icon(Icons.person, color: item['gender'] == 'Nữ' ? Colors.pink : Colors.blue),
           ),
-          title: Text(item['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(item['fullName'], style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -13,7 +13,14 @@ class ApiConstants {
 
   // Nhớ kiểm tra kỹ cái đuôi này, backend của bạn có /v1
   static const String loginEndpoint = "/v1/auth/login";
-  static const String registerEndpoint = "/auth/register";
-  static const String forgotPasswordEndpoint = "/auth/forgot-password";
+  static const String registerEndpoint = "/v1/auth/register";
+  static const String forgotPasswordEndpoint = "/v1/auth/forgot-password";
 
+  // Customer
+  static const String customersEndpoint = "/v1/customers";
+  static const String customerGroupsEndpoint = "/v1/customer-groups";
+
+  // Product
+  static const String productsEndpoint = "/v1/products";
+  static const String productsBatchEndpoint = "/v1/products/batch";
 }

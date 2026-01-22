@@ -78,6 +78,10 @@ class _ComboCreateScreenState extends State<ComboCreateScreen> {
       return;
     }
 
+    // NOTE: Hiện tại Backend chưa có API riêng cho việc tạo Combo (Product Bundle).
+    // Logic dưới đây chỉ trả dữ liệu về màn hình trước để hiển thị tạm thời (UI-only).
+    // Khi Backend hỗ trợ (VD: POST /combos hoặc POST /products với type=COMBO),
+    // cần cập nhật AuthRepository và gọi API tại đây.
     // Đóng gói dữ liệu combo trả về
     final comboData = {
       'name': _nameController.text,

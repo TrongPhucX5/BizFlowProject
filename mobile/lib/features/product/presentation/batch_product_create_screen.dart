@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
 
 class BatchProductCreateScreen extends StatefulWidget {
   const BatchProductCreateScreen({super.key});
@@ -10,11 +11,26 @@ class BatchProductCreateScreen extends StatefulWidget {
 class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
   // Màu chủ đạo lấy từ code cũ của Anh
   final Color kPrimaryGreen = const Color(0xff289ca7);
+  final AuthRepository _authRepository = AuthRepository();
+  bool _isLoading = false;
+
+  // --- CẤU HÌNH MẶC ĐỊNH (Chuẩn bị cho API sau này) ---
+  final int _defaultUnitId = 1;      // Mặc định: Cái
+  final int _defaultStoreId = 1;     // Mặc định: Cửa hàng chính
+  final int _defaultCategoryId = 1;  // Mặc định: Danh mục chung
 
   // State quản lý danh sách sản phẩm (Demo model đơn giản)
   // Thực tế Anh nên tạo class Model riêng
   List<Map<String, dynamic>> _items = [
-    {"name": "Sản phẩm 1", "unit": "Cái", "price": "5000", "cost": "0"}
+    {
+      "name": "Sản phẩm 1",
+      "sku": "",
+      "unitName": "Cái",
+      "price": "5000",
+      "costPrice": "0",
+      "priceError": null, // Thêm trường để validate
+      "costError": null,  // Thêm trường để validate
+    }
   ];
 
   bool _hideCostPrice = false; // Trạng thái ẩn/hiện giá vốn
@@ -25,7 +41,15 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
   void _addTenRows() {
     setState(() {
       for (int i = 0; i < 10; i++) {
-        _items.add({"name": "", "unit": "Cái", "price": "0", "cost": "0"});
+        _items.add({
+          "name": "",
+          "sku": "",
+          "unitName": "Cái",
+          "price": "0",
+          "costPrice": "0",
+          "priceError": null,
+          "costError": null,
+        });
       }
     });
   }
@@ -123,6 +147,7 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
                 children: [
+                  _buildHeaderCell("MÃ SKU", flex: 2),
                   _buildHeaderCell("TÊN SẢN PHẨM *", flex: 3),
                   _buildHeaderCell("ĐƠN VỊ", flex: 1),
                   _buildHeaderCell("GIÁ BÁN *", flex: 2),
@@ -170,15 +195,73 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // Logic lưu data ở đây
-                    Navigator.pop(context);
+                  onPressed: _isLoading ? null : () async {
+                    // 1. Lọc các dòng có tên sản phẩm
+                    final validItems = _items.where((e) => e['name'].toString().trim().isNotEmpty).toList();
+
+                    if (validItems.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập ít nhất 1 tên sản phẩm")));
+                      return;
+                    }
+
+                    // --- KIỂM TRA LỖI VALIDATION TRƯỚC KHI SUBMIT ---
+                    final hasError = _items.any((item) =>
+                        item['priceError'] != null ||
+                        item['costError'] != null);
+
+                    if (hasError) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Vui lòng sửa các lỗi được đánh dấu đỏ."),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+
+                    setState(() => _isLoading = true);
+
+                    try {
+                      // 2. Map dữ liệu để gửi API
+                      final timestamp = DateTime.now().millisecondsSinceEpoch;
+                      final payload = validItems.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final item = entry.value;
+                        return {
+                          "name": item['name'],
+                          "unitName": item['unitName'],
+                          "unitId": _defaultUnitId,
+                          "storeId": _defaultStoreId,
+                          "categoryId": _defaultCategoryId,
+                          "price": item['price'],
+                          "costPrice": item['costPrice'],
+                          "sku": (item['sku'] as String).isNotEmpty ? item['sku'] : "AUTO_${timestamp}_$index", // Dùng SKU người nhập, nếu trống thì tự sinh
+                          "description": null,
+                          "reorderLevel": 0,
+                          "status": "ACTIVE",
+                          "trackStock": false,
+                        };
+                      }).toList();
+
+                      // 3. Gọi API Batch
+                      await _authRepository.createProductsBatch(payload);
+
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lưu thành công!"), backgroundColor: Colors.green));
+                      Navigator.pop(context);
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red));
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.lightBlueAccent,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text("Hoàn tất", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: _isLoading 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text("Hoàn tất", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
             ),
@@ -202,36 +285,91 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
   // Widget con: Input Row
   Widget _buildInputRow(int index) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.black12, width: 0.5)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      color: (_items[index]['priceError'] != null || _items[index]['costError'] != null)
+          ? Colors.red.withOpacity(0.05) // Highlight dòng lỗi
+          : Colors.white,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Mã SKU
+          Expanded(
+            flex: 2,
+            child: _buildTextField(
+              initialValue: _items[index]['sku'],
+              hint: "Nhập SKU",
+              onChanged: (val) {
+                _items[index]['sku'] = val;
+              },
+            ),
+          ),
+          _verticalDivider(),
           // Tên sản phẩm
           Expanded(
             flex: 3,
-            child: _buildTextField(_items[index]['name'], "Nhập tên"),
+            child: _buildTextField(
+              initialValue: _items[index]['name'],
+              hint: "Nhập tên",
+              onChanged: (val) {
+                _items[index]['name'] = val;
+              },
+            ),
           ),
           _verticalDivider(),
           // Đơn vị
           Expanded(
             flex: 1,
-            child: Center(child: Text(_items[index]['unit'], style: const TextStyle(fontSize: 13))),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8.0), // Căn giữa với textfield
+                child: Text(_items[index]['unitName'], style: const TextStyle(fontSize: 13)),
+              ),
+            ),
           ),
           _verticalDivider(),
           // Giá bán
           Expanded(
             flex: 2,
-            child: _buildTextField(_items[index]['price'], "0", isNumber: true),
+            child: _buildTextField(
+              initialValue: _items[index]['price'],
+              hint: "0",
+              isNumber: true,
+              errorText: _items[index]['priceError'],
+              onChanged: (val) {
+                setState(() {
+                  _items[index]['price'] = val;
+                  final price = double.tryParse(val);
+                  if (val.isNotEmpty && (price == null || price < 0)) {
+                    _items[index]['priceError'] = 'Giá không hợp lệ';
+                  } else {
+                    _items[index]['priceError'] = null;
+                  }
+                });
+              },
+            ),
           ),
           if (!_hideCostPrice) ...[
             _verticalDivider(),
             // Giá vốn
             Expanded(
               flex: 2,
-              child: _buildTextField(_items[index]['cost'], "0", isNumber: true),
+              child: _buildTextField(
+                initialValue: _items[index]['costPrice'],
+                hint: "0",
+                isNumber: true,
+                errorText: _items[index]['costError'],
+                onChanged: (val) {
+                  setState(() {
+                    _items[index]['costPrice'] = val;
+                    final cost = double.tryParse(val);
+                    if (val.isNotEmpty && (cost == null || cost < 0)) {
+                      _items[index]['costError'] = 'Giá không hợp lệ';
+                    } else {
+                      _items[index]['costError'] = null;
+                    }
+                  });
+                },
+              ),
             ),
           ]
         ],
@@ -241,17 +379,27 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
 
   Widget _verticalDivider() => Container(width: 0.5, height: 40, color: Colors.grey.shade300);
 
-  Widget _buildTextField(String initVal, String hint, {bool isNumber = false}) {
+  Widget _buildTextField({
+    required String initialValue,
+    required String hint,
+    bool isNumber = false,
+    Function(String)? onChanged,
+    String? errorText,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: TextFormField(
-        initialValue: initVal,
+        initialValue: initialValue,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        onChanged: onChanged, // Quan trọng: Cập nhật dữ liệu khi gõ
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-          contentPadding: EdgeInsets.zero,
+          errorText: errorText,
+          errorStyle: const TextStyle(fontSize: 10), // Lỗi nhỏ gọn
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 4),
         ),
         style: const TextStyle(fontSize: 13),
       ),
