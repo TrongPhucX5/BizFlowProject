@@ -22,16 +22,15 @@ public class BizFlowBackendApplication {
 				User admin = new User();
 				admin.setUsername("admin");
 				admin.setPassword(passwordEncoder.encode("123456"));
-
-				// --- SỬA LỖI TẠI ĐÂY: Dùng Enum thay vì String ---
-				admin.setRole(User.UserRole.ADMIN); // Giả sử Enum tên là ADMIN
-				// Nếu trong User.java bạn đặt là OWNER thì sửa thành User.UserRole.OWNER
-
+				admin.setRole(User.UserRole.ADMIN);
 				admin.setFullName("Admin Hệ Thống");
-				admin.setStatus(User.UserStatus.ACTIVE); // Set luôn status cho chắc
+				admin.setStatus(User.UserStatus.ACTIVE);
+
+				// --- SỬA LỖI TẠI ĐÂY: Gán storeId mặc định cho admin ---
+				admin.setStoreId(1L); // Giả sử cửa hàng mặc định có ID là 1
 
 				userRepository.save(admin);
-				System.out.println(">>> 🟢 ĐÃ TẠO USER MẪU: admin / 123456");
+				System.out.println(">>> 🟢 ĐÃ TẠO USER MẪU: admin / 123456 với storeId=1");
 			}
 		};
 	}

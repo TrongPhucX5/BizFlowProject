@@ -1,6 +1,18 @@
 import axiosClient from "@/lib/axios-client";
 
 export const dashboardService = {
+  // --- UPLOAD (/v1/upload) ---
+  uploadImage: async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await axiosClient.post("/v1/upload/image", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  },
+
   // --- PRODUCTS (/v1/products) ---
   getProducts: async () => {
     // Thêm /v1 vào trước

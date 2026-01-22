@@ -52,6 +52,7 @@ import {
   Download,
   ArrowDownToLine,
   ClipboardCheck,
+  UploadCloud,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product, ApiResponse, PageResponse } from "@/types/api";
@@ -76,6 +77,8 @@ export default function ProductsPage() {
 
   const [currentProduct, setCurrentProduct] =
     useState<Partial<ExtendedProduct> | null>(null);
+  // const [selectedFile, setSelectedFile] = useState<File | null>(null); // Không cần nữa
+
   const [importData, setImportData] = useState({
     productId: 0,
     quantity: 0,
@@ -84,7 +87,6 @@ export default function ProductsPage() {
   });
 
   // --- DATA FETCHING ---
-  // QUAN TRỌNG: Lấy thêm hàm refetch để ép tải lại trang khi cần
   const { data, isLoading, isError, refetch } = useQuery<
     ApiResponse<PageResponse<ExtendedProduct>>
   >({
@@ -93,15 +95,36 @@ export default function ProductsPage() {
       const res = await dashboardService.getProducts();
       return res as unknown as ApiResponse<PageResponse<ExtendedProduct>>;
     },
-    retry: 1, // Chỉ thử lại 1 lần nếu lỗi để tránh đợi lâu
+    retry: 1,
   });
 
   // --- MUTATIONS ---
+  // Xóa uploadImageMutation vì không cần API upload riêng biệt nữa
+  // const uploadImageMutation = useMutation({
+  //   mutationFn: (file: File) => dashboardService.uploadImage(file),
+  //   onSuccess: (data) => {
+  //     console.log("Upload API Response:", data);
+  //     const imageUrl = data.result?.url;
+
+  //     if (imageUrl) {
+  //       setCurrentProduct((prev) => ({ ...prev, imageUrl }));
+  //       alert("Tải ảnh lên thành công!");
+  //     } else {
+  //       console.error("imageUrl is missing in the response", data);
+  //       alert("Lỗi: Không nhận được URL ảnh từ server.");
+  //     }
+  //   },
+  //   onError: (error) => {
+  //     console.error("Upload API Error:", error);
+  //     alert("Có lỗi xảy ra khi tải ảnh lên.");
+  //   },
+  // });
+
   const createMutation = useMutation({
     mutationFn: dashboardService.createProduct,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
-      await refetch(); // Ép tải lại dữ liệu ngay lập tức
+      await refetch();
       setIsDialogOpen(false);
       alert("Thêm mới thành công!");
     },
@@ -116,7 +139,7 @@ export default function ProductsPage() {
       dashboardService.updateProduct(id, data),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
-      await refetch(); // Ép tải lại dữ liệu ngay lập tức
+      await refetch();
       setIsDialogOpen(false);
       alert("Cập nhật thành công!");
     },
@@ -130,7 +153,7 @@ export default function ProductsPage() {
     mutationFn: (id: number) => dashboardService.deleteProduct(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
-      await refetch(); // Ép tải lại dữ liệu ngay lập tức
+      await refetch();
       alert("Xóa sản phẩm thành công!");
     },
     onError: () => {
@@ -164,6 +187,19 @@ export default function ProductsPage() {
   });
 
   // --- ACTIONS ---
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      // Đọc file và chuyển đổi sang Base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // reader.result sẽ là chuỗi Base64 (data:image/jpeg;base64,...)
+        setCurrentProduct((prev) => ({ ...prev, imageUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleDelete = (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa sản phẩm này không?")) {
       deleteMutation.mutate(id);
@@ -171,12 +207,14 @@ export default function ProductsPage() {
   };
 
   const handleAddNew = () => {
-    setCurrentProduct({ status: "ACTIVE", unitId: 1, stock: 0 });
+    setCurrentProduct({ status: "ACTIVE", unitId: 1, stock: 0, imageUrl: "" }); // Reset imageUrl
+    // setSelectedFile(null); // Không cần nữa
     setIsDialogOpen(true);
   };
 
   const handleEdit = (product: ExtendedProduct) => {
     setCurrentProduct(product);
+    // setSelectedFile(null); // Không cần nữa
     setIsDialogOpen(true);
   };
 
@@ -359,7 +397,7 @@ export default function ProductsPage() {
                 <TableRow>
                   <TableCell colSpan={7} className="h-32 text-center">
                     <div className="flex flex-col items-center justify-center text-slate-500">
-                      <Loader2 className="h-8 w-8 mb-2 animate-spin text-indigo-600" />
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin text-indigo-600" />
                       <p>Đang tải dữ liệu...</p>
                     </div>
                   </TableCell>
@@ -652,6 +690,29 @@ export default function ProductsPage() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="image">Hình ảnh sản phẩm</Label>
+              <Input
+                id="image"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+              />
+              {/* Không cần uploadImageMutation.isPending nữa */}
+              {/* {uploadImageMutation.isPending && (
+                <div className="flex items-center text-sm text-slate-500 mt-2">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang tải ảnh lên...
+                </div>
+              )} */}
+              {currentProduct?.imageUrl && (
+                <div className="mt-2">
+                  <img src={currentProduct.imageUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label>Trạng thái</Label>
               <Select
                 value={currentProduct?.status}
@@ -681,7 +742,7 @@ export default function ProductsPage() {
               <Button
                 type="submit"
                 className="bg-indigo-600 hover:bg-indigo-700"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                disabled={createMutation.isPending || updateMutation.isPending} // Xóa uploadImageMutation.isPending
               >
                 {createMutation.isPending || updateMutation.isPending ? (
                   <>

@@ -36,9 +36,9 @@ public class CreateProductRequest {
 
     private Integer reorderLevel;
 
-    @Size(max = 500)
+    @Size(max = 1024)
     private String description;
 
-    @Size(max = 500)
+    // Xóa bỏ validation @Size để cho phép lưu chuỗi Base64
     private String imageUrl;
 }
