@@ -11,6 +11,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // Import mới
+import org.springframework.security.crypto.password.PasswordEncoder;   // Import mới
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -40,14 +42,22 @@ public class SecurityConfig {
                 // 4. Phân quyền truy cập
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
-                                "/v1/auth/**",      // <--- Endpoint quan trọng nhất
+                                // Mở cửa cho Auth (Đăng nhập)
+                                "/api/v1/auth/**",  // Trường hợp đầy đủ
+                                "/v1/auth/**",      // Trường hợp có context-path
+
+                                // Mở cửa cho AI
+                                "/api/v1/ai/**",
+                                "/v1/ai/**",
+
+                                // Các API hệ thống khác
                                 "/v1/health",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/api/ai/**"
+                                "/v3/api-docs/**"
                         ).permitAll()
+
+                        // Tất cả các request còn lại phải đăng nhập
                         .anyRequest().authenticated()
                 )
 
@@ -71,7 +81,6 @@ public class SecurityConfig {
         return source;
     }
 
-    // --- Giữ lại AuthenticationManager (thường AppConfig không có cái này) ---
     @Bean
     public org.springframework.security.authentication.AuthenticationManager authenticationManager(
             org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration config)
@@ -79,5 +88,4 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // --- ĐÃ XÓA PASSWORD ENCODER (Vì AppConfig đã có) ---
 }

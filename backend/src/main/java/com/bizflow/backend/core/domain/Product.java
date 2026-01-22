@@ -48,6 +48,11 @@ public class Product {
     @Column(name = "cost_price")
     private BigDecimal costPrice;
 
+    // --- ĐÂY LÀ PHẦN QUAN TRỌNG VỪA THÊM VÀO ---
+    @Column(name = "stock_quantity")
+    private Integer stockQuantity;
+    // -------------------------------------------
+
     @Column(name = "reorder_level")
     private Integer reorderLevel;
 
