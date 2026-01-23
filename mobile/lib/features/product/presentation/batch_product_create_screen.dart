@@ -16,7 +16,7 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
 
   // --- CẤU HÌNH MẶC ĐỊNH (Chuẩn bị cho API sau này) ---
   final int _defaultUnitId = 1;      // Mặc định: Cái
-  final int _defaultStoreId = 1;     // Mặc định: Cửa hàng chính
+  int _defaultStoreId = 0;           // Sẽ được load từ storage
   final int _defaultCategoryId = 1;  // Mặc định: Danh mục chung
 
   // State quản lý danh sách sản phẩm (Demo model đơn giản)
@@ -36,6 +36,16 @@ class _BatchProductCreateScreenState extends State<BatchProductCreateScreen> {
   bool _hideCostPrice = false; // Trạng thái ẩn/hiện giá vốn
 
   // --- HÀM XỬ LÝ LOGIC ---
+  @override
+  void initState() {
+    super.initState();
+    _loadStoreInfo();
+  }
+
+  Future<void> _loadStoreInfo() async {
+    final id = await _authRepository.getCurrentStoreId();
+    if (mounted) setState(() => _defaultStoreId = id);
+  }
 
   // Thêm 10 dòng rỗng
   void _addTenRows() {

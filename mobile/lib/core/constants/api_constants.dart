@@ -23,4 +23,21 @@ class ApiConstants {
   // Product
   static const String productsEndpoint = "/v1/products";
   static const String productsBatchEndpoint = "/v1/products/batch";
+
+  // Inventory
+  static const String inventoryAdjustEndpoint = "/v1/inventory/adjust";
+  static const String inventoryStockInEndpoint = "/v1/inventory/stock-in";
+  static const String inventoryLowStockEndpoint = "/v1/inventory/low-stock";
+
+  // Order
+  static const String ordersEndpoint = "/v1/orders";
+
+  // AI
+  static const String aiChatEndpoint = "/v1/ai/chat";
+
+  // Debt
+  static const String debtsEndpoint = "/v1/debts";
+
+  // Payment
+  static const String paymentsEndpoint = "/v1/payments";
 }

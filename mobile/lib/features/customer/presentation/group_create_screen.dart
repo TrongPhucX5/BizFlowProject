@@ -55,12 +55,8 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                   await _authRepository.createCustomerGroup(groupName, customerIds);
 
                   if (!mounted) return;
-                  // Trả dữ liệu về màn hình trước để update UI tạm thời (nếu cần)
-                  Navigator.pop(context, {
-                    "name": groupName,
-                    "count": selectedCustomers.length,
-                    "members": selectedCustomers,
-                  });
+                  // Trả về true để màn hình cha biết cần reload dữ liệu từ server
+                  Navigator.pop(context, true);
                 } catch (e) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red));
                 } finally {

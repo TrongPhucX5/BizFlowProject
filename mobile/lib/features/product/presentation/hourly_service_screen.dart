@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'attribute_modal.dart';
 import 'add_hourly_price_screen.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
 // Lưu ý: Đảm bảo class PriceGroup đã được define trong add_hourly_price_screen.dart hoặc imports models
 
 // ĐỔI TÊN CLASS CHÍNH THỨC TẠI ĐÂY
@@ -14,6 +16,12 @@ class HourlyProductCreateScreen extends StatefulWidget {
 
 class _HourlyProductCreateScreenState extends State<HourlyProductCreateScreen> {
   final Color kPrimaryGreen = const Color(0xff289ca7);
+  final AuthRepository _authRepository = AuthRepository();
+  
+  // Controllers
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _costController = TextEditingController();
   final TextEditingController _unitController = TextEditingController();
 
   bool _showUnitSuggestions = true;
@@ -24,9 +32,24 @@ class _HourlyProductCreateScreenState extends State<HourlyProductCreateScreen> {
   // Dữ liệu bảng giá theo giờ
   List<PriceGroup> _priceGroups = [];
   List<Map<String, dynamic>> _attributes = [];
+  bool _isLoading = false;
+  int _storeId = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStoreId();
+  }
+
+  Future<void> _loadStoreId() async {
+    _storeId = await _authRepository.getCurrentStoreId();
+  }
 
   @override
   void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    _costController.dispose();
     _unitController.dispose();
     super.dispose();
   }
@@ -61,6 +84,68 @@ class _HourlyProductCreateScreenState extends State<HourlyProductCreateScreen> {
     }
   }
 
+  // --- LOGIC LƯU SẢN PHẨM ---
+  Future<void> _saveProduct() async {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Vui lòng nhập tên dịch vụ/sản phẩm")),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // 1. Map cấu hình giá theo giờ sang JSON để lưu vào description hoặc attributes
+      // Vì backend hiện tại dùng chung API createProduct, ta sẽ tận dụng trường description
+      // hoặc attributes để lưu cấu hình phức tạp này.
+      final hourlyConfig = _priceGroups.map((g) => {
+        'days': g.selectedDays,
+        'slots': g.timeSlots.map((s) => {
+          'start': s.startTime,
+          'end': s.endTime,
+          'price': s.price
+        }).toList()
+      }).toList();
+
+      final productData = {
+        'name': _nameController.text.trim(),
+        'price': double.tryParse(_priceController.text) ?? 0,
+        'costPrice': double.tryParse(_costController.text) ?? 0,
+        'unitName': _unitController.text.isNotEmpty ? _unitController.text : 'Giờ',
+        'unitId': 1, // Mặc định hoặc cần logic chọn unit
+        'storeId': _storeId,
+        'sku': 'HOURLY_${DateTime.now().millisecondsSinceEpoch}', // Tự sinh SKU
+        'trackStock': false, // Dịch vụ thường không tồn kho
+        'status': 'ACTIVE',
+        'description': jsonEncode({'type': 'HOURLY', 'config': hourlyConfig}), // Lưu config vào description
+        'attributes': _attributes,
+      };
+
+      // 2. Gọi API
+      await _authRepository.createProduct(productData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Tạo dịch vụ thành công!"), backgroundColor: Colors.green),
+        );
+        // 3. Trả về true để màn hình cha reload
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: ${e.toString().replaceAll("Exception: ", "")}"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,14 +177,29 @@ class _HourlyProductCreateScreenState extends State<HourlyProductCreateScreen> {
 
                   const Text("Tên dịch vụ/sản phẩm *", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
                   TextFormField(
+                    controller: _nameController,
                     decoration: const InputDecoration(hintText: "Nhập tên", enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.redAccent))),
                   ),
                   const SizedBox(height: 20),
 
                   Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Giá bán mặc định", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)), TextFormField(keyboardType: TextInputType.number)])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text("Giá bán mặc định", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(hintText: "0", suffixText: "đ"),
+                      )
+                    ])),
                     const SizedBox(width: 16),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text("Giá vốn", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)), TextFormField(keyboardType: TextInputType.number)])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      const Text("Giá vốn", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 13)),
+                      TextFormField(
+                        controller: _costController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(hintText: "0", suffixText: "đ"),
+                      )
+                    ])),
                   ]),
                   const SizedBox(height: 20),
 
@@ -168,9 +268,11 @@ class _HourlyProductCreateScreenState extends State<HourlyProductCreateScreen> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _isLoading ? null : _saveProduct,
                 style: ElevatedButton.styleFrom(backgroundColor: kPrimaryGreen, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
-                child: const Text("Lưu", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: _isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text("Lưu", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ),

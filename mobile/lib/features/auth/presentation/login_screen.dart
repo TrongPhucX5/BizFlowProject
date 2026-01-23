@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/common/widgets/CustomTextField.dart';
 import 'package:mobile/common/widgets/PrimaryButton.dart';
@@ -20,9 +19,6 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthRepository _authRepository = AuthRepository();
-  final _storage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-  );
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -55,8 +51,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _usernameController.text = 'admin';
-    _passwordController.text = '123456';
   }
 
   Future<void> _login() async {
@@ -75,18 +69,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final result = await _authRepository.login(
+      await _authRepository.login(
         _usernameController.text.trim(),
         _passwordController.text,
       );
-
-      // Lưu token vào Secure Storage
-      if (result['token'] != null) {
-        await _storage.write(key: 'accessToken', value: result['token']);
-      }
-      if (result['refreshToken'] != null) {
-        await _storage.write(key: 'refreshToken', value: result['refreshToken']);
-      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -96,9 +82,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         );
         
-        Navigator.pushReplacement(
+        // Sử dụng pushAndRemoveUntil để xóa hết các màn hình trước đó (như Logout)
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainScreen()),
+          (route) => false, // Xóa hết stack
         );
       }
     } catch (e) {

@@ -40,7 +40,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
 
   // --- CẤU HÌNH MẶC ĐỊNH (Chuẩn bị cho API sau này) ---
   int _selectedUnitId = DEFAULT_UNIT_ID;
-  int _selectedStoreId = 1; 
+  int _selectedStoreId = 0; // Sẽ được load từ storage
   int _selectedCategoryId = DEFAULT_CATEGORY_ID;
 
   // Mock danh sách đơn vị để đồng bộ ID và Name

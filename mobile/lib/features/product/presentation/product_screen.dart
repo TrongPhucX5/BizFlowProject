@@ -5,6 +5,8 @@ import 'package:mobile/features/product/presentation/batch_product_create_screen
 import 'package:mobile/features/product/presentation/combo_create_screen.dart';
 import 'category_select_products_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
+import 'package:mobile/data/repositories/inventory_repository.dart';
+import 'package:mobile/data/repositories/stock_in_screen.dart'; // Import màn hình nhập kho
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -16,6 +18,7 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final AuthRepository _authRepository = AuthRepository();
+  final InventoryRepository _inventoryRepository = InventoryRepository();
   bool _isLoading = false;
 
   // Trạng thái giao diện
@@ -26,6 +29,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
 
   // DỮ LIỆU CHÍNH (State)
   List<Map<String, dynamic>> _products = [];
+  List<Map<String, dynamic>> _lowStockProducts = []; // Dữ liệu từ API Low Stock
   List<Map<String, dynamic>> _combos = [];
   List<Map<String, dynamic>> _categories = [];
 
@@ -49,8 +53,14 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     return list;
   }
 
+  // Thay thế logic cũ: Filter trên danh sách _lowStockProducts lấy từ API
   List<Map<String, dynamic>> get _inventoryProducts =>
-      _filteredProducts.where((p) => p['trackStock'] == true).toList();
+      _lowStockProducts.where((p) {
+        final name = (p['name'] ?? '').toString().toLowerCase();
+        final sku = (p['sku'] ?? '').toString().toLowerCase();
+        final query = _searchQuery.toLowerCase();
+        return name.contains(query) || sku.contains(query);
+      }).toList();
 
   @override
   void initState() {
@@ -74,11 +84,16 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     setState(() => _isLoading = true);
     try {
       final data = await _authRepository.getProducts();
-      setState(() => _products = data);
+      final lowStockData = await _inventoryRepository.getLowStockProducts(); // Gọi API mới
+      
+      setState(() {
+        _products = data;
+        _lowStockProducts = lowStockData;
+      });
     } catch (e) {
       print("Lỗi tải sản phẩm: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -91,8 +106,10 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
 
   // --- XỬ LÝ KẾT QUẢ TRẢ VỀ ---
   void _handleProductResult(dynamic result, {int? index}) {
-    // Reload lại toàn bộ list từ API để đảm bảo đồng bộ
-    _fetchProducts();
+    // Chỉ reload nếu màn hình con trả về true (tức là có thay đổi dữ liệu)
+    if (result == true) {
+      _fetchProducts();
+    }
   }
 
   void _handleComboResult(dynamic result) {
@@ -132,17 +149,21 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
           ListTile(
             leading: const Icon(Icons.access_time, color: Color(0xff289ca7)),
             title: const Text("Tạo dịch vụ theo giờ"),
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const HourlyProductCreateScreen()));
+              // Dùng await để đợi kết quả từ màn hình tạo dịch vụ
+              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const HourlyProductCreateScreen()));
+              _handleProductResult(result);
             },
           ),
           ListTile(
             leading: const Icon(Icons.copy, color: Color(0xff289ca7)),
             title: const Text("Tạo sản phẩm hàng loạt"),
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const BatchProductCreateScreen())).then((_) => _fetchProducts());
+              // Batch screen thường không trả về true/false cụ thể từng item, nên ta reload luôn cho chắc
+              await Navigator.push(context, MaterialPageRoute(builder: (context) => const BatchProductCreateScreen()));
+              _fetchProducts();
             },
           ),
           const SizedBox(height: 24),
@@ -151,10 +172,11 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     );
   }
 
-  void _createInventoryProduct() async {
-    // Mở màn hình tạo sản phẩm (User tự tích chọn trackStock)
-    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductCreateScreen()));
-    _handleProductResult(result);
+  void _navigateToStockIn() async {
+    // Mở màn hình Nhập kho (Stock In)
+    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const StockInScreen()));
+    // Nếu nhập kho thành công (result == true), reload lại danh sách
+    if (result == true) _fetchProducts();
   }
 
   void _createCombo() async {
@@ -202,6 +224,70 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     );
   }
 
+  // --- DIALOG ĐIỀU CHỈNH KHO (ADJUST) ---
+  void _showAdjustmentDialog(Map<String, dynamic> product) {
+    final quantityController = TextEditingController();
+    final reasonController = TextEditingController();
+    bool isIncrease = true; // Mặc định là Tăng (+)
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: Text("Điều chỉnh: ${product['name']}", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: ChoiceChip(label: const Center(child: Text("Kiểm kê (+)")), selected: isIncrease, onSelected: (v) => setStateDialog(() => isIncrease = true), selectedColor: Colors.green.shade100)),
+                    const SizedBox(width: 8),
+                    Expanded(child: ChoiceChip(label: const Center(child: Text("Xuất hủy (-)")), selected: !isIncrease, onSelected: (v) => setStateDialog(() => isIncrease = false), selectedColor: Colors.red.shade100)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(controller: quantityController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: "Số lượng lệch", border: OutlineInputBorder(), isDense: true)),
+                const SizedBox(height: 12),
+                TextField(controller: reasonController, decoration: const InputDecoration(labelText: "Lý do", border: OutlineInputBorder(), isDense: true)),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
+              ElevatedButton(
+                onPressed: () async {
+                  final qty = int.tryParse(quantityController.text);
+                  if (qty == null || qty <= 0) return;
+
+                  final adjustQty = isIncrease ? qty : -qty;
+                  final reason = reasonController.text.isEmpty ? (isIncrease ? "Kiểm kê thừa" : "Hư hỏng/Mất mát") : reasonController.text;
+
+                  try {
+                    // Gọi API Adjust
+                    await _inventoryRepository.adjustInventory(
+                      productId: product['id'],
+                      quantity: adjustQty,
+                      reason: reason,
+                    );
+                    
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cập nhật kho thành công!"), backgroundColor: Colors.green));
+                      _fetchProducts(); // Reload danh sách ngay lập tức
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
+                  }
+                },
+                child: const Text("Lưu"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     const Color kPrimaryGreen = Color(0xff289ca7);
@@ -212,7 +298,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     VoidCallback? fabAction;
     switch (_tabController.index) {
       case 0: if (_products.isNotEmpty) { showFab = true; fabAction = () => _showProductCreateOptions(context); } break;
-      case 1: if (_inventoryProducts.isNotEmpty) { showFab = true; fabAction = _createInventoryProduct; } break;
+      case 1: showFab = true; fabAction = _navigateToStockIn; break; // Luôn hiện nút Nhập kho ở tab Tồn kho
       case 2: if (_combos.isNotEmpty) { showFab = true; fabAction = _createCombo; } break;
       case 3: if (_categories.isNotEmpty) { showFab = true; fabAction = _createCategory; } break;
     }
@@ -292,7 +378,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
 
           // TAB 2: TỒN KHO
           _inventoryProducts.isEmpty
-              ? _buildEmptyState(Icons.warehouse_outlined, "Chưa có tồn kho", "Tạo sản phẩm có theo dõi tồn kho", _createInventoryProduct, kPrimaryGreen)
+              ? _buildEmptyState(Icons.warehouse_outlined, "Kho trống", "Nhập hàng ngay", _navigateToStockIn, kPrimaryGreen)
               : _buildInventoryList(_inventoryProducts, kPrimaryGreen),
 
           // TAB 3: BÁN KÈM
@@ -415,7 +501,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        bool isActive = item['status'] == 'ACTIVE';
+        int stock = item['stock'] ?? 0;
         return Card(
           elevation: 0,
           color: Colors.white,
@@ -444,16 +530,24 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text("100", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), // Demo số lượng
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                          color: isActive ? Colors.green[50] : Colors.red[50],
-                          borderRadius: BorderRadius.circular(4)
-                      ),
-                      child: Text(isActive ? "Đang bán" : "Ngừng bán",
-                          style: TextStyle(color: isActive ? Colors.green : Colors.red, fontSize: 10, fontWeight: FontWeight.bold)
-                      ),
+                    Text("$stock", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: stock <= (item['reorderLevel'] ?? 10) ? Colors.red : Colors.black)),
+                    const Text("Tồn kho", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                  onSelected: (value) {
+                    if (value == 'adjust') _showAdjustmentDialog(item);
+                    if (value == 'stock_in') _navigateToStockIn(); // Có thể nâng cấp để pass item vào StockInScreen
+                  },
+                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                    const PopupMenuItem<String>(
+                      value: 'adjust',
+                      child: Text('Kiểm kê / Điều chỉnh'),
+                    ),
+                    const PopupMenuItem<String>(
+                      value: 'stock_in',
+                      child: Text('Nhập hàng thêm'),
                     )
                   ],
                 )

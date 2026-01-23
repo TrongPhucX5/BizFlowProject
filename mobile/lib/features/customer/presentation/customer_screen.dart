@@ -28,12 +28,20 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
-      final data = await _authRepository.getCustomers();
-      setState(() => customers = data);
+      // Gọi song song cả 2 API để tối ưu thời gian
+      final results = await Future.wait([
+        _authRepository.getCustomers(),
+        _authRepository.getCustomerGroups(),
+      ]);
+      
+      setState(() {
+        customers = results[0];
+        groups = results[1];
+      });
     } catch (e) {
-      print("Lỗi tải khách hàng: $e");
+      print("Lỗi tải dữ liệu: $e");
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -185,6 +193,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
                               return;
                             }
 
+                            // Lấy StoreID hiện tại
+                            final storeId = await _authRepository.getCurrentStoreId();
+
                             final data = {
                               "id": idController.text,
                               "fullName": nameController.text,
@@ -193,6 +204,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                               "dob": dobController.text,
                               "email": emailController.text,
                               "address": addressController.text,
+                              "storeId": storeId, // FIX: Gửi kèm StoreID
                             };
 
                             // Gọi API
@@ -335,14 +347,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
   // ...
   void _navigateToCreateGroup() async {
     final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => GroupCreateScreen(existingCustomers: customers)));
-    if (result != null) setState(() => groups.add(result));
+    // Nếu tạo thành công (result == true), reload lại toàn bộ dữ liệu từ server
+    if (result == true) {
+      _fetchData();
+    }
   }
 
   Widget _buildGroupList() {
     if (groups.isEmpty) return const Center(child: Text("Chưa có nhóm nào"));
     return ListView.builder(
       itemCount: groups.length,
-      itemBuilder: (ctx, index) => ListTile(title: Text(groups[index]['name']), subtitle: Text("${groups[index]['count']} thành viên")),
+      // Hiển thị số lượng thành viên an toàn (backend có thể trả về count hoặc customerCount)
+      itemBuilder: (ctx, index) => ListTile(title: Text(groups[index]['name']), subtitle: Text("${groups[index]['customerCount'] ?? groups[index]['count'] ?? 0} thành viên")),
     );
   }
 }
