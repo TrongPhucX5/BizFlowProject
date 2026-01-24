@@ -15,12 +15,16 @@ import java.util.List;
 @Builder
 public class OrderDTO {
     private Long id;
-    private String orderNumber;
+    private String orderCode; // Renamed from orderNumber to match frontend
     private Long customerId;
+    private String customerName; // Added
+    private String customerPhone; // Added
     private Long employeeId;
     private BigDecimal subtotal;
     private BigDecimal discountAmount;
     private BigDecimal totalAmount;
+    private BigDecimal paidAmount; // Added
+    private BigDecimal remainingAmount; // Added
     private String paymentType;
     private String status;
     private String notes;

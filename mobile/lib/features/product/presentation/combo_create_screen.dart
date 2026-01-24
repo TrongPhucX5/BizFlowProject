@@ -78,6 +78,10 @@ class _ComboCreateScreenState extends State<ComboCreateScreen> {
       return;
     }
 
+    // NOTE: Hiện tại Backend chưa có API riêng cho việc tạo Combo (Product Bundle).
+    // Logic dưới đây chỉ trả dữ liệu về màn hình trước để hiển thị tạm thời (UI-only).
+    // Khi Backend hỗ trợ (VD: POST /combos hoặc POST /products với type=COMBO),
+    // cần cập nhật AuthRepository và gọi API tại đây.
     // Đóng gói dữ liệu combo trả về
     final comboData = {
       'name': _nameController.text,
@@ -103,6 +107,19 @@ class _ComboCreateScreenState extends State<ComboCreateScreen> {
       ),
       body: Column(
         children: [
+          // --- BANNER CẢNH BÁO DEMO ---
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            color: Colors.orange.shade50,
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.orange),
+                const SizedBox(width: 12),
+                Expanded(child: Text("TÍNH NĂNG DEMO: Dữ liệu chỉ lưu tạm trên máy, sẽ mất khi thoát ứng dụng.", style: TextStyle(color: Colors.orange.shade800, fontSize: 13))),
+              ],
+            ),
+          ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
@@ -159,7 +176,7 @@ class _ComboCreateScreenState extends State<ComboCreateScreen> {
               child: ElevatedButton(
                 onPressed: _saveCombo,
                 style: ElevatedButton.styleFrom(backgroundColor: kPrimaryGreen),
-                child: const Text("Lưu Combo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                child: const Text("Lưu Combo (Demo)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           )

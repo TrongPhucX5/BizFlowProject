@@ -13,8 +13,10 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final AuthRepository _authRepository = AuthRepository();
+  final TextEditingController _fullNameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController = TextEditingController();
 
@@ -25,13 +27,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     FocusScope.of(context).unfocus();
 
-    if (_usernameController.text.isEmpty ||
+    if (_fullNameController.text.isEmpty ||
         _emailController.text.isEmpty ||
+        _phoneController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Vui lòng nhập đủ thông tin"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Validate độ dài mật khẩu (Backend thường yêu cầu min 6)
+    if (_passwordController.text.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Mật khẩu phải có ít nhất 6 ký tự"),
           backgroundColor: Colors.orange,
         ),
       );
@@ -52,9 +66,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       await _authRepository.register(
-        _usernameController.text,
-        _emailController.text,
-        _passwordController.text,
+        fullName: _fullNameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text,
+        username: _usernameController.text.trim(),
       );
 
       if (mounted) {
@@ -95,8 +111,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: [
               CustomTextField(
-                label: "Tên đăng nhập",
-                hintText: "Tên đăng nhập",
+                label: "Họ và tên",
+                hintText: "Nguyễn Văn A",
+                prefixIcon: Icons.badge_outlined,
+                controller: _fullNameController,
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                label: "Tên đăng nhập (Tùy chọn)",
+                hintText: "user123 (Để trống sẽ dùng SĐT)",
                 prefixIcon: Icons.person_outline,
                 controller: _usernameController,
               ),
@@ -106,11 +129,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 hintText: "example@email.com",
                 prefixIcon: Icons.email_outlined,
                 controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                label: "Số điện thoại",
+                hintText: "0909xxxxxx",
+                prefixIcon: Icons.phone_android,
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
               ),
               const SizedBox(height: 16),
               CustomTextField(
                 label: "Mật khẩu",
-                hintText: "••••••",
+                hintText: "•••••• (Tối thiểu 6 ký tự)",
                 prefixIcon: Icons.lock_outline,
                 controller: _passwordController,
                 isPassword: true,

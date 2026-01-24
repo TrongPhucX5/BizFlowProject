@@ -30,11 +30,11 @@ import java.util.*;
  * PATTERN 2: Service Layer Structure (Rủi ro #2 - FIXED)
  * - Main public method delegates to private methods
  * - Each private method has single responsibility:
- *   * validateXxx() - Data validation
- *   * buildXxx() - Entity construction
- *   * persistXxx() - Database saving
- *   * calculateXxx() - Business logic calculations
- *   * notifyXxx() - Side effects (notifications, events)
+ * * validateXxx() - Data validation
+ * * buildXxx() - Entity construction
+ * * persistXxx() - Database saving
+ * * calculateXxx() - Business logic calculations
+ * * notifyXxx() - Side effects (notifications, events)
  * 
  * PATTERN 3: Transaction Management
  * - @Transactional ensures atomicity
@@ -88,36 +88,36 @@ public class OrderService {
         // 1. Get storeId from JWT token (CANNOT be overridden by client)
         Long storeId = UserContext.getCurrentStoreId();
         String createdBy = UserContext.getCurrentUsername();
-        
+
         log.info("Creating order for storeId={}, user={}", storeId, createdBy);
 
         // 2. Validate input
         Customer customer = validateCustomerExists(request.getCustomerId(), storeId);
         List<CreateOrderRequest.OrderItemRequest> itemRequests = validateOrderItems(request.getItems());
-        
+
         // 3. Check inventory for all items
         List<OrderItemData> itemDataList = checkAndBuildOrderItems(itemRequests, storeId);
-        
+
         // 4. Calculate totals
         BigDecimal subtotal = calculateSubtotal(itemDataList);
         BigDecimal discountAmount = request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO;
         BigDecimal totalAmount = calculateTotal(subtotal, discountAmount);
-        
+
         // 5. Create Order entity
         Order order = buildOrder(storeId, customer.getId(), totalAmount, request, createdBy);
         Order savedOrder = orderRepository.save(order);
-        
+
         // 6. Create OrderItem entities
         List<OrderItem> orderItems = persistOrderItems(savedOrder.getId(), itemDataList);
-        
+
         // 7. Reduce inventory and record movements
         reduceInventory(storeId, itemDataList, savedOrder.getId());
-        
+
         // 8. Create Debt record (if not CASH payment)
         if (!Order.PaymentType.CASH.toString().equals(request.getPaymentType())) {
             createDebtRecord(storeId, savedOrder, customer);
         }
-        
+
         // 9. Send Notification (Async)
         try {
             String topic = "store_" + storeId + "_orders";
@@ -128,16 +128,17 @@ public class OrderService {
             log.warn("Failed to send notification for order {}", savedOrder.getOrderNumber(), e);
             // Don't rollback transaction if notification fails
         }
-        
+
         // 10. Audit log
-        log.info("Order created successfully: orderId={}, orderNumber={}, total={}", 
+        log.info("Order created successfully: orderId={}, orderNumber={}, total={}",
                 savedOrder.getId(), savedOrder.getOrderNumber(), totalAmount);
 
         // 11. Convert to DTO and return
         return mapToDTO(savedOrder, orderItems);
     }
 
-    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId, Pageable pageable) {
+    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId,
+            Pageable pageable) {
         Long storeId = UserContext.getCurrentStoreId();
         // TODO: Implement filtering logic with Specification or QueryDSL
         // For now, just return all orders for the store
@@ -152,7 +153,7 @@ public class OrderService {
         Long storeId = UserContext.getCurrentStoreId();
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + id));
-        
+
         if (!order.getStoreId().equals(storeId)) {
             throw new BusinessException(4003, "Order does not belong to your store");
         }
@@ -165,18 +166,19 @@ public class OrderService {
 
     /**
      * Validation step: Check customer exists in user's store
-     * Throws ResourceNotFoundException if customer not found or belongs to different store
+     * Throws ResourceNotFoundException if customer not found or belongs to
+     * different store
      */
     private Customer validateCustomerExists(Long customerId, Long storeId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + customerId));
-        
+
         // CRITICAL: Verify customer belongs to current store
         // Prevents accessing other store's customer data
         if (!customer.getStoreId().equals(storeId)) {
             throw new BusinessException(4003, "Customer does not belong to your store");
         }
-        
+
         return customer;
     }
 
@@ -197,30 +199,31 @@ public class OrderService {
      */
     private List<OrderItemData> checkAndBuildOrderItems(
             List<CreateOrderRequest.OrderItemRequest> itemRequests, Long storeId) {
-        
+
         List<OrderItemData> itemDataList = new ArrayList<>();
 
         for (CreateOrderRequest.OrderItemRequest itemRequest : itemRequests) {
             // 1. Find product
             Product product = productRepository.findById(itemRequest.getProductId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product not found: " + itemRequest.getProductId()));
-            
+                    .orElseThrow(
+                            () -> new ResourceNotFoundException("Product not found: " + itemRequest.getProductId()));
+
             // 2. Verify product belongs to user's store
             if (!product.getStoreId().equals(storeId)) {
                 throw new BusinessException(4003, "Product does not belong to your store");
             }
-            
+
             // 3. Check inventory
             Inventory inventory = inventoryRepository.findByStoreIdAndProductId(storeId, product.getId())
                     .orElseThrow(() -> new BusinessException(4005, "Product has no inventory: " + product.getSku()));
-            
+
             // 4. Check sufficient stock
             if (inventory.getAvailableQuantity() < itemRequest.getQuantity()) {
-                throw new BusinessException(4006, 
+                throw new BusinessException(4006,
                         String.format("Insufficient stock for %s. Available: %d, Required: %d",
                                 product.getName(), inventory.getAvailableQuantity(), itemRequest.getQuantity()));
             }
-            
+
             // 5. Build OrderItemData (holds product + quantity + price)
             OrderItemData itemData = OrderItemData.builder()
                     .product(product)
@@ -228,7 +231,7 @@ public class OrderService {
                     .unitPrice(product.getPrice())
                     .totalAmount(product.getPrice().multiply(new BigDecimal(itemRequest.getQuantity())))
                     .build();
-            
+
             itemDataList.add(itemData);
         }
 
@@ -259,21 +262,20 @@ public class OrderService {
      * Construction step: Build Order entity from request and validated data
      */
     private Order buildOrder(Long storeId, Long customerId, BigDecimal totalAmount,
-                            CreateOrderRequest request, String createdBy) {
+            CreateOrderRequest request, String createdBy) {
         String orderNumber = generateOrderNumber(storeId);
-        
+
         return Order.builder()
                 .storeId(storeId)
                 .orderNumber(orderNumber)
                 .customerId(customerId)
                 .employeeId(UserContext.getCurrentUserId())
-                .subtotal(request.getDiscountAmount() != null ? 
-                        totalAmount.add(request.getDiscountAmount()) : totalAmount)
-                .discountAmount(request.getDiscountAmount() != null ? 
-                        request.getDiscountAmount() : BigDecimal.ZERO)
+                .subtotal(request.getDiscountAmount() != null ? totalAmount.add(request.getDiscountAmount())
+                        : totalAmount)
+                .discountAmount(request.getDiscountAmount() != null ? request.getDiscountAmount() : BigDecimal.ZERO)
                 .totalAmount(totalAmount)
-                .paymentType(Order.PaymentType.valueOf(request.getPaymentType() != null ? 
-                        request.getPaymentType() : "CASH"))
+                .paymentType(
+                        Order.PaymentType.valueOf(request.getPaymentType() != null ? request.getPaymentType() : "CASH"))
                 .status(Order.OrderStatus.CONFIRMED)
                 .notes(request.getNotes())
                 .createdBy(createdBy)
@@ -311,15 +313,15 @@ public class OrderService {
     private void reduceInventory(Long storeId, List<OrderItemData> itemDataList, Long orderId) {
         for (OrderItemData itemData : itemDataList) {
             Product product = itemData.getProduct();
-            
+
             // 1. Update inventory
             Inventory inventory = inventoryRepository.findByStoreIdAndProductId(storeId, product.getId())
                     .orElseThrow();
-            
+
             inventory.setQuantity(inventory.getQuantity() - itemData.getQuantity());
             inventory.setAvailableQuantity(inventory.getAvailableQuantity() - itemData.getQuantity());
             inventoryRepository.save(inventory);
-            
+
             // 2. Create stock movement record (audit trail)
             StockMovement movement = StockMovement.builder()
                     .storeId(storeId)
@@ -332,7 +334,7 @@ public class OrderService {
                     .createdBy(UserContext.getCurrentUsername())
                     .createdAt(LocalDateTime.now())
                     .build();
-            
+
             stockMovementRepository.save(movement);
         }
     }
@@ -353,7 +355,7 @@ public class OrderService {
                 .dueDate(LocalDateTime.now().plusDays(30).toLocalDate())
                 .createdAt(LocalDateTime.now())
                 .build();
-        
+
         debtRepository.save(debt);
     }
 
@@ -382,14 +384,39 @@ public class OrderService {
                         .build())
                 .toList();
 
+        // Fetch customer info (Note: potential N+1 issue here, will optimize later)
+        Customer customer = customerRepository.findById(order.getCustomerId()).orElse(null);
+
+        // Calculate Paid & Remaining Amount
+        BigDecimal paidAmount = order.getTotalAmount(); // Default for CASH
+        BigDecimal remainingAmount = BigDecimal.ZERO;
+
+        if (!"CASH".equalsIgnoreCase(order.getPaymentType().toString())) {
+            // Find debt record
+            Optional<Debt> debtOpt = debtRepository.findByOrderId(order.getId());
+            if (debtOpt.isPresent()) {
+                paidAmount = debtOpt.get().getPaidAmount();
+                remainingAmount = debtOpt.get().getUnpaidAmount();
+            } else {
+                // If not CASH but no debt record, assume not paid yet or data inconsistency
+                // For safety, let's assume 0 paid
+                paidAmount = BigDecimal.ZERO;
+                remainingAmount = order.getTotalAmount();
+            }
+        }
+
         return OrderDTO.builder()
                 .id(order.getId())
-                .orderNumber(order.getOrderNumber())
+                .orderCode(order.getOrderNumber()) // Mapped to orderCode
                 .customerId(order.getCustomerId())
+                .customerName(customer != null ? customer.getName() : "Unknown")
+                .customerPhone(customer != null ? customer.getPhone() : null)
                 .employeeId(order.getEmployeeId())
                 .subtotal(order.getSubtotal())
                 .discountAmount(order.getDiscountAmount())
                 .totalAmount(order.getTotalAmount())
+                .paidAmount(paidAmount) // Added
+                .remainingAmount(remainingAmount) // Added
                 .paymentType(order.getPaymentType().toString())
                 .status(order.getStatus().toString())
                 .notes(order.getNotes())
@@ -399,7 +426,7 @@ public class OrderService {
     }
 
     // ========== INNER DATA CLASS (Temporary holder) ==========
-    
+
     /**
      * OrderItemData: Hold item details during processing
      * (Not saved to DB, just for passing data between methods)

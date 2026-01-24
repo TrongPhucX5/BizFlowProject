@@ -3,9 +3,20 @@ import 'package:intl/intl.dart';
 
 // ⚠️ ĐÃ SỬA: Đổi 'mobile' thành 'bizflow_project' cho đúng tên project của ông
 import 'package:mobile/features/home/presentation/main_screen.dart';
+import 'package:mobile/data/repositories/debt_repository.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key});
+  final int? customerId;
+  final String? customerName;
+  final double? initialAmount;
+
+  const PaymentScreen({
+    super.key,
+    this.customerId,
+    this.customerName,
+    this.initialAmount,
+  });
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -14,8 +25,34 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   final Color kPrimaryColor = const Color(0xff289ca7);
   final Color kBorderColor = Colors.grey.shade300;
+  final DebtRepository _debtRepository = DebtRepository();
+  final AuthRepository _authRepository = AuthRepository();
+
+  List<Map<String, dynamic>> _customers = [];
+  Map<String, dynamic>? _selectedCustomer;
 
   String _amountString = "0";
+  bool _isLoading = false; // Trạng thái loading
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialAmount != null && widget.initialAmount! > 0) {
+      _amountString = widget.initialAmount!.toInt().toString();
+    }
+    if (widget.customerId == null) {
+      _fetchCustomers();
+    }
+  }
+
+  Future<void> _fetchCustomers() async {
+    try {
+      final data = await _authRepository.getCustomers();
+      setState(() => _customers = data);
+    } catch (e) {
+      print("Lỗi tải khách hàng: $e");
+    }
+  }
 
   void _handleKeyPress(String value) {
     setState(() {
@@ -56,6 +93,54 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
+  // --- LOGIC GỌI API ---
+  Future<void> _processPayment() async {
+    final int amount = int.parse(_amountString);
+    if (amount <= 0) return;
+    
+    final customerId = widget.customerId ?? _selectedCustomer?['id'];
+    if (customerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng chọn khách hàng"), backgroundColor: Colors.orange));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // Payload gửi lên API POST /payments
+      final paymentData = {
+        "customerId": customerId,
+        "amount": amount,
+        "paymentMethod": "CASH",
+        "note": "Thu tiền nhanh tại quầy"
+      };
+
+      // Gọi API
+      await _debtRepository.createPayment(paymentData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Thu tiền thành công!"), backgroundColor: Colors.green),
+        );
+        // Trả về true để màn hình trước reload dữ liệu
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll("Exception: ", "")),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     bool hasAmount = _amountString != '0';
@@ -69,7 +154,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text('Thu tiền', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: Text(widget.customerName != null ? 'Thu từ: ${widget.customerName}' : 'Thu tiền', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
         centerTitle: true,
         actions: [
           // Nút Trang chủ
@@ -95,6 +180,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                if (widget.customerId == null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+                    child: DropdownButtonFormField<Map<String, dynamic>>(
+                      value: _selectedCustomer,
+                      decoration: const InputDecoration(
+                        labelText: "Chọn khách hàng nộp tiền",
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _customers.map((c) => DropdownMenuItem(value: c, child: Text(c['fullName']))).toList(),
+                      onChanged: (val) => setState(() => _selectedCustomer = val),
+                    ),
+                  ),
                 const Text("Số tiền", style: TextStyle(color: Colors.grey, fontSize: 16)),
                 const SizedBox(height: 10),
                 Text(
@@ -127,12 +225,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   backgroundColor: hasAmount ? kPrimaryColor : Colors.grey.shade300,
                   elevation: 0,
                 ),
-                onPressed: hasAmount
-                    ? () {
-                  print("Xác nhận thu: $_amountString");
-                }
+                // Chặn bấm khi đang loading hoặc chưa có tiền
+                onPressed: (hasAmount && !_isLoading)
+                    ? _processPayment
                     : null,
-                child: Text(
+                child: _isLoading 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(
                   "Xác nhận",
                   style: TextStyle(
                     color: hasAmount ? Colors.white : Colors.grey.shade600,

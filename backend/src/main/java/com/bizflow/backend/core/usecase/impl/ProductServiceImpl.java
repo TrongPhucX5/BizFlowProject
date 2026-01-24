@@ -7,6 +7,9 @@ import com.bizflow.backend.presentation.dto.request.CreateProductRequest;
 import com.bizflow.backend.presentation.dto.response.ProductDTO;
 import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,13 +25,16 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
 
     @Override
+    @Cacheable(value = "products_page", key = "#storeId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<ProductDTO> getProductsByStore(Long storeId, Pageable pageable) {
-        if (storeId == null) return Page.empty(pageable);
+        if (storeId == null)
+            return Page.empty(pageable);
         return productRepository.findByStoreId(storeId, pageable).map(this::mapToDTO);
     }
 
     @Override
     @Transactional
+    @CacheEvict(value = "products_page", allEntries = true)
     public ProductDTO createProduct(CreateProductRequest request) {
         Product product = new Product();
         product.setStoreId(1L); // Hard-code tạm store 1
@@ -40,7 +46,8 @@ public class ProductServiceImpl implements ProductService {
 
         // Lưu Unit ID và Unit Name (Nếu request có gửi lên)
         product.setUnitId(request.getUnitId());
-        // Tạm thời set UnitName cứng hoặc lấy từ request nếu có, ở đây để null DB sẽ chấp nhận vì class Product không bắt buộc (trừ khi request có)
+        // Tạm thời set UnitName cứng hoặc lấy từ request nếu có, ở đây để null DB sẽ
+        // chấp nhận vì class Product không bắt buộc (trừ khi request có)
         product.setUnitName("Cái");
 
         product.setDescription(request.getDescription());
@@ -54,6 +61,10 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "products", key = "#id"),
+            @CacheEvict(value = "products_page", allEntries = true)
+    })
     public ProductDTO updateProduct(Long id, CreateProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
@@ -73,6 +84,10 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "products", key = "#id"),
+            @CacheEvict(value = "products_page", allEntries = true)
+    })
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
@@ -81,6 +96,7 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    @Cacheable(value = "products", key = "#id")
     public Optional<Product> getProductById(Long id) {
         return productRepository.findById(id);
     }
@@ -115,9 +131,28 @@ public class ProductServiceImpl implements ProductService {
     }
 
     // Các hàm placeholder
-    @Override public Optional<Product> getProductBySku(String sku) { return Optional.empty(); }
-    @Override public Page<ProductDTO> searchProducts(String k, Long s, Pageable p) { return Page.empty(); }
-    @Override public Page<ProductDTO> getProductsByCategory(Long c, Long s, Pageable p) { return Page.empty(); }
-    @Override public ProductDTO updatePrice(Long id, Double p) { return null; }
-    @Override public Page<ProductDTO> getAllActiveProducts(Long s, Pageable p) { return getProductsByStore(s, p); }
+    @Override
+    public Optional<Product> getProductBySku(String sku) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Page<ProductDTO> searchProducts(String k, Long s, Pageable p) {
+        return Page.empty();
+    }
+
+    @Override
+    public Page<ProductDTO> getProductsByCategory(Long c, Long s, Pageable p) {
+        return Page.empty();
+    }
+
+    @Override
+    public ProductDTO updatePrice(Long id, Double p) {
+        return null;
+    }
+
+    @Override
+    public Page<ProductDTO> getAllActiveProducts(Long s, Pageable p) {
+        return getProductsByStore(s, p);
+    }
 }

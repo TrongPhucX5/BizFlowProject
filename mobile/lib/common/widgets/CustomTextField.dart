@@ -9,6 +9,7 @@ class CustomTextField extends StatelessWidget {
   final bool isPassword; // Có phải là ô mật khẩu không?
   final bool isPasswordVisible; // Trạng thái ẩn/hiện (nếu là mật khẩu)
   final VoidCallback? onVisibilityToggle; // Hàm xử lý khi bấm nút mắt
+  final TextInputType? keyboardType; // Thêm tham số này để hỗ trợ nhập Email/Số điện thoại
 
   const CustomTextField({
     super.key,
@@ -19,6 +20,7 @@ class CustomTextField extends StatelessWidget {
     this.isPassword = false,
     this.isPasswordVisible = false,
     this.onVisibilityToggle,
+    this.keyboardType,
   });
 
   @override
@@ -41,6 +43,7 @@ class CustomTextField extends StatelessWidget {
         TextField(
           controller: controller,
           obscureText: isPassword && !isPasswordVisible, // Logic ẩn hiện password
+          keyboardType: keyboardType, // Truyền keyboardType vào đây
           style: const TextStyle(fontSize: 16),
           decoration: InputDecoration(
             hintText: hintText,
