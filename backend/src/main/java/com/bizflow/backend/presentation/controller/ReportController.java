@@ -2,6 +2,7 @@ package com.bizflow.backend.presentation.controller;
 
 import com.bizflow.backend.infrastructure.persistence.repository.OrderRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.OrderItemRepository;
+import com.bizflow.backend.presentation.dto.response.RevenueChartDto;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,16 +32,15 @@ public class ReportController {
         LocalDateTime endDate = LocalDateTime.now();
         LocalDateTime startDate = calculateStartDate(period, endDate);
 
-        List<Object[]> data = orderRepository.getRevenueChartData(storeId, startDate, endDate);
+        List<RevenueChartDto> data = orderRepository.getRevenueChartData(storeId, startDate, endDate);
 
-        // Map Object[] sang JSON: { date: "2023-01-01", totalAmount: 100000,
-        // orderCount: 5 }
+        // Map DTO sang JSON: { date: "2023-01-01", totalAmount: 100000, orderCount: 5 }
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Object[] row : data) {
+        for (RevenueChartDto row : data) {
             Map<String, Object> item = new HashMap<>();
-            item.put("date", row[0].toString());
-            item.put("totalAmount", row[1]);
-            item.put("orderCount", row[2]);
+            item.put("date", row.getDate().toString());
+            item.put("totalAmount", row.getRevenue());
+            item.put("orderCount", row.getOrderCount());
             result.add(item);
         }
         return ResponseEntity.ok(result);
