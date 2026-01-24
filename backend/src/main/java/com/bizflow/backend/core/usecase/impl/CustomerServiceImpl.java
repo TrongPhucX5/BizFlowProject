@@ -8,6 +8,9 @@ import com.bizflow.backend.presentation.dto.response.CustomerDTO;
 import com.bizflow.backend.presentation.exception.BusinessException;
 import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "customers_page", allEntries = true)
     public CustomerDTO createCustomer(CreateCustomerRequest request) {
         Long storeId = 1L;
 
@@ -41,7 +45,8 @@ public class CustomerServiceImpl implements CustomerService {
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .address(request.getAddress())
-                .type(request.getType() != null ? Customer.CustomerType.valueOf(request.getType()) : Customer.CustomerType.RETAIL)
+                .type(request.getType() != null ? Customer.CustomerType.valueOf(request.getType())
+                        : Customer.CustomerType.RETAIL)
                 .taxCode(request.getTaxCode())
                 .contactPerson(request.getContactPerson())
                 .status(Customer.CustomerStatus.ACTIVE)
@@ -55,6 +60,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @Cacheable(value = "customers_page", key = "#storeId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
     public Page<CustomerDTO> getCustomersByStore(Long storeId, Pageable pageable) {
         if (storeId == null) {
             return Page.empty(pageable);
@@ -64,6 +70,10 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "customers", key = "#id"),
+            @CacheEvict(value = "customers_page", allEntries = true)
+    })
     public CustomerDTO updateCustomer(Long id, CreateCustomerRequest request) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
@@ -87,6 +97,10 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "customers", key = "#id"),
+            @CacheEvict(value = "customers_page", allEntries = true)
+    })
     public void deleteCustomer(Long id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
@@ -95,6 +109,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @Cacheable(value = "customers", key = "#id")
     public Optional<Customer> getCustomerById(Long id) {
         return customerRepository.findById(id);
     }
@@ -127,9 +142,28 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     // Placeholder methods
-    @Override public Optional<Customer> getCustomerByPhone(String phone) { return Optional.empty(); }
-    @Override public Page<CustomerDTO> searchCustomers(String k, Long s, Pageable p) { return Page.empty(); }
-    @Override public Page<CustomerDTO> getCustomersBySegment(String s, Long st, Pageable p) { return Page.empty(); }
-    @Override public CustomerDTO updateSegment(Long id, String s) { return null; }
-    @Override public Page<CustomerDTO> getAllActiveCustomers(Long s, Pageable p) { return getCustomersByStore(s, p); }
+    @Override
+    public Optional<Customer> getCustomerByPhone(String phone) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Page<CustomerDTO> searchCustomers(String k, Long s, Pageable p) {
+        return Page.empty();
+    }
+
+    @Override
+    public Page<CustomerDTO> getCustomersBySegment(String s, Long st, Pageable p) {
+        return Page.empty();
+    }
+
+    @Override
+    public CustomerDTO updateSegment(Long id, String s) {
+        return null;
+    }
+
+    @Override
+    public Page<CustomerDTO> getAllActiveCustomers(Long s, Pageable p) {
+        return getCustomersByStore(s, p);
+    }
 }

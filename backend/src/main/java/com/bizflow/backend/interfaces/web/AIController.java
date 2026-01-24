@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/ai")
+@RequestMapping("/v1/ai")
 @CrossOrigin(origins = "*")
 public class AIController {
 
@@ -37,10 +37,10 @@ public class AIController {
 
     // Inject tất cả Repository cần thiết
     public AIController(RestTemplate restTemplate,
-                        ProductRepository productRepository,
-                        OrderRepository orderRepository,
-                        OrderItemRepository orderItemRepository,
-                        CustomerRepository customerRepository) {
+            ProductRepository productRepository,
+            OrderRepository orderRepository,
+            OrderItemRepository orderItemRepository,
+            CustomerRepository customerRepository) {
         this.restTemplate = restTemplate;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
@@ -71,7 +71,8 @@ public class AIController {
             ResponseEntity<Map> response = restTemplate.postForEntity(PYTHON_URL, pythonRequest, Map.class);
             Map<String, Object> aiResult = response.getBody();
 
-            if (aiResult == null) return ResponseEntity.ok(Map.of("reply", "Lỗi kết nối AI Server"));
+            if (aiResult == null)
+                return ResponseEntity.ok(Map.of("reply", "Lỗi kết nối AI Server"));
 
             // --- LEVEL 3: TẠO ĐƠN HÀNG ---
             if (Boolean.TRUE.equals(aiResult.get("is_order"))) {
@@ -113,7 +114,8 @@ public class AIController {
     private String saveOrderToDatabase(Map<String, Object> aiResult, List<Product> allProducts) {
         Map<String, Object> data = (Map<String, Object>) aiResult.get("data");
 
-        if (data == null) throw new RuntimeException("Dữ liệu đơn hàng trống.");
+        if (data == null)
+            throw new RuntimeException("Dữ liệu đơn hàng trống.");
 
         String customerName = (String) data.get("customerName");
         List<Map<String, Object>> items = (List<Map<String, Object>>) data.get("items");
@@ -156,7 +158,8 @@ public class AIController {
         // 3. XỬ LÝ TỪNG SẢN PHẨM (SO KHỚP THÔNG MINH)
         for (Map<String, Object> itemData : items) {
             String aiProductName = (String) itemData.get("productName");
-            if (aiProductName == null) continue;
+            if (aiProductName == null)
+                continue;
 
             Integer quantity = 1;
             if (itemData.get("quantity") instanceof Number) {
@@ -180,7 +183,8 @@ public class AIController {
 
                 // Check tồn kho
                 if (product.getStockQuantity() < quantity) {
-                    throw new RuntimeException("Sản phẩm '" + product.getName() + "' không đủ hàng (Còn: " + product.getStockQuantity() + ")");
+                    throw new RuntimeException("Sản phẩm '" + product.getName() + "' không đủ hàng (Còn: "
+                            + product.getStockQuantity() + ")");
                 }
 
                 // Trừ kho
@@ -227,7 +231,7 @@ public class AIController {
     private String generateReport(Map<String, Object> aiResult, List<Product> allProducts) {
         Map<String, Object> data = (Map<String, Object>) aiResult.get("data");
         String reportType = (String) data.get("reportType"); // REVENUE, TOP_PRODUCT
-        String timeRange = (String) data.get("timeRange");   // TODAY, MONTH, ALL
+        String timeRange = (String) data.get("timeRange"); // TODAY, MONTH, ALL
 
         LocalDateTime start, end;
         LocalDateTime now = LocalDateTime.now();
@@ -256,9 +260,11 @@ public class AIController {
         }
 
         else if ("TOP_PRODUCT".equals(reportType)) {
-            List<Object[]> topItems = orderItemRepository.findTopSellingProducts(storeId, start, end, PageRequest.of(0, 5));
+            List<Object[]> topItems = orderItemRepository.findTopSellingProducts(storeId, start, end,
+                    PageRequest.of(0, 5));
 
-            if (topItems.isEmpty()) return "(Chưa có dữ liệu bán hàng)";
+            if (topItems.isEmpty())
+                return "(Chưa có dữ liệu bán hàng)";
 
             StringBuilder sb = new StringBuilder("🏆 Top sản phẩm bán chạy:\n");
             for (Object[] item : topItems) {

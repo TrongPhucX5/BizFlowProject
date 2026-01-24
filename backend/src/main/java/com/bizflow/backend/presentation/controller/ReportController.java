@@ -1,4 +1,4 @@
-package com.bizflow.backend.interfaces.web; // Hoặc package controller của bạn
+package com.bizflow.backend.presentation.controller;
 
 import com.bizflow.backend.infrastructure.persistence.repository.OrderRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.OrderItemRepository;
@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
+import com.bizflow.backend.core.common.UserContext;
 
 @RestController
-@RequestMapping("/api/v1/reports") // Khớp với axiosClient
+@RequestMapping("/v1/reports") // Khớp với axiosClient
 @CrossOrigin(origins = "*")
 public class ReportController {
 
@@ -27,13 +27,14 @@ public class ReportController {
     // 1. API DOANH THU (BIỂU ĐỒ)
     @GetMapping("/revenue")
     public ResponseEntity<?> getRevenueReport(@RequestParam(defaultValue = "week") String period) {
-        Long storeId = 1L; // Hardcode store 1 hoặc lấy từ UserContext
+        Long storeId = UserContext.getCurrentStoreId(); // Lấy từ UserContext để đảm bảo bảo mật đa chi nhánh
         LocalDateTime endDate = LocalDateTime.now();
         LocalDateTime startDate = calculateStartDate(period, endDate);
 
         List<Object[]> data = orderRepository.getRevenueChartData(storeId, startDate, endDate);
 
-        // Map Object[] sang JSON: { date: "2023-01-01", totalAmount: 100000, orderCount: 5 }
+        // Map Object[] sang JSON: { date: "2023-01-01", totalAmount: 100000,
+        // orderCount: 5 }
         List<Map<String, Object>> result = new ArrayList<>();
         for (Object[] row : data) {
             Map<String, Object> item = new HashMap<>();
@@ -48,7 +49,7 @@ public class ReportController {
     // 2. API THỐNG KÊ TỔNG QUAN (4 ô vuông đầu trang)
     @GetMapping("/dashboard-stats")
     public ResponseEntity<?> getDashboardStats() {
-        Long storeId = 1L;
+        Long storeId = UserContext.getCurrentStoreId();
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startToday = LocalDate.now().atStartOfDay();
 
@@ -67,7 +68,7 @@ public class ReportController {
     // 3. API TOP SẢN PHẨM BÁN CHẠY
     @GetMapping("/best-selling")
     public ResponseEntity<?> getBestSelling() {
-        Long storeId = 1L;
+        Long storeId = UserContext.getCurrentStoreId();
         // Lấy 30 ngày gần nhất
         LocalDateTime end = LocalDateTime.now();
         LocalDateTime start = end.minusDays(30);
@@ -93,11 +94,16 @@ public class ReportController {
     // Hàm phụ tính ngày bắt đầu
     private LocalDateTime calculateStartDate(String period, LocalDateTime endDate) {
         switch (period) {
-            case "today": return LocalDate.now().atStartOfDay();
-            case "week": return endDate.minusDays(7);
-            case "month": return endDate.minusDays(30);
-            case "year": return endDate.minusDays(365);
-            default: return endDate.minusDays(7);
+            case "today":
+                return LocalDate.now().atStartOfDay();
+            case "week":
+                return endDate.minusDays(7);
+            case "month":
+                return endDate.minusDays(30);
+            case "year":
+                return endDate.minusDays(365);
+            default:
+                return endDate.minusDays(7);
         }
     }
 }
