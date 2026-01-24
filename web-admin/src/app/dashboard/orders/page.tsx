@@ -58,6 +58,18 @@ import {
   X,
   AlertCircle,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -262,15 +274,47 @@ export default function OrdersPage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Lấy dữ liệu thống kê từ cache (Backend Cached)
+  const { data: summaryData } = useQuery({
+    queryKey: ["dashboard-summary"],
+    queryFn: dashboardService.getDashboardSummary,
+    refetchInterval: 60000,
+  });
+
+  const { data: revenueData } = useQuery({
+    queryKey: ["dashboard-revenue", "7d"],
+    queryFn: () => dashboardService.getRevenueChart("7d"),
+    refetchInterval: 120000,
+  });
+
+  const { data: statusData } = useQuery({
+    queryKey: ["dashboard-status"],
+    queryFn: dashboardService.getStatusChart,
+    refetchInterval: 120000,
+  });
+
+  // Fetch Daily Count để kích hoạt Caching (Backend Key: dashboard_daily_count_chart)
+  useQuery({
+    queryKey: ["dashboard-daily-count", "30d"],
+    queryFn: () => dashboardService.getDailyCountChart("30d"),
+    refetchInterval: 120000,
+  });
+
+  const summary = (summaryData as any)?.result || {};
+  const revenueList = (revenueData as any)?.result || [];
+  const rawStatusList = (statusData as any)?.result || [];
+
+  const statusList = rawStatusList.map((item: any) => ({
+    ...item,
+    status: STATUS_LABELS[item.status] || item.status,
+  }));
+
   // --- STATS ---
   const stats = {
-    totalOrders: orders.length,
-    totalRevenue: orders.reduce((sum, order) => sum + order.totalAmount, 0),
-    pendingPayment: orders.reduce(
-      (sum, order) => sum + order.remainingAmount,
-      0
-    ),
-    completedOrders: orders.filter((o) => o.status === "COMPLETED").length,
+    totalOrders: summary.totalOrders || 0,
+    totalRevenue: summary.totalRevenue || 0,
+    pendingPayment: summary.pendingPayment || 0, // Đã tính đúng từ backend
+    completedOrders: summary.completedOrders || 0,
   };
 
   return (
@@ -364,6 +408,33 @@ export default function OrdersPage() {
               <div className="p-2 bg-green-50 rounded-lg">
                 <Eye className="h-6 w-6 text-green-600" />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* CHARTS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Revenue Chart */}
+        <Card className="lg:col-span-2 border-none shadow-sm bg-white">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-bold mb-4 text-slate-800">
+              Doanh thu 7 ngày qua
+            </h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveBarChart data={revenueList} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Status Chart */}
+        <Card className="border-none shadow-sm bg-white">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-bold mb-4 text-slate-800">
+              Trạng thái đơn hàng
+            </h3>
+            <div className="h-[300px] w-full flex items-center justify-center">
+              <ResponsivePieChart data={statusList} />
             </div>
           </CardContent>
         </Card>
@@ -980,6 +1051,78 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: "Chờ xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  PROCESSING: "Đang xử lý",
+  COMPLETED: "Hoàn thành",
+  CANCELLED: "Đã hủy",
+  UNPAID: "Chưa thanh toán",
+  PAID_PARTIAL: "Thanh toán 1 phần",
+  PAID: "Đã thanh toán",
+};
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+
+const ResponsiveBarChart = ({ data }: { data: any[] }) => {
+  if (!data || data.length === 0)
+    return <div className="flex h-full items-center justify-center text-slate-400">Chưa có dữ liệu</div>;
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data}>
+        <XAxis
+          dataKey="date"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => format(new Date(value), "dd/MM")}
+        />
+        <YAxis
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={(value) => `${value / 1000}k`}
+        />
+        <Tooltip
+          formatter={(value: any) => [`${value.toLocaleString()}đ`, "Doanh thu"]}
+          labelFormatter={(label) => format(new Date(label), "dd/MM/yyyy")}
+        />
+        <Bar dataKey="revenue" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
+
+const ResponsivePieChart = ({ data }: { data: any[] }) => {
+  if (!data || data.length === 0)
+    return <div className="flex h-full items-center justify-center text-slate-400">Chưa có dữ liệu</div>;
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie
+          data={data}
+          cx="50%"
+          cy="50%"
+          innerRadius={60}
+          outerRadius={80}
+          fill="#8884d8"
+          paddingAngle={5}
+          dataKey="count"
+          nameKey="status"
+        >
+          {data.map((entry, index) => (
+            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend verticalAlign="bottom" height={36} />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+};
 
 function OrderStatusBadge({ status }: { status: string }) {
   const getStatusConfig = (status: string) => {

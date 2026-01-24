@@ -62,4 +62,25 @@ export const dashboardService = {
     const response = await axiosClient.post(`/v1/debts/${id}/pay`, data);
     return response.data;
   },
+
+  // --- DASHBOARD ANALYTICS ---
+  getDashboardSummary: async () => {
+    const response = await axiosClient.get("/v1/dashboard/orders/summary");
+    return response.data;
+  },
+
+  getStatusChart: async () => {
+    const response = await axiosClient.get("/v1/dashboard/orders/status-chart");
+    return response.data;
+  },
+
+  getRevenueChart: async (range: string = "7d") => {
+    const response = await axiosClient.get(`/v1/dashboard/orders/revenue-chart?range=${range}`);
+    return response.data;
+  },
+
+  getDailyCountChart: async (range: string = "30d") => {
+    const response = await axiosClient.get(`/v1/dashboard/orders/daily-count-chart?range=${range}`);
+    return response.data;
+  },
 };
