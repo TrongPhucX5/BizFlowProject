@@ -13,15 +13,16 @@ import java.util.Optional;
 
 @Repository
 public interface DebtRepository extends JpaRepository<Debt, Long> {
-    Page<Debt> findByStoreId(Long storeId, Pageable pageable);
-
+    // Tìm theo khách hàng
     Page<Debt> findByCustomerId(Long customerId, Pageable pageable);
 
-    Page<Debt> findByStatus(Debt.DebtStatus status, Pageable pageable);
-
+    // Tìm theo order
     Optional<Debt> findByOrderId(Long orderId);
 
-    // Tính tổng công nợ chưa thanh toán của một cửa hàng
-    @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.status = 'UNPAID'")
-    BigDecimal sumUnpaidDebtByStoreId(@Param("storeId") Long storeId);
+    // Lấy danh sách nợ chưa trả hết (UNPAID + PAID_PARTIAL)
+    Page<Debt> findByStoreIdAndStatusIn(Long storeId, java.util.Collection<Debt.DebtStatus> statuses, Pageable pageable);
+
+    // Tính tổng công nợ theo danh sách trạng thái
+    @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.status IN :statuses")
+    BigDecimal sumByStoreIdAndStatusIn(@Param("storeId") Long storeId, @Param("statuses") java.util.Collection<Debt.DebtStatus> statuses);
 }

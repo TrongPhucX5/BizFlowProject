@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,6 @@ public class DebtServiceImpl implements DebtService {
 
     @Override
     public Page<Debt> getDebtsByCustomer(Long customerId, Pageable pageable) {
-        Long storeId = UserContext.getCurrentStoreId();
         // TODO: Verify customer belongs to store
         return debtRepository.findByCustomerId(customerId, pageable);
     }
@@ -44,7 +44,9 @@ public class DebtServiceImpl implements DebtService {
         if (!storeId.equals(UserContext.getCurrentStoreId())) {
             throw new BusinessException(4003, "Access denied");
         }
-        return debtRepository.findByStatus(Debt.DebtStatus.UNPAID, pageable);
+        return debtRepository.findByStoreIdAndStatusIn(storeId, 
+                Arrays.asList(Debt.DebtStatus.UNPAID, Debt.DebtStatus.PAID_PARTIAL), 
+                pageable);
     }
 
     @Override

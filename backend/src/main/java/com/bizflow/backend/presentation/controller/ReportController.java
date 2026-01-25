@@ -66,8 +66,10 @@ public class ReportController {
         BigDecimal revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now);
         Long ordersToday = orderRepository.countOrders(storeId, startToday, now);
         
-        // Lấy tổng công nợ thật từ DebtRepository
-        BigDecimal totalDebt = debtRepository.sumUnpaidDebtByStoreId(storeId);
+        // Lấy tổng công nợ thật từ DebtRepository (UNPAID + PAID_PARTIAL)
+        BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId, 
+                Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID, 
+                              com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
         
         // Đếm số sản phẩm có số lượng tồn kho <= mức tối thiểu (reorderLevel)
         // Giả sử reorderLevel trung bình là 10
