@@ -108,6 +108,61 @@ public class ReportController {
         return ResponseEntity.ok(result);
     }
 
+    // 4. API XUẤT BÁO CÁO (CSV)
+    @GetMapping("/export/general")
+    public ResponseEntity<byte[]> exportGeneralReport() {
+        Long storeId = UserContext.getCurrentStoreId();
+        StringBuilder csv = new StringBuilder();
+        
+        // Header
+        csv.append("\uFEFF"); // BOM for UTF-8 Excel support
+        csv.append("BAO CAO TONG QUAN CUA HANG\n");
+        csv.append("Ngay xuat,").append(LocalDate.now()).append("\n\n");
+
+        // 1. Thong ke chung
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startToday = LocalDate.now().atStartOfDay();
+        
+        BigDecimal revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now);
+        Long ordersToday = orderRepository.countOrders(storeId, startToday, now);
+        BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId, 
+                Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID, 
+                              com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
+        long warningProducts = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
+
+        csv.append("--- THONG KE TRONG NGAY ---\n");
+        csv.append("Doanh thu hom nay (VNĐ),Tong don hang,Tong cong no (VNĐ),Canh bao ton kho\n");
+        csv.append(revenueToday != null ? revenueToday : 0).append(",")
+           .append(ordersToday).append(",")
+           .append(totalDebt != null ? totalDebt : 0).append(",")
+           .append(warningProducts).append("\n\n");
+
+        // 2. Top San Pham Ban Chay (30 ngay)
+        csv.append("--- TOP 10 SAN PHAM BAN CHAY (30 NGAY) ---\n");
+        csv.append("Ten San Pham,So Luong Ban,Doanh Thu (VNĐ)\n");
+        
+        List<Object[]> topProducts = orderItemRepository.findTopSellingProducts(storeId, 
+                now.minusDays(30), now, 
+                PageRequest.of(0, 10));
+        
+        for (Object[] row : topProducts) {
+            String name = (String) (row[1] != null ? row[1] : "SP #" + row[0]);
+            // Escape commas in name
+            if (name.contains(",")) name = "\"" + name + "\"";
+            
+            csv.append(name).append(",")
+               .append(row[2]).append(",")
+               .append(row[3]).append("\n");
+        }
+
+        byte[] bytes = csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=bao-cao-tong-quan.csv")
+                .contentType(org.springframework.http.MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(bytes);
+    }
+
     // Hàm phụ tính ngày bắt đầu
     private LocalDateTime calculateStartDate(String period, LocalDateTime endDate) {
         switch (period) {

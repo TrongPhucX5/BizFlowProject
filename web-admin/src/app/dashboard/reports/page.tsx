@@ -180,8 +180,23 @@ export default function ReportsPage() {
     },
   });
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({
+      queryKey: ["dashboard-stats"],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["revenue-report"],
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ["best-selling"],
+    });
+    refetchDebts();
+    
+    // Giả lập delay một chút để người dùng thấy hiệu ứng xoay (nếu mạng quá nhanh)
+    setTimeout(() => setIsRefreshing(false), 800);
   };
 
   const handleOpenPayDebt = (debt: any) => {
@@ -205,6 +220,23 @@ export default function ReportsPage() {
     });
   };
 
+  const handleExport = async () => {
+    try {
+      const blob = await reportsService.exportGeneralReport();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bao-cao-tong-quan-${format(new Date(), "dd-MM-yyyy")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Xuất báo cáo thất bại.");
+    }
+  };
+
   return (
     <div className="p-8 space-y-8 bg-slate-50/50 min-h-screen">
       {/* HEADER */}
@@ -222,10 +254,15 @@ export default function ReportsPage() {
             variant="outline"
             onClick={handleRefresh}
             className="bg-white"
+            disabled={isRefreshing}
           >
-            <RefreshCw className="mr-2 h-4 w-4" /> Làm mới
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} /> 
+            {isRefreshing ? "Đang tải..." : "Làm mới"}
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-700">
+          <Button 
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={handleExport}
+          >
             <Download className="mr-2 h-4 w-4" /> Xuất báo cáo
           </Button>
         </div>

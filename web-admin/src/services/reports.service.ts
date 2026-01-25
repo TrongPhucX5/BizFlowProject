@@ -41,14 +41,9 @@ export const reportsService = {
     return response.data;
   },
 
-  // Xuất báo cáo PDF
-  exportReport: async (
-    reportType: string,
-    format: "pdf" | "excel",
-    params?: any
-  ) => {
-    const response = await axiosClient.get(`/v1/reports/export/${reportType}`, {
-      params: { ...params, format },
+  // Xuất báo cáo CSV
+  exportGeneralReport: async () => {
+    const response = await axiosClient.get("/v1/reports/export/general", {
       responseType: "blob",
     });
     return response.data;
