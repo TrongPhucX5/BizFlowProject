@@ -14,10 +14,12 @@ import java.util.List;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     List<OrderItem> findByOrderId(Long orderId);
 
-    @Query("SELECT oi.productId, SUM(oi.quantity) as totalQty, SUM(oi.totalAmount) as totalRevenue " +
-           "FROM OrderItem oi JOIN Order o ON oi.orderId = o.id " +
+    @Query("SELECT oi.productId, p.name, SUM(oi.quantity) as totalQty, SUM(oi.totalAmount) as totalRevenue " +
+           "FROM OrderItem oi " +
+           "JOIN Order o ON oi.orderId = o.id " +
+           "LEFT JOIN Product p ON oi.productId = p.id " +
            "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED' " +
-           "GROUP BY oi.productId " +
+           "GROUP BY oi.productId, p.name " +
            "ORDER BY totalQty DESC")
     List<Object[]> findTopSellingProducts(@Param("storeId") Long storeId, 
                                           @Param("startDate") LocalDateTime startDate, 
