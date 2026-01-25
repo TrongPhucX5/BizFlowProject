@@ -12,6 +12,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.bizflow.backend.core.domain.Customer;
+import com.bizflow.backend.infrastructure.persistence.repository.CustomerRepository;
+import com.bizflow.backend.presentation.dto.response.DebtResponse;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/v1/debts")
@@ -19,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 public class DebtController {
 
     private final DebtService debtService;
+    private final CustomerRepository customerRepository;
 
     /**
      * Lấy danh sách công nợ
@@ -26,7 +34,7 @@ public class DebtController {
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
-    public ResponseEntity<ApiResponse<Page<Debt>>> getDebts(
+    public ResponseEntity<ApiResponse<Page<DebtResponse>>> getDebts(
             @RequestParam(required = false) Long customerId,
             Pageable pageable) {
         
@@ -38,8 +46,24 @@ public class DebtController {
         } else {
             debts = debtService.getUnpaidDebts(storeId, pageable);
         }
+
+        // Fetch Customer Info
+        Set<Long> customerIds = debts.getContent().stream()
+                .map(Debt::getCustomerId)
+                .collect(Collectors.toSet());
+
+        Map<Long, Customer> customerMap = customerRepository.findAllById(customerIds).stream()
+                .collect(Collectors.toMap(Customer::getId, Function.identity()));
+
+        // Map to DTO
+        Page<DebtResponse> response = debts.map(debt -> {
+            Customer customer = customerMap.get(debt.getCustomerId());
+            return DebtResponse.from(debt, 
+                    customer != null ? customer.getName() : "Unknown", 
+                    customer != null ? customer.getPhone() : "");
+        });
         
-        return ResponseEntity.ok(ApiResponse.success(debts, "Lấy danh sách công nợ thành công"));
+        return ResponseEntity.ok(ApiResponse.success(response, "Lấy danh sách công nợ thành công"));
     }
 
     /**
