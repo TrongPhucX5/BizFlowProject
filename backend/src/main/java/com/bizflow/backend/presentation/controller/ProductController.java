@@ -32,6 +32,7 @@ public class ProductController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<Page<ProductDTO>>> getProducts(
             @PageableDefault(size = 20) Pageable pageable) {
         Long storeId = UserContext.getCurrentStoreId();
@@ -40,6 +41,7 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<ProductDTO>> getProduct(@PathVariable Long id) {
         return productService.getProductById(id)
                 .map(product -> {

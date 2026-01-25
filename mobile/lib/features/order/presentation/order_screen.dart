@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 import 'package:mobile/features/order/presentation/payment_screen.dart';
 import 'package:mobile/features/order/presentation/ai_order_screen.dart';
 import 'package:mobile/data/repositories/order_repository.dart';
@@ -36,10 +35,7 @@ class _OrderScreenState extends State<OrderScreen> {
     }
   }
 
-  void _navigateToSales() async {
-    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const SalesScreen()));
-    if (result == true) _fetchOrders();
-  }
+
 
   void _navigateToAiOrder() async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => const AiOrderScreen()));
@@ -68,8 +64,6 @@ class _OrderScreenState extends State<OrderScreen> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                Expanded(child: _buildActionButton("Tạo đơn", Icons.add_shopping_cart, kPrimaryColor, _navigateToSales)),
-                const SizedBox(width: 8),
                 Expanded(child: _buildActionButton("AI Order", Icons.mic, Colors.purple, _navigateToAiOrder)),
                 const SizedBox(width: 8),
                 Expanded(child: _buildActionButton("Thu tiền", Icons.attach_money, Colors.green, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentScreen())))),
@@ -106,8 +100,8 @@ class _OrderScreenState extends State<OrderScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text("${NumberFormat('#,###').format(total)} đ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                            Text(status, style: TextStyle(fontSize: 10, color: status == 'COMPLETED' ? Colors.green : Colors.orange)),
+                            Text("${NumberFormat('#,###', 'vi_VN').format(total)} đ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                            Text(_mapStatus(status), style: TextStyle(fontSize: 10, color: _getStatusColor(status))),
                           ],
                         ),
                         onTap: () {
@@ -121,6 +115,27 @@ class _OrderScreenState extends State<OrderScreen> {
         ],
       ),
     );
+  }
+
+  String _mapStatus(String status) {
+    switch (status) {
+      case 'CONFIRMED': return 'Đã xác nhận';
+      case 'PAID': return 'Đã thanh toán';
+      case 'PAID_PARTIAL': return 'Thanh toán 1 phần';
+      case 'UNPAID': return 'Chưa thanh toán';
+      case 'CANCELLED': return 'Đã hủy';
+      default: return status;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'PAID': return Colors.green;
+      case 'CONFIRMED': return Colors.blue;
+      case 'CANCELLED': return Colors.red;
+      case 'UNPAID': return Colors.orange;
+      default: return Colors.grey;
+    }
   }
 
   Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {

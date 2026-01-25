@@ -1,6 +1,5 @@
 package com.bizflow.backend.core.usecase.impl;
 
-import com.bizflow.backend.core.common.UserContext;
 import com.bizflow.backend.core.domain.Order;
 import com.bizflow.backend.infrastructure.persistence.repository.OrderRepository;
 import com.bizflow.backend.presentation.dto.response.DashboardSummaryDto;
@@ -20,6 +19,7 @@ import java.time.LocalTime;
 public class DashboardServiceImpl {
 
     private final OrderRepository orderRepository;
+    private final com.bizflow.backend.infrastructure.persistence.repository.ProductRepository productRepository;
 
     @Cacheable(value = "dashboard_summary", key = "#storeId")
     public DashboardSummaryDto getOrderSummary(Long storeId) {
@@ -47,12 +47,41 @@ public class DashboardServiceImpl {
         // current outstanding debt.
         BigDecimal pendingPayment = orderRepository.sumPendingPayment(storeId);
 
+        // 5. Product Stats
+        long lowStockCount = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
+        long totalProducts = productRepository.countByStoreId(storeId);
+
         return DashboardSummaryDto.builder()
                 .totalOrders(totalOrders != null ? totalOrders : 0)
                 .totalRevenue(totalRevenue != null ? totalRevenue : BigDecimal.ZERO)
                 .completedOrders(completedOrders != null ? completedOrders : 0)
                 .pendingPayment(pendingPayment != null ? pendingPayment : BigDecimal.ZERO)
+                .lowStockCount(lowStockCount)
+                .totalProducts(totalProducts)
                 .build();
+    }
+
+    @Cacheable(value = "dashboard_low_stock", key = "#storeId")
+    public java.util.List<com.bizflow.backend.presentation.dto.response.ProductDTO> getLowStockProducts(Long storeId) {
+        log.info("Fetching low stock products for storeId: {}", storeId);
+        // Pageable to limit results, e.g., top 10
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 50);
+
+        java.util.List<com.bizflow.backend.core.domain.Product> products = productRepository
+                .findByStoreIdAndStockQuantityLessThanEqual(storeId, 10, pageable);
+
+        // Convert to DTO manually or use mapper (manual for now to avoid dependency
+        // checks)
+        return products.stream().map(p -> com.bizflow.backend.presentation.dto.response.ProductDTO.builder()
+                .id(p.getId())
+                .name(p.getName())
+                .sku(p.getSku())
+                .price(p.getPrice())
+                .stock(p.getStockQuantity())
+                .unitName(p.getUnitName())
+                .imageUrl(p.getImageUrl())
+                // Add other fields as necessary
+                .build()).collect(java.util.stream.Collectors.toList());
     }
     // --- 2. Chart Methods ---
 

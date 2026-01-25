@@ -18,8 +18,10 @@ public class ProductDTO {
     private BigDecimal price;
     private BigDecimal costPrice;
 
-    // --- BẮT BUỘC PHẢI CÓ DÒNG NÀY MỚI HẾT LỖI 'cannot find symbol method stock' ---
+    // --- BẮT BUỘC PHẢI CÓ DÒNG NÀY MỚI HẾT LỖI 'cannot find symbol method stock'
+    // ---
     private Integer stock;
+    private Integer reorderLevel; // Thêm để mobile app có thể hiển thị cảnh báo low stock
     // -----------------------------------------------------------------------------
 
     private Long categoryId;

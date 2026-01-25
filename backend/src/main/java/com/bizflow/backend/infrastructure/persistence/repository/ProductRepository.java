@@ -11,6 +11,14 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     Product findByStoreIdAndSku(Long storeId, String sku);
+
     Page<Product> findByStoreId(Long storeId, Pageable pageable);
+
     List<Product> findByCategoryId(Long categoryId);
+
+    long countByStoreId(Long storeId);
+
+    long countByStoreIdAndStockQuantityLessThanEqual(Long storeId, Integer quantity);
+
+    List<Product> findByStoreIdAndStockQuantityLessThanEqual(Long storeId, Integer quantity, Pageable pageable);
 }

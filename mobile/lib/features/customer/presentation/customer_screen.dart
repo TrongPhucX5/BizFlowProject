@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math'; // Để random mã khách hàng
 import 'package:mobile/features/customer/presentation/group_create_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
+import 'package:intl/intl.dart';
 
 class CustomerScreen extends StatefulWidget {
   const CustomerScreen({super.key});
@@ -309,35 +310,109 @@ class _CustomerScreenState extends State<CustomerScreen> {
     ));
   }
 
+  String _formatCurrency(dynamic amount) {
+    if (amount == null) return "0đ";
+    double val = double.tryParse(amount.toString()) ?? 0;
+    return NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(val);
+  }
+
   Widget _buildCustomerList() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
     if (customers.isEmpty) return const Center(child: Text("Chưa có khách hàng nào"));
     return ListView.separated(
       padding: const EdgeInsets.all(12),
       itemCount: customers.length,
-      separatorBuilder: (_, __) => const Divider(),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final item = customers[index];
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          leading: CircleAvatar(
-            backgroundColor: item['gender'] == 'Nữ' ? Colors.pink[50] : Colors.blue[50],
-            child: Icon(Icons.person, color: item['gender'] == 'Nữ' ? Colors.pink : Colors.blue),
+        final type = item['type'] ?? 'RETAIL';
+        final totalDebt = item['totalDebt'] ?? 0;
+        final totalPurchased = item['totalPurchaseAmount'] ?? 0;
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: item['gender'] == 'NỮ' ? Colors.pink[50] : Colors.blue[50], // Check case sensitivity if needed
+                      child: Icon(Icons.person, color: item['gender'] == 'NỮ' ? Colors.pink : Colors.blue),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(child: Text(item['fullName'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
+                              const SizedBox(width: 8),
+                                Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: type == 'WHOLESALE' ? Colors.purple[50] 
+                                       : type == 'CORPORATE' ? Colors.green[50] 
+                                       : Colors.blue[50], // Default RETAIL
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                      color: type == 'WHOLESALE' ? Colors.purple 
+                                           : type == 'CORPORATE' ? Colors.green 
+                                           : Colors.blue, 
+                                      width: 0.5),
+                                ),
+                                child: Text(
+                                  type == 'WHOLESALE' ? 'KH SỈ' : type == 'CORPORATE' ? 'DOANH NGHIỆP' : 'KH LẺ',
+                                  style: TextStyle(
+                                      fontSize: 10, 
+                                      color: type == 'WHOLESALE' ? Colors.purple 
+                                           : type == 'CORPORATE' ? Colors.green 
+                                           : Colors.blue, 
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text("ID: ${item['id']} • ${item['phone']}", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                        icon: const Icon(Icons.edit_outlined, color: Colors.grey),
+                        onPressed: () => _showCustomerForm(existingCustomer: item, index: index),
+                      ),
+                  ],
+                ),
+                const Divider(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Tổng mua", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text(_formatCurrency(totalPurchased), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text("Công nợ", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text(_formatCurrency(totalDebt), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red)),
+                      ],
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
-          title: Text(item['fullName'], style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("${item['id']} - ${item['phone']}"),
-              if(item['address'] != null && item['address'].isNotEmpty)
-                Text(item['address'], style: const TextStyle(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
-            ],
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.grey),
-            onPressed: () => _showCustomerForm(existingCustomer: item, index: index),
-          ),
-          onLongPress: () => _deleteCustomer(index), // Nhấn giữ để xóa cho nhanh
         );
       },
     );

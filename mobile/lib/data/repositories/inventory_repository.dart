@@ -1,77 +1,62 @@
 import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/network/api_response.dart';
 
 class InventoryRepository {
   final Dio _dio = DioClient.instance;
 
-  /// Điều chỉnh tồn kho (Kiểm kê, Nhập hàng lẻ, Xuất hủy...)
-  /// [productId]: ID sản phẩm
-  /// [quantity]: Số lượng điều chỉnh (Dương là tăng, Âm là giảm)
-  /// [reason]: Lý do (VD: "Nhập hàng", "Hư hỏng", "Kiểm kê sai lệch")
+  // Endpoint điều chỉnh kho KHÔNG tồn tại trên BE
   Future<void> adjustInventory({
     required int productId,
     required int quantity,
     required String reason,
   }) async {
-    try {
-      // Payload chuẩn theo nghiệp vụ kho
-      final data = {
-        'productId': productId,
-        'quantity': quantity, 
-        'reason': reason,
-        'type': quantity > 0 ? 'IMPORT' : 'EXPORT', // Tự động xác định loại phiếu
-        'referenceCode': 'ADJ-${DateTime.now().millisecondsSinceEpoch}', // Mã tham chiếu tự sinh
-      };
-
-      await _dio.post(ApiConstants.inventoryAdjustEndpoint, data: data);
-    } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Lỗi điều chỉnh kho');
-    } catch (e) {
-      throw Exception('Lỗi kết nối: $e');
-    }
+    // Tạm thời báo lỗi vì BE chưa hỗ trợ
+    throw Exception("Tính năng Điều chỉnh kho chưa hỗ trợ trên Server!");
   }
 
-  /// Nhập hàng (Stock In) - Tăng số lượng tồn kho
+  /// Nhập hàng (Stock In) - Map sang API /v1/inventory/import
   Future<void> stockIn({
     required int productId,
     required int quantity,
+    required double unitCost, // Thêm giá nhập
     String? note,
+    String? supplierName,
   }) async {
     try {
       final data = {
         'productId': productId,
         'quantity': quantity,
+        'unitCost': unitCost,
         'note': note,
-        'referenceCode': 'IN-${DateTime.now().millisecondsSinceEpoch}',
+        'supplierName': supplierName,
       };
 
-      await _dio.post(ApiConstants.inventoryStockInEndpoint, data: data);
+      // Gọi đúng Endpoint BE: /v1/inventory/import
+      // Cần map endpoint trong ApiConstants.dart (inventoryStockInEndpoint đang là /stock-in)
+      // Tạm thời hardcode đường dẫn đúng ở đây hoặc sửa ApiConstants
+      // Theo ApiConstants hiện tại là "/v1/inventory/stock-in", BE là "/v1/inventory/import"
+      // -> Sửa lại call trực tiếp
+      await _dio.post('/v1/inventory/import', data: data);
     } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Lỗi nhập hàng');
+      if (e.response?.data != null) {
+         try {
+            final apiRes = ApiResponse.fromJson(e.response!.data);
+            throw Exception(apiRes.message);
+         } catch (_) {}
+         throw Exception(e.response?.data['message'] ?? 'Lỗi nhập hàng');
+      }
+      throw Exception('Lỗi nhập hàng');
     } catch (e) {
       throw Exception('Lỗi kết nối: $e');
     }
   }
 
-  /// Lấy danh sách sản phẩm tồn kho thấp (Cảnh báo)
+  /// Lấy danh sách tồn kho thấp -> FILTER LOCALLY (BE không có API)
   Future<List<Map<String, dynamic>>> getLowStockProducts() async {
-    try {
-      final response = await _dio.get(ApiConstants.inventoryLowStockEndpoint);
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        // Xử lý response wrapper (result/content/items)
-        var listData = (data is Map && data.containsKey('result')) ? data['result'] : data;
-        final list = (listData is Map) 
-            ? (listData['content'] ?? listData['items'] ?? []) 
-            : (listData is List ? listData : []);
-            
-        return List<Map<String, dynamic>>.from(list);
-      }
-      throw Exception('Không thể tải danh sách tồn kho thấp');
-    } catch (e) {
-      throw Exception('Lỗi tải tồn kho: $e');
-    }
+    // Trả về rỗng để UI không crash. 
+    // Logic filter sẽ nằm ở ProductScreen
+    return [];
   }
 }

@@ -2,6 +2,7 @@ package com.bizflow.backend.core.usecase.impl;
 
 import com.bizflow.backend.core.domain.Product;
 import com.bizflow.backend.core.usecase.ProductService;
+import com.bizflow.backend.infrastructure.persistence.repository.InventoryRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.ProductRepository;
 import com.bizflow.backend.presentation.dto.request.CreateProductRequest;
 import com.bizflow.backend.presentation.dto.response.ProductDTO;
@@ -23,6 +24,7 @@ import java.util.Optional;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     @Cacheable(value = "products_page", key = "#storeId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
@@ -103,6 +105,12 @@ public class ProductServiceImpl implements ProductService {
 
     // --- HÀM MAP DỮ LIỆU (ĐÃ CHỈNH SỬA KHỚP VỚI ENTITY CỦA BẠN) ---
     private ProductDTO mapToDTO(Product product) {
+        // Fetch stock từ bảng Inventory
+        Integer stock = inventoryRepository
+                .findByStoreIdAndProductId(product.getStoreId(), product.getId())
+                .map(inventory -> inventory.getQuantity())
+                .orElse(0);
+
         return ProductDTO.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -110,9 +118,9 @@ public class ProductServiceImpl implements ProductService {
                 .price(product.getPrice())
                 .costPrice(product.getCostPrice())
 
-                // 1. STOCK: Entity không có cột stock, nên ta trả về 0
-                // (Sau này sẽ lấy từ bảng Inventory)
-                .stock(0)
+                // 1. STOCK: Lấy từ bảng Inventory
+                .stock(stock)
+                .reorderLevel(product.getReorderLevel() != null ? product.getReorderLevel() : 10)
 
                 .status(product.getStatus() != null ? product.getStatus().toString() : "INACTIVE")
                 .storeId(product.getStoreId())

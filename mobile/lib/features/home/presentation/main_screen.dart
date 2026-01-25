@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/features/Sales/presentation/sales_screen.dart';
 import 'package:mobile/features/order/presentation/order_screen.dart';
 import 'package:mobile/features/product/presentation/product_screen.dart';
 import 'package:mobile/features/home/presentation/management_screen.dart';
@@ -27,11 +26,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _widgetOptions = <Widget>[
     const ManagementScreen(), // Index 0
-    const SalesScreen(),      // Index 1
-    const OrderScreen(),      // Index 2
-    const ProductScreen(),    // Index 3
-    const CustomerScreen(),   // Index 4
-    const ProfileScreen(),    // ✅ Cá nhân (UI mới)
+    const OrderScreen(),      // Index 1 (Was 2)
+    const ProductScreen(),    // Index 2 (Was 3)
+    const CustomerScreen(),   // Index 3 (Was 4)
+    const ProfileScreen(),    // Index 4 (Was 5)
   ];
 
   @override
@@ -44,12 +42,11 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.green[700],
+        selectedItemColor: const Color(0xFF289CA7), // Teal primary color
         unselectedItemColor: Colors.grey,
         onTap: (index) => setTabIndex(index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Quản lý'),
-          BottomNavigationBarItem(icon: Icon(Icons.storefront_outlined), label: 'Bán hàng'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Đơn hàng'),
           BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: 'Sản phẩm'),
           BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Khách hàng'),
@@ -59,3 +56,5 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
+
+

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 
 @RestController
-@RequestMapping("/orders")
+@RequestMapping("/v1/orders")
 @RequiredArgsConstructor
 public class OrderController {
 

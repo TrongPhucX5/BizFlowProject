@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'attribute_modal.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
+import 'package:mobile/data/repositories/inventory_repository.dart';
 
 class ProductCreateScreen extends StatefulWidget {
   // Tham số tùy chọn: Nếu có -> Chế độ Sửa, Nếu null -> Chế độ Tạo
@@ -149,16 +150,18 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
     setState(() => _isLoading = true);
 
     // Đóng gói dữ liệu trả về
+
+    // Đóng gói dữ liệu trả về
     final productData = {
       'name': _nameController.text,
-      'price': _priceController.text,
-      'costPrice': _costController.text, // Backend dùng costPrice
+      'price': double.tryParse(_priceController.text) ?? 0, // Parse Double
+      'costPrice': double.tryParse(_costController.text) ?? 0, // Parse Double
       'unitName': _unitController.text,
       'unitId': _selectedUnitId,
       'storeId': _selectedStoreId,
       'categoryId': _selectedCategoryId,
       'sku': _skuController.text,
-      'stock': int.tryParse(_stockController.text) ?? 0, // Gửi tồn kho ban đầu
+      'stock': int.tryParse(_stockController.text) ?? 0, // Parse Int
       'barcode': _barcodeController.text,
       'trackStock': _trackStock,
       'status': _status, // Sử dụng biến status đã chọn từ UI
@@ -169,9 +172,28 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
 
     try {
       if (widget.existingProduct != null) {
+        // Update logic (giữ nguyên)
         await _authRepository.updateProduct(widget.existingProduct!['id'], productData);
       } else {
-        await _authRepository.createProduct(productData);
+        // Create logic + Chained Stock In
+        final newProductId = await _authRepository.createProduct(productData);
+        
+        // Nếu có nhập tồn kho ban đầu -> Tự động nhập kho
+        final int initialStock = productData['stock'] as int? ?? 0;
+        if (newProductId > 0 && initialStock > 0) {
+           // Import InventoryRepository locally or global
+           final invRepo = InventoryRepository();
+           // Giá nhập lấy từ Giá vốn (Cost Price)
+           final double unitCost = double.tryParse(_costController.text) ?? 0;
+           
+           await invRepo.stockIn(
+             productId: newProductId, 
+             quantity: initialStock, 
+             unitCost: unitCost,
+             note: "Tồn kho ban đầu khi tạo sản phẩm",
+             supplierName: "Khởi tạo"
+           );
+        }
       }
 
       if (!mounted) return;

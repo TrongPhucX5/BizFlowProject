@@ -5,8 +5,9 @@ import 'package:mobile/features/product/presentation/batch_product_create_screen
 import 'package:mobile/features/product/presentation/combo_create_screen.dart';
 import 'category_select_products_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
+import 'dart:convert';
 import 'package:mobile/data/repositories/inventory_repository.dart';
-import 'package:mobile/data/repositories/stock_in_screen.dart'; // Import màn hình nhập kho
+import 'package:mobile/features/product/presentation/stock_in_screen.dart'; // Import màn hình nhập kho
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
@@ -53,13 +54,22 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     return list;
   }
 
-  // Thay thế logic cũ: Filter trên danh sách _lowStockProducts lấy từ API
+
+  // Thay thế logic cũ: Filter trên danh sách _products hiện có
   List<Map<String, dynamic>> get _inventoryProducts =>
-      _lowStockProducts.where((p) {
+      _products.where((p) {
+        // Parse stock an toàn
+        final int stock = int.tryParse((p['stock'] ?? 0).toString()) ?? 0;
+        final int reorderLevel = int.tryParse((p['reorderLevel'] ?? 10).toString()) ?? 10;
+        
+        // Điều kiện: Stock <= ReorderLevel
+        final bool isLow = stock <= reorderLevel;
+
         final name = (p['name'] ?? '').toString().toLowerCase();
         final sku = (p['sku'] ?? '').toString().toLowerCase();
         final query = _searchQuery.toLowerCase();
-        return name.contains(query) || sku.contains(query);
+        
+        return isLow && (name.contains(query) || sku.contains(query));
       }).toList();
 
   @override
@@ -84,11 +94,11 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     setState(() => _isLoading = true);
     try {
       final data = await _authRepository.getProducts();
-      final lowStockData = await _inventoryRepository.getLowStockProducts(); // Gọi API mới
+      // final lowStockData = await _inventoryRepository.getLowStockProducts(); // Đã XÓA vì API không tồn tại
       
       setState(() {
         _products = data;
-        _lowStockProducts = lowStockData;
+        // _lowStockProducts = lowStockData; // Không dùng nữa
       });
     } catch (e) {
       print("Lỗi tải sản phẩm: $e");
@@ -96,6 +106,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
   @override
   void dispose() {
@@ -414,6 +425,38 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     ]));
   }
 
+  // --- HELPER: BUILD IMAGE ---
+  Widget _buildProductImage(String? imageUrl, {double size = 40}) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Icon(Icons.image, size: size, color: Colors.grey);
+    }
+    
+    try {
+      if (imageUrl.startsWith('http')) {
+        return Image.network(
+          imageUrl,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: size, color: Colors.grey),
+        );
+      } else {
+        // Assume Base64
+        // Remove header if present (e.g. "data:image/png;base64,")
+        final cleanBase64 = imageUrl.contains(',') ? imageUrl.split(',').last : imageUrl;
+        return Image.memory(
+          const Base64Decoder().convert(cleanBase64),
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Icon(Icons.broken_image, size: size, color: Colors.grey),
+        );
+      }
+    } catch (e) {
+      return Icon(Icons.broken_image, size: size, color: Colors.grey);
+    }
+  }
+
   // 1. Product List (Dạng danh sách)
   Widget _buildProductList(List<Map<String, dynamic>> items, Color color) {
     return ListView.separated(
@@ -426,8 +469,9 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
           contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           leading: Container(
             width: 50, height: 50,
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-            child: const Icon(Icons.image, color: Colors.grey),
+            child: _buildProductImage(item['imageUrl']),
           ),
           title: Text(item['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text("${item['price']} đ", style: TextStyle(color: color, fontWeight: FontWeight.bold)),
@@ -460,6 +504,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
             _handleProductResult(result, index: index);
           },
           child: Container(
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(8),
@@ -471,8 +516,9 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
               children: [
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: const BorderRadius.vertical(top: Radius.circular(8))),
-                    child: const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
+                    width: double.infinity,
+                    decoration: BoxDecoration(color: Colors.grey[100]),
+                    child: _buildProductImage(item['imageUrl']),
                   ),
                 ),
                 Padding(
@@ -513,8 +559,15 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
               children: [
                 Container(
                   width: 50, height: 50,
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(color: Colors.blue[50], borderRadius: BorderRadius.circular(8)),
-                  child: Icon(Icons.inventory_2, color: Colors.blue[300]),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                     _buildProductImage(item['imageUrl']),
+                     Container(color: Colors.black12), // Overlay nhẹ nếu cần
+                    ] 
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

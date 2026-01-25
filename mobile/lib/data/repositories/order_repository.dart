@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
+import '../../core/network/api_response.dart';
 
 class OrderRepository {
   final Dio _dio = DioClient.instance;
@@ -19,20 +20,30 @@ class OrderRepository {
   }
 
   /// Lấy danh sách đơn hàng
-  Future<List<Map<String, dynamic>>> getOrders() async {
+  Future<List<Map<String, dynamic>>> getOrders({int size = 100}) async {
     try {
-      final response = await _dio.get(ApiConstants.ordersEndpoint);
+      final response = await _dio.get(
+        ApiConstants.ordersEndpoint,
+        queryParameters: {'size': size},
+      );
       
-      if (response.statusCode == 200) {
-        final data = response.data;
-        var listData = (data is Map && data.containsKey('result')) ? data['result'] : data;
-        final list = (listData is Map) 
-            ? (listData['content'] ?? listData['items'] ?? []) 
-            : (listData is List ? listData : []);
-            
-        return List<Map<String, dynamic>>.from(list);
+      final apiResponse = ApiResponse.fromJson(response.data);
+      
+      if (apiResponse.isSuccess) {
+        var listData = apiResponse.result;
+        
+        // Handle pagination: result có thể là Map (Page) hoặc List
+        if (listData is Map) {
+          listData = listData['content'] ?? listData['items'] ?? [];
+        }
+        
+        if (listData is List) {
+          return List<Map<String, dynamic>>.from(listData);
+        }
+        return [];
       }
-      return [];
+      
+      throw Exception(apiResponse.message);
     } catch (e) {
       throw Exception('Lỗi tải đơn hàng: $e');
     }

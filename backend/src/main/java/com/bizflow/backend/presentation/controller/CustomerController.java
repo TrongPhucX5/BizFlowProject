@@ -22,18 +22,21 @@ public class CustomerController {
     private final CustomerService customerService;
 
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<Page<CustomerDTO>>> getAllCustomers(
             @RequestParam(required = false) String search,
             Pageable pageable) {
 
         // Gọi service lấy danh sách (đã được fix trong UserContext/Service)
-        // Lưu ý: UserContext.getCurrentStoreId() có thể trả về null, Service đã handle việc này
+        // Lưu ý: UserContext.getCurrentStoreId() có thể trả về null, Service đã handle
+        // việc này
         Long storeId = com.bizflow.backend.core.common.UserContext.getCurrentStoreId();
         Page<CustomerDTO> customers = customerService.getCustomersByStore(storeId, pageable);
         return ResponseEntity.ok(ApiResponse.success(customers, "Lấy danh sách thành công"));
     }
 
     @GetMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<CustomerDTO>> getCustomerById(@PathVariable Long id) {
         return customerService.getCustomerById(id)
                 .map(customer -> {

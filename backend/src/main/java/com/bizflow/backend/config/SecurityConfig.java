@@ -24,66 +24,86 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtRequestFilter jwtRequestFilter;
+        private final JwtRequestFilter jwtRequestFilter;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                // 1. CORS
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                // 1. CORS
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 2. Disable CSRF
-                .csrf(AbstractHttpConfigurer::disable)
+                                // 2. Disable CSRF
+                                .csrf(AbstractHttpConfigurer::disable)
 
-                // 3. Stateless session
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                // 3. Stateless session
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // 4. Authorization
-                .authorizeHttpRequests(auth -> auth
-                        // Auth APIs
-                        .requestMatchers(
-                                "/api/v1/auth/**",
-                                "/v1/auth/**",
+                                // 4. Authorization
+                                .authorizeHttpRequests(auth -> auth
+                                                // Auth APIs
+                                                .requestMatchers(
+                                                                "/api/v1/auth/**",
+                                                                "/v1/auth/**",
 
-                                // AI APIs
-                                "/api/v1/ai/**",
-                                "/v1/ai/**",
+                                                                // AI APIs
+                                                                "/api/v1/ai/**",
+                                                                "/v1/ai/**",
 
-                                // System & docs
-                                "/v1/health",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**"
-                        ).permitAll()
+                                                                // System & docs
+                                                                "/v1/health",
+                                                                "/swagger-ui/**",
+                                                                "/swagger-ui.html",
+                                                                "/v3/api-docs/**")
+                                                .permitAll()
 
-                        // All other requests need authentication
-                        .anyRequest().authenticated()
-                )
+                                                // All other requests need authentication
+                                                .anyRequest().authenticated())
 
-                // 5. JWT filter
-                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+                                // 5. JWT filter
+                                .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class)
 
-        return http.build();
-    }
+                                // 6. Exception Handling
+                                .exceptionHandling(exception -> exception
+                                                .authenticationEntryPoint((request, response, authException) -> {
+                                                        response.setStatus(401);
+                                                        response.setContentType("application/json");
+                                                        response.getWriter().write(
+                                                                        "{\"status\":401,\"message\":\"Unauthorized\",\"error\":\""
+                                                                                        + authException.getMessage()
+                                                                                        + "\"}");
+                                                })
+                                                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                                                        response.setStatus(403);
+                                                        response.setContentType("application/json");
+                                                        response.getWriter().write(
+                                                                        "{\"status\":403,\"message\":\"Forbidden\",\"error\":\""
+                                                                                        + accessDeniedException
+                                                                                                        .getMessage()
+                                                                                        + "\"}");
+                                                }));
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        configuration.setAllowedMethods(List.of("*"));
-        configuration.setAllowedHeaders(List.of("*"));
-        configuration.setAllowCredentials(true);
-        configuration.addExposedHeader("Authorization");
+                return http.build();
+        }
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", configuration);
-        return source;
-    }
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOriginPatterns(List.of("*"));
+                configuration.setAllowedMethods(List.of("*"));
+                configuration.setAllowedHeaders(List.of("*"));
+                configuration.setAllowCredentials(true);
+                configuration.addExposedHeader("Authorization");
 
-    @Bean
-    public org.springframework.security.authentication.AuthenticationManager authenticationManager(
-            org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration config)
-            throws Exception {
-        return config.getAuthenticationManager();
-    }
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
+        }
+
+        @Bean
+        public org.springframework.security.authentication.AuthenticationManager authenticationManager(
+                        org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration config)
+                        throws Exception {
+                return config.getAuthenticationManager();
+        }
 }

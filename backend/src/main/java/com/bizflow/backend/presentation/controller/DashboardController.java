@@ -57,4 +57,13 @@ public class DashboardController {
         List<RevenueChartDto> chart = dashboardService.getDailyCountChart(storeId, range);
         return ResponseEntity.ok(ApiResponse.success(chart, "Daily count chart retrieved successfully"));
     }
+
+    @GetMapping("/products/low-stock")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<com.bizflow.backend.presentation.dto.response.ApiResponse<List<com.bizflow.backend.presentation.dto.response.ProductDTO>>> getLowStockProducts() {
+        Long storeId = UserContext.getCurrentStoreId();
+        List<com.bizflow.backend.presentation.dto.response.ProductDTO> products = dashboardService
+                .getLowStockProducts(storeId);
+        return ResponseEntity.ok(ApiResponse.success(products, "Low stock products retrieved successfully"));
+    }
 }

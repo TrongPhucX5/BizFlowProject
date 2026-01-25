@@ -19,4 +19,7 @@ public class DashboardSummaryDto implements Serializable {
     private BigDecimal totalRevenue;
     private BigDecimal pendingPayment;
     private long completedOrders;
+
+    private long lowStockCount;
+    private long totalProducts;
 }

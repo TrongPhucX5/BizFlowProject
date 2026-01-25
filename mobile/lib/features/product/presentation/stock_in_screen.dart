@@ -20,6 +20,8 @@ class _StockInScreenState extends State<StockInScreen> {
 
   // Controllers
   final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _unitCostController = TextEditingController();
+  final TextEditingController _supplierController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
 
   @override
@@ -55,12 +57,16 @@ class _StockInScreenState extends State<StockInScreen> {
       return;
     }
 
+    final unitCost = double.tryParse(_unitCostController.text) ?? 0.0;
+
     setState(() => _isLoading = true);
 
     try {
       await _inventoryRepository.stockIn(
         productId: _selectedProduct!['id'],
         quantity: quantity,
+        unitCost: unitCost,
+        supplierName: _supplierController.text.trim(),
         note: _noteController.text.trim(),
       );
 
@@ -124,28 +130,63 @@ class _StockInScreenState extends State<StockInScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 2. Số lượng nhập
-                  const Text("Số lượng nhập *", style: TextStyle(fontWeight: FontWeight.bold)),
+                  // 2. Số lượng nhập & Đơn giá nhập
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Số lượng *", style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _quantityController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "0"),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Đơn giá nhập *", style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _unitCostController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: "0", suffixText: "đ"),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                   // 3. Nhà cung cấp
+                  const Text("Nhà cung cấp", style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _quantityController,
-                    keyboardType: TextInputType.number,
+                    controller: _supplierController,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      hintText: "Nhập số lượng",
+                      hintText: "VD: NCC ABC...",
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // 3. Ghi chú
+                  // 4. Ghi chú
                   const Text("Ghi chú", style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _noteController,
-                    maxLines: 3,
+                    maxLines: 2,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
-                      hintText: "VD: Nhập hàng từ nhà cung cấp A...",
+                      hintText: "Mô tả thêm...",
                     ),
                   ),
                   const SizedBox(height: 32),
