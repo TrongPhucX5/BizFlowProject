@@ -2,11 +2,14 @@ package com.bizflow.backend.presentation.controller;
 
 import com.bizflow.backend.infrastructure.persistence.repository.OrderRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.OrderItemRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.DebtRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.ProductRepository;
 import com.bizflow.backend.presentation.dto.response.RevenueChartDto;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -19,10 +22,17 @@ public class ReportController {
 
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
+    private final DebtRepository debtRepository;
+    private final ProductRepository productRepository;
 
-    public ReportController(OrderRepository orderRepository, OrderItemRepository orderItemRepository) {
+    public ReportController(OrderRepository orderRepository, 
+                           OrderItemRepository orderItemRepository,
+                           DebtRepository debtRepository,
+                           ProductRepository productRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
+        this.debtRepository = debtRepository;
+        this.productRepository = productRepository;
     }
 
     // 1. API DOANH THU (BIỂU ĐỒ)
@@ -53,14 +63,21 @@ public class ReportController {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startToday = LocalDate.now().atStartOfDay();
 
-        Double revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now).doubleValue();
+        BigDecimal revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now);
         Long ordersToday = orderRepository.countOrders(storeId, startToday, now);
+        
+        // Lấy tổng công nợ thật từ DebtRepository
+        BigDecimal totalDebt = debtRepository.sumUnpaidDebtByStoreId(storeId);
+        
+        // Đếm số sản phẩm có số lượng tồn kho <= mức tối thiểu (reorderLevel)
+        // Giả sử reorderLevel trung bình là 10
+        long warningProducts = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
 
         Map<String, Object> stats = new HashMap<>();
-        stats.put("revenueToday", revenueToday);
+        stats.put("revenueToday", revenueToday.doubleValue());
         stats.put("ordersToday", ordersToday);
-        stats.put("totalDebt", 0); // TODO: Query từ DebtRepository
-        stats.put("warningProducts", 0); // TODO: Query từ ProductRepository
+        stats.put("totalDebt", totalDebt.doubleValue());
+        stats.put("warningProducts", warningProducts);
 
         return ResponseEntity.ok(stats);
     }
@@ -73,19 +90,17 @@ public class ReportController {
         LocalDateTime end = LocalDateTime.now();
         LocalDateTime start = end.minusDays(30);
 
-        // Gọi Repo lấy Top 5 (Giả sử bạn đã có hàm này ở Level 4)
+        // Gọi Repo lấy Top 10
         List<Object[]> topData = orderItemRepository.findTopSellingProducts(storeId, start, end, PageRequest.of(0, 10));
 
         List<Map<String, Object>> result = new ArrayList<>();
         for (Object[] row : topData) {
             Map<String, Object> item = new HashMap<>();
-            // row[0]=productId, row[1]=qty, row[2]=revenue -> Cần join lấy tên Product
-            // Để đơn giản, giả sử Repo trả về cả tên (Bạn cần chỉnh Repo nếu chưa có)
+            // row[0]=productId, row[1]=productName, row[2]=qty, row[3]=revenue
             item.put("productId", row[0]);
-            item.put("sales", row[1]);
-            item.put("revenue", row[2]);
-            // Tạm thời hardcode tên nếu Repo chưa trả về tên
-            item.put("name", "Sản phẩm #" + row[0]);
+            item.put("name", row[1] != null ? row[1] : "Sản phẩm #" + row[0]); // Fallback nếu không có tên
+            item.put("sales", row[2]);
+            item.put("revenue", row[3]);
             result.add(item);
         }
         return ResponseEntity.ok(result);

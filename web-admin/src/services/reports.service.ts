@@ -7,19 +7,19 @@ export const reportsService = {
     startDate?: string;
     endDate?: string;
   }) => {
-    const response = await axiosClient.get("/reports/revenue", { params });
+    const response = await axiosClient.get("/v1/reports/revenue", { params });
     return response.data;
   },
 
   // Báo cáo tồn kho
   getInventoryReport: async () => {
-    const response = await axiosClient.get("/reports/inventory");
+    const response = await axiosClient.get("/v1/reports/inventory");
     return response.data;
   },
 
   // Báo cáo công nợ
   getDebtReport: async () => {
-    const response = await axiosClient.get("/reports/debt");
+    const response = await axiosClient.get("/v1/reports/debt");
     return response.data;
   },
 
@@ -29,7 +29,7 @@ export const reportsService = {
     startDate?: string;
     endDate?: string;
   }) => {
-    const response = await axiosClient.get("/reports/best-selling", {
+    const response = await axiosClient.get("/v1/reports/best-selling", {
       params,
     });
     return response.data;
@@ -37,7 +37,7 @@ export const reportsService = {
 
   // Thống kê tổng quan
   getDashboardStats: async () => {
-    const response = await axiosClient.get("/reports/dashboard-stats");
+    const response = await axiosClient.get("/v1/reports/dashboard-stats");
     return response.data;
   },
 
@@ -47,7 +47,7 @@ export const reportsService = {
     format: "pdf" | "excel",
     params?: any
   ) => {
-    const response = await axiosClient.get(`/reports/export/${reportType}`, {
+    const response = await axiosClient.get(`/v1/reports/export/${reportType}`, {
       params: { ...params, format },
       responseType: "blob",
     });
