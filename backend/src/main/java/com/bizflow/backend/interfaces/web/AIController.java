@@ -23,7 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/v1/ai")
+@RequestMapping("/api/v1/ai")
 @CrossOrigin(origins = "*")
 public class AIController {
 
