@@ -19,10 +19,10 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: "Tổng quan", path: "/dashboard" },
-    { icon: <Box size={20} />, label: "Sản phẩm", path: "/products" },
+    { icon: <Box size={20} />, label: "Sản phẩm", path: "dashboard/products" },
     { icon: <ShoppingCart size={20} />, label: "Đơn hàng", path: "/orders" },
     { icon: <Users size={20} />, label: "Khách hàng", path: "/customers" },
-    { icon: <BarChart3 size={20} />, label: "Báo cáo", path: "/reports" },
+    { icon: <BarChart3 size={20} />, label: "Báo cáo", path: "dashboard/reports" },
     { icon: <Settings size={20} />, label: "Cấu hình", path: "/settings" },
   ];
 

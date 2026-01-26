@@ -1,4 +1,5 @@
 import axiosClient from "@/lib/axios-client";
+// Đảm bảo các type này đã được định nghĩa chính xác trong @/types/api
 import type { ApiResponse, PageResponse } from "@/types/api";
 
 export interface Customer {
@@ -30,8 +31,8 @@ const BASE_URL = "/v1/customers";
 
 export const customerService = {
   /**
-   * Lấy danh sách khách hàng
-   * Generics <ApiResponse<PageResponse<Customer>>> giúp sửa lỗi gạch đỏ .last ở Page
+   * Lấy danh sách khách hàng phân trang
+   * Đã bổ sung kiểu Generic đầy đủ để Component có thể truy cập .totalElements, .last, .numberOfElements
    */
   getCustomers: async (params: GetCustomersParams): Promise<ApiResponse<PageResponse<Customer>>> => {
     const response = await axiosClient.get<ApiResponse<PageResponse<Customer>>>(BASE_URL, { 
@@ -45,19 +46,36 @@ export const customerService = {
     return response.data;
   },
 
+  /**
+   * Tạo mới khách hàng
+   */
   createCustomer: async (data: Partial<Customer>): Promise<ApiResponse<Customer>> => {
     const response = await axiosClient.post<ApiResponse<Customer>>(BASE_URL, data);
     return response.data;
   },
 
+  /**
+   * Cập nhật thông tin khách hàng
+   * Sử dụng Number(id) để đảm bảo ID đúng định dạng số khi gửi lên API
+   */
   updateCustomer: async (id: number | string, data: Partial<Customer>): Promise<ApiResponse<Customer>> => {
-    // Ép kiểu Number(id) để tránh lỗi 400 Bad Request
     const response = await axiosClient.put<ApiResponse<Customer>>(`${BASE_URL}/${Number(id)}`, data);
     return response.data;
   },
 
+  /**
+   * Xóa khách hàng
+   */
   deleteCustomer: async (id: number | string): Promise<ApiResponse<void>> => {
     const response = await axiosClient.delete<ApiResponse<void>>(`${BASE_URL}/${Number(id)}`);
+    return response.data;
+  },
+
+  /**
+   * Lấy chi tiết một khách hàng (Nên có để dùng cho CustomerDetailModal)
+   */
+  getCustomerById: async (id: number | string): Promise<ApiResponse<Customer>> => {
+    const response = await axiosClient.get<ApiResponse<Customer>>(`${BASE_URL}/${Number(id)}`);
     return response.data;
   }
 };
