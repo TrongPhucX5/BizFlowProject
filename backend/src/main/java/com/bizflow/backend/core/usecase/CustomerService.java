@@ -5,7 +5,8 @@ import com.bizflow.backend.presentation.dto.request.CreateCustomerRequest;
 import com.bizflow.backend.presentation.dto.response.CustomerDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-
+import com.bizflow.backend.presentation.exception.BusinessException;
+import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
 import java.util.Optional;
 
 /**
@@ -55,10 +56,11 @@ public interface CustomerService {
      * List customers by store (paginated)
      * 
      * @param storeId Store ID
+     * @param search Từ khóa tìm kiếm (Tên hoặc SĐT)
      * @param pageable Pagination info
      * @return Page of customers
      */
-    Page<CustomerDTO> getCustomersByStore(Long storeId, Pageable pageable);
+    Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable);
 
     /**
      * Search customers by name/phone (with store filter)

@@ -23,6 +23,9 @@ public class OrderController {
 
     private final OrderService orderService;
 
+    /**
+     * Lấy danh sách đơn hàng có phân trang và lọc
+     */
     @GetMapping
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<Page<OrderDTO>>> getAllOrders(
@@ -33,22 +36,28 @@ public class OrderController {
             Pageable pageable) {
 
         Page<OrderDTO> orders = orderService.getAllOrders(status, startDate, endDate, customerId, pageable);
-        return ResponseEntity.ok(ApiResponse.success(orders, "Orders retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success(orders, "Lấy danh sách đơn hàng thành công"));
     }
 
+    /**
+     * Lấy chi tiết một đơn hàng theo ID
+     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<OrderDTO>> getOrderById(@PathVariable Long id) {
         OrderDTO order = orderService.getOrderById(id);
-        return ResponseEntity.ok(ApiResponse.success(order, "Order retrieved successfully"));
+        return ResponseEntity.ok(ApiResponse.success(order, "Lấy thông tin đơn hàng thành công"));
     }
 
+    /**
+     * Tạo mới một đơn hàng
+     */
     @PostMapping
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<OrderDTO>> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         OrderDTO order = orderService.createOrder(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success(order, "Order created successfully"));
+                .body(ApiResponse.success(order, "Tạo đơn hàng thành công"));
     }
 
     // @PutMapping("/{id}")
@@ -61,7 +70,18 @@ public class OrderController {
     // return ResponseEntity.ok(ApiResponse.success(order, "Order updated
     // successfully"));
     // }
+    /**
+     * Chỉnh sửa đơn hàng (Hoàn kho cũ, trừ kho mới)
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<OrderDTO>> updateOrder(
+            @PathVariable Long id,
+            @Valid @RequestBody CreateOrderRequest request) {
 
+        OrderDTO order = orderService.updateOrder(id, request);
+        return ResponseEntity.ok(ApiResponse.success(order, "Cập nhật đơn hàng thành công"));
+    }
     // @DeleteMapping("/{id}")
     // @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     // public ResponseEntity<ApiResponse<Void>> deleteOrder(@PathVariable Long id) {
@@ -70,6 +90,15 @@ public class OrderController {
     // successfully"));
     // }
 
+    /**
+     * Hủy đơn hàng và hoàn trả tồn kho
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteOrder(@PathVariable Long id) {
+        orderService.cancelOrder(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Hủy đơn hàng thành công"));
+    }
     // @PatchMapping("/{id}/status")
     // @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     // public ResponseEntity<ApiResponse<OrderDTO>> updateOrderStatus(

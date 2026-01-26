@@ -45,7 +45,9 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     public Integer getAvailableQuantity(Long productId) {
-        return getStock(productId).map(Inventory::getAvailableQuantity).orElse(0);
+        return getStock(productId)
+                .map(Inventory::getAvailableQuantity)
+                .orElse(0);
     }
 
     @Override
