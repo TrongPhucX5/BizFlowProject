@@ -26,8 +26,11 @@ export function AdminSidebar() {
   const router = useRouter();
 
   const handleLogout = () => {
-    // Xử lý logout cho admin
-    router.push("/auth/admin/login");
+    // Xóa token khỏi localStorage
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    // Chuyển hướng về trang Login
+    router.push("/auth/login");
   };
 
   return (

@@ -7,12 +7,15 @@ import com.bizflow.backend.presentation.dto.request.RegisterRequest;
 import com.bizflow.backend.presentation.dto.response.ApiResponse;
 import com.bizflow.backend.presentation.dto.response.LoginResponse;
 import com.bizflow.backend.presentation.dto.response.UserDTO;
+import com.bizflow.backend.infrastructure.security.CustomUserDetails;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 /**
  * AuthController: Authentication endpoints
@@ -176,14 +179,38 @@ public class AuthController {
      * Security: Requires valid JWT token in Authorization header
      */
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<String>> getCurrentUser() {
-        log.info("Get current user called");
+    public ResponseEntity<ApiResponse<UserDTO>> getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        return ResponseEntity.ok(
-                ApiResponse.success(
-                        "Current user details",
-                        "User information retrieved successfully"
-                )
-        );
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), "User not authenticated"));
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof CustomUserDetails userDetails)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), "Invalid authentication principal"));
+        }
+
+        return userService.getUserById(userDetails.getId())
+                .map(user -> {
+                    UserDTO userDTO = UserDTO.builder()
+                            .id(user.getId())
+                            .username(user.getUsername())
+                            .fullName(user.getFullName())
+                            .email(user.getEmail())
+                            .phone(user.getPhone())
+                            .role(user.getRole().toString())
+                            .storeId(user.getStoreId())
+                            .status(user.getStatus().toString())
+                            .createdAt(user.getCreatedAt())
+                            .updatedAt(user.getUpdatedAt())
+                            .build();
+
+                    return ResponseEntity.ok(ApiResponse.success(userDTO, "Lấy thông tin người dùng thành công"));
+                })
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error(HttpStatus.NOT_FOUND.value(), "User not found")));
     }
 }
