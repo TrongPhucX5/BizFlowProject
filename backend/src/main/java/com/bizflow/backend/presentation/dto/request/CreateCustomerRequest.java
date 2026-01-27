@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,12 +16,12 @@ import lombok.NoArgsConstructor;
 public class CreateCustomerRequest {
 
     @NotBlank(message = "Tên khách hàng không được để trống")
-    @Pattern(regexp = "^[^0-9]*$", message = "Tên khách hàng không được chứa chữ số") // CHẶN NHẬP SỐ
+    @Pattern(regexp = "^[^0-9]*$", message = "Tên khách hàng không được chứa chữ số")
     @Size(max = 100)
-    @JsonProperty("fullName") // Để khớp với JSON từ Frontend gửi lên
+    @JsonProperty("fullName")
     private String fullName;
 
-    @NotBlank(message = "Số điện thoại không được để trống") // KHÔNG ĐƯỢC BỎ TRỐNG SĐT
+    @NotBlank(message = "Số điện thoại không được để trống")
     @Pattern(regexp = "^[0-9]*$", message = "Số điện thoại chỉ được chứa chữ số")
     @Size(min = 10, max = 15, message = "Số điện thoại phải từ 10-15 ký tự")
     private String phone;
@@ -42,4 +44,15 @@ public class CreateCustomerRequest {
 
     @Size(max = 500)
     private String notes;
+
+    // --- BỔ SUNG CÁC TRƯỜNG TÀI CHÍNH ĐỂ KHỚP VỚI SERVICE ---
+
+    @JsonProperty("totalDebt")
+    private BigDecimal totalDebt;
+
+    @JsonProperty("totalPurchaseAmount")
+    private BigDecimal totalPurchaseAmount;
+
+    @JsonProperty("totalOrders")
+    private Integer totalOrders;
 }

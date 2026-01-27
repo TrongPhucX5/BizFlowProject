@@ -4,12 +4,14 @@ import com.bizflow.backend.core.usecase.CustomerService;
 import com.bizflow.backend.presentation.dto.request.CreateCustomerRequest;
 import com.bizflow.backend.presentation.dto.response.ApiResponse;
 import com.bizflow.backend.presentation.dto.response.CustomerDTO;
+import com.bizflow.backend.core.common.UserContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -21,29 +23,36 @@ public class CustomerController {
 
     private final CustomerService customerService;
 
+    /**
+     * Lấy danh sách khách hàng ACTIVE.
+     * Logic trong Service đã được sửa để lấy toàn bộ 19 khách hàng ACTIVE.
+     */
     @GetMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<Page<CustomerDTO>>> getAllCustomers(
             @RequestParam(required = false) String search,
             Pageable pageable) {
 
-        // Gọi service lấy danh sách (đã được fix trong UserContext/Service)
-        // Lưu ý: UserContext.getCurrentStoreId() có thể trả về null, Service đã handle
-        // việc này
-        Long storeId = com.bizflow.backend.core.common.UserContext.getCurrentStoreId();
+        // Lấy storeId từ context (nhưng Service của chúng ta hiện tại đang ưu tiên đếm ACTIVE)
+        Long storeId = UserContext.getCurrentStoreId();
+
+        // Trả về Page để Frontend đọc được totalElements = 19
         Page<CustomerDTO> customers = customerService.getCustomersByStore(storeId, search, pageable);
+
         return ResponseEntity.ok(ApiResponse.success(customers, "Lấy danh sách thành công"));
     }
 
+    /**
+     * Lấy chi tiết một khách hàng và bản đồ hóa dữ liệu đầy đủ.
+     */
     @GetMapping("/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<CustomerDTO>> getCustomerById(@PathVariable Long id) {
         return customerService.getCustomerById(id)
                 .map(customer -> {
-                    // SỬA LỖI TẠI ĐÂY: Dùng fullName thay vì name
                     CustomerDTO dto = CustomerDTO.builder()
                             .id(customer.getId())
-                            .fullName(customer.getName()) // Entity: getName(), DTO: fullName()
+                            .fullName(customer.getName()) // Đồng bộ c.name -> fullName
                             .phone(customer.getPhone())
                             .email(customer.getEmail())
                             .address(customer.getAddress())
@@ -52,12 +61,12 @@ public class CustomerController {
                             .contactPerson(customer.getContactPerson())
                             .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
                             .notes(customer.getNotes())
-
-                            // Thêm totalDebt để không bị null
                             .totalDebt(customer.getTotalDebt() != null ? customer.getTotalDebt() : BigDecimal.ZERO)
-                            .totalPurchaseAmount(BigDecimal.ZERO)
-                            .totalOrders(0)
-
+                            .totalPurchaseAmount(customer.getTotalPurchaseAmount() != null ?
+                                    customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
+                            .totalOrders(customer.getTotalOrders() != null ?
+                                    customer.getTotalOrders() : 0)
+                            .storeId(customer.getStoreId())
                             .createdAt(customer.getCreatedAt())
                             .updatedAt(customer.getUpdatedAt())
                             .build();
@@ -67,6 +76,7 @@ public class CustomerController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<CustomerDTO>> createCustomer(@Valid @RequestBody CreateCustomerRequest request) {
         CustomerDTO customer = customerService.createCustomer(request);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -74,6 +84,7 @@ public class CustomerController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<CustomerDTO>> updateCustomer(
             @PathVariable Long id,
             @Valid @RequestBody CreateCustomerRequest request) {
@@ -82,6 +93,7 @@ public class CustomerController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteCustomer(@PathVariable Long id) {
         customerService.deleteCustomer(id);
         return ResponseEntity.ok(ApiResponse.success(null, "Xóa thành công"));

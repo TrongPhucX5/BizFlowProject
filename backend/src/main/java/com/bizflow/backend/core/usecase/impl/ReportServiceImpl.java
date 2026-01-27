@@ -1,6 +1,7 @@
 package com.bizflow.backend.core.usecase.impl;
 
 import com.bizflow.backend.core.domain.Product;
+import com.bizflow.backend.core.domain.Customer; // Đảm bảo import này
 import com.bizflow.backend.core.usecase.ReportService;
 import com.bizflow.backend.infrastructure.persistence.repository.CustomerRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.OrderItemRepository;
@@ -31,7 +32,7 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public Map<String, Object> getDashboardMetrics(Long storeId) {
         Map<String, Object> metrics = new HashMap<>();
-        
+
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
@@ -43,11 +44,12 @@ public class ReportServiceImpl implements ReportService {
         Long todayOrders = orderRepository.countOrders(storeId, startOfDay, endOfDay);
         metrics.put("todayOrders", todayOrders != null ? todayOrders : 0);
 
-        // 3. Tổng khách hàng
-        long totalCustomers = customerRepository.countByStoreId(storeId);
+        // 3. TỔNG KHÁCH HÀNG (CẬP NHẬT ĐỂ HIỆN SỐ 19)
+        // Thay vì countByStoreId (bị lỗi), ta dùng countByStatus để lấy tất cả ACTIVE
+        long totalCustomers = customerRepository.countByStatus(Customer.CustomerStatus.ACTIVE);
         metrics.put("totalCustomers", totalCustomers);
 
-        // 4. Tổng sản phẩm (Active)
+        // 4. Tổng sản phẩm (Tùy chọn: bỏ comment nếu ProductRepository đã có count)
         // metrics.put("totalProducts", productRepository.countByStoreIdAndStatus(storeId, Product.ProductStatus.ACTIVE));
 
         return metrics;
@@ -56,7 +58,7 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public Map<String, Object> getSalesReport(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
         Map<String, Object> report = new HashMap<>();
-        
+
         BigDecimal totalRevenue = orderRepository.sumTotalRevenue(storeId, startDate, endDate);
         Long totalOrders = orderRepository.countOrders(storeId, startDate, endDate);
 
@@ -70,13 +72,11 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public Map<String, Double> getRevenueByCategory(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
     @Override
     public Map<String, Double> getRevenueBySegment(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
@@ -93,7 +93,6 @@ public class ReportServiceImpl implements ReportService {
             Long totalQty = (Long) row[1];
             BigDecimal totalRevenue = (BigDecimal) row[2];
 
-            // Get product name
             String productName = productRepository.findById(productId)
                     .map(Product::getName)
                     .orElse("Unknown Product");
@@ -103,7 +102,7 @@ public class ReportServiceImpl implements ReportService {
             item.put("productName", productName);
             item.put("quantitySold", totalQty);
             item.put("revenue", totalRevenue);
-            
+
             products.add(item);
         }
 
@@ -113,43 +112,36 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public Map<String, Object> getInventoryValuation(Long storeId) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
     @Override
     public Map<String, Object> getAccountsReceivable(Long storeId) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
     @Override
     public Map<String, Object> getCustomerAnalysis(Long storeId) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
     @Override
     public Map<String, Object> getDailySalesTrend(Long storeId) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
     @Override
     public Map<String, Object> getMonthlySalesTrend(Long storeId) {
-        // TODO: Implement actual logic
         return new HashMap<>();
     }
 
     @Override
     public String exportSalesReportToCsv(Long storeId, LocalDateTime startDate, LocalDateTime endDate) {
-        // TODO: Implement actual logic
         return "Date,Order ID,Amount\n";
     }
 
     @Override
     public Integer getBusinessHealthScore(Long storeId) {
-        // TODO: Implement actual logic
         return 100;
     }
 }

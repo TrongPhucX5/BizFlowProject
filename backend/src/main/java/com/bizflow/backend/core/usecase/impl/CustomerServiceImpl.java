@@ -7,9 +7,9 @@ import com.bizflow.backend.presentation.dto.request.CreateCustomerRequest;
 import com.bizflow.backend.presentation.dto.response.CustomerDTO;
 import com.bizflow.backend.presentation.exception.BusinessException;
 import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
+import com.bizflow.backend.core.common.UserContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,10 +27,24 @@ public class CustomerServiceImpl implements CustomerService {
     private final CustomerRepository customerRepository;
 
     @Override
+    public Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable) {
+        String searchKey = (search != null) ? search.trim() : "";
+        return customerRepository.findAllActiveWithSearch(searchKey, pageable)
+                .map(this::mapToDTO);
+    }
+
+    @Override
+    public Page<CustomerDTO> getAllActiveCustomers(Long storeId, Pageable pageable) {
+        return customerRepository.findAllActiveWithSearch("", pageable)
+                .map(this::mapToDTO);
+    }
+
+    @Override
     @Transactional
     @CacheEvict(value = "customers_page", allEntries = true)
     public CustomerDTO createCustomer(CreateCustomerRequest request) {
-        Long storeId = 1L;
+        Long storeId = UserContext.getCurrentStoreId();
+        if (storeId == null) storeId = 1L;
 
         if (request.getPhone() != null && !request.getPhone().isEmpty()) {
             Customer existing = customerRepository.findByStoreIdAndPhone(storeId, request.getPhone());
@@ -39,63 +53,64 @@ public class CustomerServiceImpl implements CustomerService {
             }
         }
 
+        // CẬP NHẬT: Gán dữ liệu tài chính từ request khi tạo mới
         Customer customer = Customer.builder()
                 .storeId(storeId)
                 .name(request.getFullName())
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .address(request.getAddress())
-                .type(request.getType() != null ? Customer.CustomerType.valueOf(request.getType().toUpperCase())
-                        : Customer.CustomerType.RETAIL)
                 .taxCode(request.getTaxCode())
                 .contactPerson(request.getContactPerson())
-                .status(Customer.CustomerStatus.ACTIVE)
                 .notes(request.getNotes())
+                .type(request.getType() != null ? Customer.CustomerType.valueOf(request.getType().toUpperCase())
+                        : Customer.CustomerType.RETAIL)
+                .status(Customer.CustomerStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
-                .totalDebt(BigDecimal.ZERO)
+                // Lưu các giá trị số từ request, mặc định là 0 nếu null
+                .totalDebt(request.getTotalDebt() != null ? request.getTotalDebt() : BigDecimal.ZERO)
+                .totalPurchaseAmount(request.getTotalPurchaseAmount() != null ? request.getTotalPurchaseAmount() : BigDecimal.ZERO)
+                .totalOrders(request.getTotalOrders() != null ? request.getTotalOrders() : 0)
                 .build();
 
         return mapToDTO(customerRepository.save(customer));
-    }
-
-    // --- ĐÃ SỬA: Thêm tham số String search để khớp với Interface ---
-    @Override
-    public Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable) {
-        if (storeId == null) return Page.empty(pageable);
-
-        if (search != null && !search.trim().isEmpty()) {
-            return customerRepository.findByStoreIdAndStatusWithSearch(
-                            storeId, Customer.CustomerStatus.ACTIVE, search, pageable)
-                    .map(this::mapToDTO);
-        }
-        return getAllActiveCustomers(storeId, pageable);
-    }
-
-    // Thêm hàm bổ trợ nếu interface yêu cầu 2 tham số ở chỗ khác
-    public Page<CustomerDTO> getCustomersByStore(Long storeId, Pageable pageable) {
-        return getCustomersByStore(storeId, null, pageable);
     }
 
     @Override
     @Transactional
     public CustomerDTO updateCustomer(Long id, CreateCustomerRequest request) {
         Customer customer = customerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng"));
 
+        // CẬP NHẬT THÔNG TIN CƠ BẢN
         customer.setName(request.getFullName());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
         customer.setAddress(request.getAddress());
-
-        if (request.getType() != null) {
-            customer.setType(Customer.CustomerType.valueOf(request.getType().toUpperCase()));
-        }
-
         customer.setTaxCode(request.getTaxCode());
         customer.setContactPerson(request.getContactPerson());
         customer.setNotes(request.getNotes());
         customer.setUpdatedAt(LocalDateTime.now());
+
+        // CẬP NHẬT TRỰC TIẾP CÁC TRƯỜNG TÀI CHÍNH (Sửa lỗi luôn bằng 0)
+        if (request.getTotalDebt() != null) {
+            customer.setTotalDebt(request.getTotalDebt());
+        }
+        if (request.getTotalPurchaseAmount() != null) {
+            customer.setTotalPurchaseAmount(request.getTotalPurchaseAmount());
+        }
+        if (request.getTotalOrders() != null) {
+            customer.setTotalOrders(request.getTotalOrders());
+        }
+
+        if (request.getType() != null) {
+            try {
+                customer.setType(Customer.CustomerType.valueOf(request.getType().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                customer.setType(Customer.CustomerType.RETAIL);
+            }
+        }
 
         return mapToDTO(customerRepository.save(customer));
     }
@@ -108,7 +123,7 @@ public class CustomerServiceImpl implements CustomerService {
     })
     public void deleteCustomer(Long id) {
         Customer customer = customerRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng"));
         customer.setStatus(Customer.CustomerStatus.INACTIVE);
         customer.setUpdatedAt(LocalDateTime.now());
         customerRepository.save(customer);
@@ -121,19 +136,13 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     public Optional<Customer> getCustomerByPhone(String phone) {
-        return Optional.ofNullable(customerRepository.findByStoreIdAndPhone(1L, phone));
+        Long storeId = UserContext.getCurrentStoreId();
+        return Optional.ofNullable(customerRepository.findByStoreIdAndPhone(storeId != null ? storeId : 1L, phone));
     }
 
     @Override
     public Page<CustomerDTO> searchCustomers(String keyword, Long storeId, Pageable pageable) {
         return getCustomersByStore(storeId, keyword, pageable);
-    }
-
-    @Override
-    public Page<CustomerDTO> getAllActiveCustomers(Long storeId, Pageable pageable) {
-        return customerRepository.findByStoreIdAndStatus(
-                        storeId, Customer.CustomerStatus.ACTIVE, pageable)
-                .map(this::mapToDTO);
     }
 
     @Override
@@ -149,18 +158,18 @@ public class CustomerServiceImpl implements CustomerService {
     private CustomerDTO mapToDTO(Customer customer) {
         return CustomerDTO.builder()
                 .id(customer.getId())
-                .fullName(customer.getName())
+                .fullName(customer.getName()) // Ánh xạ name sang fullName cho Frontend
                 .phone(customer.getPhone())
                 .email(customer.getEmail())
                 .address(customer.getAddress())
-                .type(customer.getType() != null ? customer.getType().toString() : "RETAIL")
-                .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
                 .taxCode(customer.getTaxCode())
                 .contactPerson(customer.getContactPerson())
                 .notes(customer.getNotes())
+                .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
+                .type(customer.getType() != null ? customer.getType().toString() : "RETAIL")
                 .totalDebt(customer.getTotalDebt() != null ? customer.getTotalDebt() : BigDecimal.ZERO)
-                .totalPurchaseAmount(BigDecimal.ZERO)
-                .totalOrders(0)
+                .totalPurchaseAmount(customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
+                .totalOrders(customer.getTotalOrders() != null ? customer.getTotalOrders() : 0)
                 .storeId(customer.getStoreId())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())

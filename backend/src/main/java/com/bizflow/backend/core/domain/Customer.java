@@ -22,7 +22,7 @@ public class Customer {
     @Column(name = "store_id", nullable = false)
     private Long storeId;
 
-    // Giữ nguyên là name để khớp với Database hiện tại
+    // Giữ nguyên name để khớp với cột trong Database hiện tại
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -36,7 +36,7 @@ public class Customer {
     private String address;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 25) // Tăng độ dài cho an toàn
+    @Column(length = 25)
     private CustomerType type;
 
     @Column(name = "tax_code", length = 20)
@@ -45,13 +45,25 @@ public class Customer {
     @Column(name = "contact_person", length = 100)
     private String contactPerson;
 
-    // --- BỔ SUNG TRƯỜNG NÀY ĐỂ HẾT LỖI getTotalDebt() ---
-    @Column(name = "total_debt")
-    private BigDecimal totalDebt;
-    // ----------------------------------------------------
+    // --- CÁC TRƯỜNG TÀI CHÍNH & THỐNG KÊ ---
+    // Khởi tạo giá trị mặc định là ZERO để tránh lỗi null khi tính toán
+    @Builder.Default
+    @Column(name = "total_debt", precision = 19, scale = 2)
+    private BigDecimal totalDebt = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "total_purchase_amount", precision = 19, scale = 2)
+    private BigDecimal totalPurchaseAmount = BigDecimal.ZERO;
+
+    @Builder.Default
+    @Column(name = "total_orders")
+    private Integer totalOrders = 0;
+
+    // ---------------------------------------
 
     @Enumerated(EnumType.STRING)
-    private CustomerStatus status;
+    @Builder.Default
+    private CustomerStatus status = CustomerStatus.ACTIVE;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -65,9 +77,7 @@ public class Customer {
     private LocalDateTime updatedAt;
 
     public enum CustomerType {
-        RETAIL, 
-        WHOLESALE,
-        CORPORATE // Thêm giá trị CORPORATE
+        RETAIL, WHOLESALE, CORPORATE
     }
 
     public enum CustomerStatus {

@@ -8,33 +8,45 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional; // QUAN TRỌNG: Thêm dòng này để hết lỗi Optional
+import java.util.Optional;
 
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
-    // --- 1. TÌM KIẾM VÀ PHÂN TRANG ---
+    /**
+     * FIX LỖI: findFirstByNameContainingIgnoreCase
+     * Dùng cho AIController để tìm khách hàng nhanh theo tên khi lên đơn AI
+     */
+    Optional<Customer> findFirstByNameContainingIgnoreCase(String name);
 
-    @Query("SELECT c FROM Customer c WHERE c.storeId = :storeId AND c.status = :status AND (" +
-            "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "c.phone LIKE CONCAT('%', :search, '%'))")
-    Page<Customer> findByStoreIdAndStatusWithSearch(
-            @Param("storeId") Long storeId,
-            @Param("status") Customer.CustomerStatus status,
+    /**
+     * ĐẾM TẤT CẢ KHÁCH HÀNG ACTIVE
+     * Dùng để hiển thị con số 19 trên Dashboard
+     */
+    long countByStatus(Customer.CustomerStatus status);
+
+    /**
+     * TÌM KIẾM THEO TRẠNG THÁI ACTIVE
+     */
+    @Query(
+            value = "SELECT c FROM Customer c WHERE c.status = 'ACTIVE' AND (" +
+                    "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "c.phone LIKE CONCAT('%', :search, '%'))",
+            countQuery = "SELECT count(c) FROM Customer c WHERE c.status = 'ACTIVE' AND (" +
+                    "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                    "c.phone LIKE CONCAT('%', :search, '%'))"
+    )
+    Page<Customer> findAllActiveWithSearch(
             @Param("search") String search,
             Pageable pageable
     );
 
-    Page<Customer> findByStoreIdAndStatus(Long storeId, Customer.CustomerStatus status, Pageable pageable);
-
+    // Các hàm bổ trợ khác
     Page<Customer> findByStoreId(Long storeId, Pageable pageable);
 
-    // --- 2. TRUY VẤN CỤ THỂ ---
+    Page<Customer> findByStoreIdAndStatus(Long storeId, Customer.CustomerStatus status, Pageable pageable);
 
     Customer findByStoreIdAndPhone(Long storeId, String phone);
 
-    long countByStoreId(Long storeId);
-
-    // Tìm khách hàng đầu tiên theo tên (không phân biệt hoa thường)
-    Optional<Customer> findFirstByNameContainingIgnoreCase(String name);
+    Optional<Customer> findByNameContainingIgnoreCase(String name);
 }

@@ -23,28 +23,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge"; // Thêm Badge để hiển thị ID chuyên nghiệp
+import { Badge } from "@/components/ui/badge"; 
 import {
   Loader2,
   UserPlus,
   Save,
-  Phone,
   User,
-  Mail,
-  MapPin,
-  FileText,
-  Hash,
+  TrendingUp,
+  Briefcase
 } from "lucide-react";
 
+// Định nghĩa Interface nội bộ cho Form
 interface CustomerFormInput {
   fullName: string;
   phone: string;
   email: string;
   address: string;
-  type: "RETAIL" | "WHOLESALE";
+  type: "RETAIL" | "WHOLESALE" | "CORPORATE";
+  status: "ACTIVE" | "INACTIVE";
   taxCode: string;
   contactPerson: string;
   notes: string;
+  totalOrders: number;
+  totalPurchaseAmount: number;
+  totalDebt: number;
 }
 
 interface Props {
@@ -70,234 +72,190 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
       email: "",
       address: "",
       type: "RETAIL",
+      status: "ACTIVE",
       taxCode: "",
       contactPerson: "",
       notes: "",
+      totalOrders: 0,
+      totalPurchaseAmount: 0,
+      totalDebt: 0,
     },
   });
 
   const selectedType = watch("type");
 
+  // Đổ dữ liệu vào form khi mở Modal
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && customer) {
       reset({
-        fullName: customer?.fullName || "",
-        phone: customer?.phone || "",
-        email: customer?.email || "",
-        address: customer?.address || "",
-        type: (customer?.type as any) || "RETAIL",
-        taxCode: customer?.taxCode || "",
-        contactPerson: customer?.contactPerson || "",
-        notes: customer?.notes || "",
+        fullName: customer.fullName || "",
+        phone: customer.phone || "",
+        email: customer.email || "",
+        address: customer.address || "",
+        type: customer.type || "RETAIL",
+        status: customer.status || "ACTIVE",
+        taxCode: customer.taxCode || "",
+        contactPerson: customer.contactPerson || "",
+        notes: customer.notes || "",
+        // Ép kiểu Number để chắc chắn các ô input số nhận đúng giá trị
+        totalOrders: Number(customer.totalOrders || 0),
+        totalPurchaseAmount: Number(customer.totalPurchaseAmount || 0),
+        totalDebt: Number(customer.totalDebt || 0),
+      });
+    } else if (isOpen && !customer) {
+      reset({
+        fullName: "",
+        phone: "",
+        email: "",
+        address: "",
+        type: "RETAIL",
+        status: "ACTIVE",
+        taxCode: "",
+        contactPerson: "",
+        notes: "",
+        totalOrders: 0,
+        totalPurchaseAmount: 0,
+        totalDebt: 0,
       });
     }
   }, [customer, isOpen, reset]);
 
   const mutation = useMutation({
     mutationFn: (data: CustomerFormInput) => {
-      const cleanData: any = {
+      // Làm sạch dữ liệu trước khi gửi lên Backend
+      const payload = {
         ...data,
         fullName: data.fullName.trim(),
         phone: data.phone.trim(),
-        email: data.email?.trim() || null,
-        taxCode: data.taxCode?.trim() || null,
+        // Chuyển đổi các trường số
+        totalOrders: Number(data.totalOrders || 0),
+        totalPurchaseAmount: Number(data.totalPurchaseAmount || 0),
+        totalDebt: Number(data.totalDebt || 0),
       };
 
       return customer
-        ? customerService.updateCustomer(customer.id, cleanData)
-        : customerService.createCustomer(cleanData);
+        ? customerService.updateCustomer(customer.id, payload)
+        : customerService.createCustomer(payload);
     },
     onSuccess: () => {
+      // Invalidate cả list và các query liên quan để cập nhật UI ngay lập tức
       queryClient.invalidateQueries({ queryKey: ["customers-list"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success(customer ? "Cập nhật thành công!" : "Đã thêm đối tác mới!");
       onClose();
     },
     onError: (err: any) => {
-      const serverError = err?.response?.data;
-      const errorMsg = serverError?.message || "Không thể kết nối đến máy chủ.";
-
-      if (serverError?.code === 4009 || errorMsg.includes("đã tồn tại")) {
-        toast.error(
-          "Số điện thoại này đã được sử dụng bởi một khách hàng khác.",
-        );
-      } else {
-        toast.error(errorMsg);
-      }
+      const errorMsg = err?.response?.data?.message || "Lỗi lưu dữ liệu. Vui lòng kiểm tra lại.";
+      toast.error(errorMsg);
     },
   });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto border-none shadow-2xl rounded-[1.5rem] p-0">
+      <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto border-none shadow-2xl rounded-[1.5rem] p-0">
         <DialogHeader className="p-6 bg-slate-50/50 border-b sticky top-0 z-10 backdrop-blur-sm">
           <DialogTitle className="text-indigo-900 text-xl font-black flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                {customer ? (
-                  <Save className="h-5 w-5" />
-                ) : (
-                  <UserPlus className="h-5 w-5" />
-                )}
+                {customer ? <Save className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
               </div>
               <span>{customer ? `CẬP NHẬT ĐỐI TÁC` : "THÊM ĐỐI TÁC MỚI"}</span>
             </div>
-
-            {/* HIỂN THỊ ID KHI CHỈNH SỬA */}
             {customer && (
-              <Badge
-                variant="outline"
-                className="ml-auto bg-white border-indigo-200 text-indigo-600 px-3 py-1 rounded-full flex items-center gap-1 font-bold"
-              >
-                <Hash className="h-3 w-3" /> ID: {customer.id}
+              <Badge variant="outline" className="bg-white border-indigo-200 text-indigo-600 px-3 py-1 font-bold">
+                ID: {customer.id}
               </Badge>
             )}
           </DialogTitle>
         </DialogHeader>
 
-        <form
-          onSubmit={handleSubmit((data) => mutation.mutate(data))}
-          className="p-6 space-y-8"
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+        <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="p-6 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+            
             {/* CỘT 1: THÔNG TIN CƠ BẢN */}
             <div className="space-y-4">
-              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 mb-2">
+              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                 <User className="h-4 w-4" /> Thông tin chính
               </h3>
 
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-500 ml-1">
-                  Họ và tên *
-                </Label>
-                <Input
-                  {...register("fullName", {
-                    required: "Vui lòng nhập họ tên",
-                  })}
-                  placeholder="Nguyễn Văn A..."
-                  className={`h-11 rounded-xl transition-all ${errors.fullName ? "border-red-500 bg-red-50/30 shadow-none" : "bg-slate-50/50 focus:bg-white"}`}
-                />
-                {errors.fullName && (
-                  <p className="text-[10px] text-red-500 font-bold ml-1">
-                    {errors.fullName.message}
-                  </p>
-                )}
+                <Label className="text-[11px] font-bold uppercase text-slate-500">Họ và tên *</Label>
+                <Input {...register("fullName", { required: "Vui lòng nhập họ tên" })} className="h-11 rounded-xl bg-slate-50/50" />
+                {errors.fullName && <p className="text-[10px] text-rose-500 font-bold">{errors.fullName.message}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-500 ml-1">
-                  Số điện thoại *
-                </Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    {...register("phone", {
-                      required: "Vui lòng nhập SĐT",
-                      pattern: {
-                        value: /^[0-9+]*$/,
-                        message: "SĐT không đúng định dạng",
-                      },
-                    })}
-                    placeholder="09xxx..."
-                    className={`pl-10 h-11 rounded-xl ${errors.phone ? "border-red-500 bg-red-50/30" : "bg-slate-50/50"}`}
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase text-slate-500">Số điện thoại *</Label>
+                  <Input {...register("phone", { required: "Vui lòng nhập số điện thoại" })} className="h-11 rounded-xl bg-slate-50/50" />
                 </div>
-                {errors.phone && (
-                  <p className="text-[10px] text-red-500 font-bold ml-1">
-                    {errors.phone.message}
-                  </p>
-                )}
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase text-slate-500">Loại khách</Label>
+                  <Select value={selectedType} onValueChange={(val: any) => setValue("type", val)}>
+                    <SelectTrigger className="h-11 rounded-xl bg-slate-50/50">
+                      <SelectValue placeholder="Chọn loại khách" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RETAIL">Khách lẻ</SelectItem>
+                      <SelectItem value="WHOLESALE">Khách sỉ</SelectItem>
+                      <SelectItem value="CORPORATE">Doanh nghiệp</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-500 ml-1">
-                  Phân loại khách hàng
-                </Label>
-                <Select
-                  value={selectedType}
-                  onValueChange={(val: any) => setValue("type", val)}
-                >
-                  <SelectTrigger className="h-11 rounded-xl bg-slate-50/50 border-slate-200">
-                    <SelectValue placeholder="Chọn loại khách" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-200 shadow-xl">
-                    <SelectItem value="RETAIL" className="font-medium">
-                      Khách lẻ (RETAIL)
-                    </SelectItem>
-                    <SelectItem value="WHOLESALE" className="font-medium">
-                      Khách sỉ (WHOLESALE)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-[11px] font-bold uppercase text-slate-500">Địa chỉ</Label>
+                <Input {...register("address")} className="h-11 rounded-xl bg-slate-50/50" />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase text-slate-500">Người liên hệ</Label>
+                <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input {...register("contactPerson")} className="pl-10 h-11 rounded-xl bg-slate-50/50" />
+                </div>
               </div>
             </div>
 
-            {/* CỘT 2: CHI TIẾT LIÊN HỆ */}
+            {/* CỘT 2: SỐ LIỆU & CÔNG NỢ */}
             <div className="space-y-4">
-              <h3 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 mb-2">
-                <Mail className="h-4 w-4" /> Liên hệ & Ghi chú
+              <h3 className="text-xs font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" /> Dữ liệu giao dịch & Thuế
               </h3>
 
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-500 ml-1">
-                  Mã số thuế
-                </Label>
-                <Input
-                  {...register("taxCode")}
-                  placeholder="MST doanh nghiệp..."
-                  className="h-11 rounded-xl bg-slate-50/50"
-                />
+                <Label className="text-[11px] font-bold uppercase text-slate-500">Mã số thuế</Label>
+                <Input {...register("taxCode")} className="h-11 rounded-xl bg-slate-50/50" />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-500 ml-1">
-                  Địa chỉ
-                </Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input
-                    {...register("address")}
-                    className="pl-10 h-11 rounded-xl bg-slate-50/50"
-                  />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase text-slate-500">Tổng đơn</Label>
+                  <Input type="number" {...register("totalOrders")} className="h-11 rounded-xl bg-slate-50/50 font-bold" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase text-slate-500">Công nợ (đ)</Label>
+                  <Input type="number" {...register("totalDebt")} className="h-11 rounded-xl bg-rose-50/50 text-rose-600 font-bold" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-500 ml-1 flex items-center gap-1">
-                  <FileText className="h-3 w-3" /> Ghi chú
-                </Label>
-                <Textarea
-                  {...register("notes")}
-                  className="h-[100px] bg-slate-50/50 rounded-xl resize-none focus:bg-white transition-all text-sm"
-                  placeholder="Ghi chú sở thích, công nợ..."
-                />
+                <Label className="text-[11px] font-bold uppercase text-slate-500">Tổng mua (đ)</Label>
+                <Input type="number" {...register("totalPurchaseAmount")} className="h-11 rounded-xl bg-slate-50/50 font-bold" />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase text-slate-500">Ghi chú</Label>
+                <Textarea {...register("notes")} className="h-20 bg-slate-50/50 rounded-xl resize-none" />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="p-6 bg-slate-50 border-t flex-row sm:justify-end gap-3 rounded-b-[1.5rem] mt-4">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              disabled={mutation.isPending}
-              className="rounded-xl font-bold text-slate-500 hover:bg-slate-200"
-            >
-              HỦY BỎ
-            </Button>
-            <Button
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-700 min-w-[160px] font-black rounded-xl shadow-lg shadow-indigo-100"
-              disabled={mutation.isPending}
-            >
-              {mutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> ĐANG LƯU...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" /> LƯU DỮ LIỆU
-                </>
-              )}
+          <DialogFooter className="p-6 bg-slate-50 border-t gap-3 rounded-b-[1.5rem]">
+            <Button type="button" variant="ghost" onClick={onClose} className="font-bold text-slate-500">HỦY BỎ</Button>
+            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700 min-w-[160px] font-black rounded-xl" disabled={mutation.isPending}>
+              {mutation.isPending ? <Loader2 className="animate-spin" /> : "LƯU DỮ LIỆU"}
             </Button>
           </DialogFooter>
         </form>

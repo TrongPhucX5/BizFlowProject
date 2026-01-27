@@ -6,7 +6,7 @@ import { customerService, type Customer } from "@/services/customer.service1";
 import { CustomerFormModal } from "./customer-form-modal";
 import { CustomerDetailModal } from "./customer-detail-modal";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -47,9 +47,26 @@ import {
   ArrowRight,
   Trash2,
   Eye,
+  Receipt,
+  Wallet,
+  BarChart3,
+  PieChart as PieIcon
 } from "lucide-react";
 
-// --- 1. ĐỊNH NGHĨA KIỂU DỮ LIỆU PHÂN TRANG (Để hết gạch đỏ) ---
+// --- IMPORT RECHARTS ---
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+  PieChart,
+  Pie,
+} from "recharts";
+
 interface PageResponse<T> {
   content: T[];
   totalElements: number;
@@ -64,11 +81,9 @@ interface PageResponse<T> {
 
 export default function CustomerPage() {
   const queryClient = useQueryClient();
-
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
@@ -80,7 +95,7 @@ export default function CustomerPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(inputValue);
-      setPage(0); 
+      setPage(0);
     }, 500);
     return () => clearTimeout(timer);
   }, [inputValue]);
@@ -89,25 +104,69 @@ export default function CustomerPage() {
     data: customersRes,
     isLoading,
     isPlaceholderData,
-    isError
+    isError,
   } = useQuery({
-    queryKey: ["customers-list", page, debouncedSearch],
-    queryFn: () => customerService.getCustomers({ page, size: 10, search: debouncedSearch }),
-    placeholderData: (previousData) => previousData,
+    queryKey: ["customers-list", page, debouncedSearch, "ACTIVE"],
+    queryFn: () =>
+      customerService.getCustomers({
+        page,
+        size: 10,
+        search: debouncedSearch,
+        status: "ACTIVE",
+      }),
   });
 
-  // --- 2. TRÍCH XUẤT DỮ LIỆU VỚI ÉP KIỂU AN TOÀN ---
-  // Ép kiểu result sang PageResponse để truy cập .content, .last, .numberOfElements
-  const pageData = customersRes?.result as unknown as PageResponse<Customer>;
-  const customerList = pageData?.content || [];
+  const pageData = useMemo(() => {
+    if (!customersRes) return null;
+    const raw = (customersRes as any)?.result || (customersRes as any)?.data || customersRes;
+
+    return {
+      content: raw?.content || [],
+      totalElements: raw?.totalElements ?? raw?.page?.totalElements ?? 0,
+      totalPages: raw?.totalPages ?? raw?.page?.totalPages ?? 1,
+      numberOfElements: raw?.numberOfElements ?? raw?.content?.length ?? 0,
+      last: raw?.last ?? (raw?.page ? raw.page.number + 1 >= raw.page.totalPages : true),
+    } as PageResponse<Customer>;
+  }, [customersRes]);
+
+  const customerList = useMemo(() => pageData?.content || [], [pageData]);
+
+  // --- LOGIC XỬ LÝ DỮ LIỆU BIỂU ĐỒ ---
+  const chartStats = useMemo(() => {
+    // 1. Dữ liệu Bar Chart: Top 5 mua hàng nhiều nhất trang này
+    const top5 = [...customerList]
+      .sort((a, b) => Number(b.totalPurchaseAmount) - Number(a.totalPurchaseAmount))
+      .slice(0, 5)
+      .map((c) => ({
+        name: c.fullName?.split(" ").pop() || "N/A",
+        fullName: c.fullName,
+        "Mua hàng": Number(c.totalPurchaseAmount) || 0,
+        "Nợ": Number(c.totalDebt) || 0,
+      }));
+
+    // 2. Dữ liệu Pie Chart: Phân loại Sỉ/Lẻ
+    const wholesale = customerList.filter((c) => c.type === "WHOLESALE").length;
+    const retail = customerList.filter((c) => c.type === "RETAIL").length;
+    const pieData = [
+      { name: "Khách Sỉ", value: wholesale, color: "#4f46e5" },
+      { name: "Khách Lẻ", value: retail, color: "#f43f5e" },
+    ];
+
+    return { top5, pieData };
+  }, [customerList]);
 
   const stats = useMemo(() => {
+    const totalCount = pageData?.totalElements || 0;
+    const pageDebt = customerList.reduce((sum, c) => sum + (Number(c.totalDebt) || 0), 0);
+    const pageSales = customerList.reduce((sum, c) => sum + (Number(c.totalPurchaseAmount) || 0), 0);
+
     return {
-      totalCount: pageData?.totalElements || 0,
-      totalDebt: customerList.reduce((sum, c) => sum + (Number(c.totalDebt) || 0), 0),
-      totalSales: customerList.reduce((sum, c) => sum + (Number(c.totalPurchaseAmount) || 0), 0),
-      newCount: pageData?.numberOfElements || 0,
-      isLast: pageData?.last ?? true
+      totalCount,
+      pageDebt,
+      pageSales,
+      currentPageCount: pageData?.numberOfElements || 0,
+      totalPages: pageData?.totalPages || 1,
+      isLast: pageData?.last ?? true,
     };
   }, [pageData, customerList]);
 
@@ -115,11 +174,11 @@ export default function CustomerPage() {
     mutationFn: (id: number) => customerService.deleteCustomer(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers-list"] });
-      toast.success("Đã xóa khách hàng thành công");
+      toast.success("Đã xóa đối tác thành công");
       setDeleteDialogOpen(false);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Không thể xóa khách hàng");
+      toast.error(error?.response?.data?.message || "Lỗi khi xóa đối tác");
     },
   });
 
@@ -128,17 +187,20 @@ export default function CustomerPage() {
       {/* Header Section */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div className="space-y-1">
-          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Đối tác & Khách hàng</h1>
+          <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight italic">
+            Đối tác & Khách hàng
+          </h1>
           <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
-            <Users className="h-4 w-4 text-indigo-500" /> Quản lý thông tin và công nợ đối tác chuyên nghiệp
+            <Users className="h-4 w-4 text-indigo-500" /> 
+            Hệ thống có <span className="text-indigo-600 font-bold">{stats.totalCount}</span> đối tác đang hoạt động
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3 w-full lg:w-auto">
           <div className="relative flex-1 md:w-80 group">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${inputValue ? "text-indigo-600" : "text-slate-400"}`} />
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${inputValue ? "text-indigo-600" : "text-slate-400"}`} />
             <Input
-              placeholder="Tìm tên, số điện thoại..."
+              placeholder="Tìm theo tên, số điện thoại..."
               className="pl-10 bg-white border-slate-200 h-11 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500/20"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -155,14 +217,27 @@ export default function CustomerPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         <div className="lg:col-span-3 space-y-8">
-          {/* Stats Cards */}
+          {/* Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard title="Tổng đối tác" value={stats.totalCount.toLocaleString()} icon={<Users className="text-blue-600" />} />
-            <StatCard title="Nợ phải thu" value={`${stats.totalDebt.toLocaleString()}đ`} icon={<CreditCard className="text-rose-600" />} alert={stats.totalDebt > 0} />
-            <StatCard title="Doanh số tổng" value={`${stats.totalSales.toLocaleString()}đ`} icon={<TrendingUp className="text-emerald-600" />} />
+            <StatCard 
+              title="Tổng đối tác" 
+              value={stats.totalCount.toLocaleString()} 
+              icon={<Users className="text-blue-600" />} 
+            />
+            <StatCard 
+              title="Nợ trên trang" 
+              value={`${stats.pageDebt.toLocaleString()}đ`} 
+              icon={<CreditCard className="text-rose-600" />} 
+              alert={stats.pageDebt > 0} 
+            />
+            <StatCard 
+              title="Doanh số trang" 
+              value={`${stats.pageSales.toLocaleString()}đ`} 
+              icon={<TrendingUp className="text-emerald-600" />} 
+            />
           </div>
 
-          {/* Table Section */}
+          {/* Table Container */}
           <Card className="border-none shadow-xl bg-white overflow-hidden rounded-2xl relative">
             {(isLoading || isPlaceholderData) && (
               <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center backdrop-blur-[1px]">
@@ -172,29 +247,32 @@ export default function CustomerPage() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader className="bg-slate-50/50">
-                  <TableRow>
-                    <TableHead className="font-bold py-5 px-6 text-slate-600 uppercase text-[11px]">Khách hàng</TableHead>
-                    <TableHead className="font-bold text-center text-slate-600 uppercase text-[11px]">Phân loại</TableHead>
+                  <TableRow className="hover:bg-transparent border-b border-slate-100">
+                    <TableHead className="font-bold py-5 px-6 text-slate-600 uppercase text-[11px]">Thông tin khách hàng</TableHead>
+                    <TableHead className="font-bold text-center text-slate-600 uppercase text-[11px]">Loại</TableHead>
                     <TableHead className="font-bold text-right text-slate-600 uppercase text-[11px]">Tổng mua</TableHead>
                     <TableHead className="font-bold text-right text-slate-600 uppercase text-[11px]">Công nợ</TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isError ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-20 text-rose-500 font-bold">Lỗi tải dữ liệu!</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-20 text-rose-500 font-bold">Lỗi kết nối Server!</TableCell></TableRow>
                   ) : customerList.length === 0 && !isLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 font-medium">Không tìm thấy khách hàng nào.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-400 font-medium">Không tìm thấy dữ liệu.</TableCell></TableRow>
                   ) : (
                     customerList.map((item) => (
                       <TableRow key={item.id} className="group hover:bg-indigo-50/30 transition-colors border-b border-slate-50">
                         <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm">
-                              {item.fullName?.charAt(0).toUpperCase()}
+                              {item.fullName?.charAt(0).toUpperCase() || "C"}
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-bold text-sm text-slate-900 uppercase cursor-pointer hover:text-indigo-600" onClick={() => {setViewingCustomer(item); setDetailOpen(true);}}>
+                              <span 
+                                className="font-bold text-sm text-slate-900 uppercase cursor-pointer hover:text-indigo-600"
+                                onClick={() => {setViewingCustomer(item); setDetailOpen(true);}}
+                              >
                                 {item.fullName}
                               </span>
                               <span className="text-[11px] text-slate-500 font-medium">{item.phone}</span>
@@ -206,21 +284,22 @@ export default function CustomerPage() {
                             {item.type === "WHOLESALE" ? "Sỉ" : "Lẻ"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-semibold text-sm">{(Number(item.totalPurchaseAmount) || 0).toLocaleString()}đ</TableCell>
-                        <TableCell className="text-right">
-                          <span className={`font-black text-sm ${Number(item.totalDebt) > 0 ? "text-rose-600" : "text-slate-400"}`}>
+                        <TableCell className="text-right font-black text-sm text-slate-900">
+                          {(Number(item.totalPurchaseAmount) || 0).toLocaleString()}đ
+                        </TableCell>
+                        <TableCell className="text-right font-black text-sm">
+                          <span className={Number(item.totalDebt) > 0 ? "text-rose-600" : "text-slate-400"}>
                             {(Number(item.totalDebt) || 0).toLocaleString()}đ
                           </span>
                         </TableCell>
-                        <TableCell className="px-6">
+                        <TableCell className="px-4 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl"><MoreHorizontal className="h-5 w-5 text-slate-400" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreHorizontal className="h-4 w-4" /></Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-52 p-2 rounded-xl shadow-xl">
-                              <DropdownMenuItem className="rounded-lg font-bold text-sm py-2.5 text-indigo-600 bg-indigo-50/50 mb-1 cursor-pointer" onClick={() => { setViewingCustomer(item); setDetailOpen(true); }}><Eye className="mr-2 h-4 w-4" /> Xem chi tiết</DropdownMenuItem>
-                              <DropdownMenuItem className="rounded-lg font-bold text-sm py-2.5 cursor-pointer" onClick={() => { setSelectedCustomer(item); setModalOpen(true); }}><UserCircle className="mr-2 h-4 w-4 text-slate-500" /> Chỉnh sửa</DropdownMenuItem>
-                              <DropdownMenuItem className="text-rose-600 rounded-lg font-bold text-sm py-2.5 hover:!bg-rose-50 cursor-pointer" onClick={() => { setCustomerToDelete(item); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-4 w-4" /> Xóa</DropdownMenuItem>
+                            <DropdownMenuContent align="end" className="w-48 p-2 rounded-xl border-none shadow-2xl">
+                              <DropdownMenuItem className="cursor-pointer font-bold text-xs" onClick={() => { setViewingCustomer(item); setDetailOpen(true); }}><Eye className="mr-2 h-4 w-4" /> Chi tiết</DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer font-bold text-xs text-rose-600" onClick={() => { setCustomerToDelete(item); setDeleteDialogOpen(true); }}><Trash2 className="mr-2 h-4 w-4" /> Xóa</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -230,40 +309,123 @@ export default function CustomerPage() {
                 </TableBody>
               </Table>
 
-              {/* Phân trang */}
+              {/* Pagination Section */}
               <div className="p-6 border-t border-slate-50 flex items-center justify-between bg-slate-50/30">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Trang {page + 1}</p>
+                <div className="flex flex-col">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Trang {page + 1} / {stats.totalPages}</p>
+                    <p className="text-[10px] text-slate-400 font-medium italic">Hiển thị {stats.currentPageCount} / {stats.totalCount}</p>
+                </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="font-bold" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>TRƯỚC</Button>
-                  <Button variant="outline" size="sm" className="font-bold" disabled={stats.isLast} onClick={() => setPage((p) => p + 1)}>SAU</Button>
+                  <Button variant="outline" size="sm" className="font-bold rounded-lg px-4" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>TRƯỚC</Button>
+                  <Button variant="outline" size="sm" className="font-bold rounded-lg px-4" disabled={stats.isLast} onClick={() => setPage((p) => p + 1)}>SAU</Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* --- BIỂU ĐỒ BAR CHART DOANH THU & NỢ --- */}
+          <Card className="border-none shadow-xl bg-white rounded-3xl p-8">
+            <CardHeader className="p-0 mb-8 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-indigo-600" /> Top 5 Mua hàng & Nợ (Trang này)
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <div className="h-[350px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartStats.top5} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 700, fill: '#64748b'}} dy={10} />
+                  <YAxis hide />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '12px'}}
+                    cursor={{fill: '#f8fafc'}}
+                    formatter={(value: any) => [`${value.toLocaleString()}đ`]}
+                  />
+                  <Bar dataKey="Mua hàng" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={35} />
+                  <Bar dataKey="Nợ" fill="#f43f5e" radius={[8, 8, 0, 0]} barSize={35} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
         </div>
 
-        {/* AI Sidebar */}
+        {/* Sidebar Insights */}
         <div className="lg:col-span-1 space-y-6">
-          <Card className="border-none shadow-2xl bg-indigo-900 text-white overflow-hidden rounded-2xl p-6">
-            <h2 className="text-sm font-black tracking-widest uppercase mb-4 flex items-center gap-2"><Sparkles className="h-4 w-4 text-yellow-300" /> AI Insights</h2>
-            <div className="space-y-4">
-              <div className="bg-white/10 rounded-xl p-4 text-xs italic leading-relaxed">
-                Phân tích: {stats.totalCount} khách hàng. {stats.totalDebt > 0 ? "Cần chú ý thu hồi nợ." : "Chỉ số an toàn."}
+          {/* PIE CHART TỶ LỆ ĐỐI TÁC */}
+          <Card className="border-none shadow-2xl bg-slate-900 text-white overflow-hidden rounded-3xl p-6 relative group">
+            <h2 className="text-sm font-black tracking-widest uppercase mb-6 flex items-center gap-2">
+              <PieIcon className="h-4 w-4 text-indigo-400" /> Tỷ lệ đối tác
+            </h2>
+            
+            <div className="h-[220px] w-full relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chartStats.pieData}
+                    innerRadius={65}
+                    outerRadius={85}
+                    paddingAngle={10}
+                    dataKey="value"
+                  >
+                    {chartStats.pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-3xl font-black">{stats.currentPageCount}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Trên trang</span>
               </div>
-              <Button className="w-full bg-white text-indigo-900 hover:bg-indigo-50 font-black text-xs h-11 rounded-xl shadow-lg">PHÂN TÍCH SÂU <ArrowRight className="ml-2 h-4 w-4" /></Button>
+            </div>
+
+            <div className="mt-8 space-y-3">
+              {chartStats.pieData.map((item) => (
+                <div key={item.name} className="flex justify-between items-center bg-white/5 p-3 rounded-2xl border border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: item.color}} />
+                    <span className="text-xs font-bold">{item.name}</span>
+                  </div>
+                  <span className="text-xs font-black">{item.value}</span>
+                </div>
+              ))}
             </div>
           </Card>
 
-          <div className="bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
-            <h3 className="text-[10px] font-black text-indigo-900 uppercase tracking-widest mb-3">Thông tin nhanh</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-slate-500">Mới thêm (trang):</span>
-                <span className="text-indigo-600 font-bold">+{stats.newCount}</span>
+          {/* AI / Insight Card */}
+          <Card className="border-none shadow-2xl bg-indigo-600 text-white rounded-3xl p-6">
+            <h2 className="text-sm font-black uppercase mb-4 flex items-center gap-2">
+              <Sparkles className="h-4 w-4" /> AI Phân tích
+            </h2>
+            <div className="bg-white/10 rounded-2xl p-4 text-[11px] leading-relaxed italic border border-white/10">
+              {stats.pageDebt > (stats.pageSales * 0.3) ? (
+                <p className="text-rose-100 font-bold">⚠️ Cảnh báo: Tỷ lệ nợ trên doanh số trang này cao ({( (stats.pageDebt / stats.pageSales) * 100).toFixed(0)}%). Cần rà soát các khoản nợ quá hạn.</p>
+              ) : (
+                <p>✅ Chỉ số dòng tiền ổn định. Các khoản nợ nằm trong tầm kiểm soát.</p>
+              )}
+            </div>
+            <Button className="w-full mt-4 bg-white text-indigo-600 font-black text-[10px] rounded-xl">CHI TIẾT RỦI RO</Button>
+          </Card>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Sức khỏe tài chính</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                    <Wallet className="h-3 w-3" /> Tỷ lệ nợ/mua:
+                </span>
+                <span className={`text-sm font-black ${stats.pageSales > 0 && (stats.pageDebt / stats.pageSales) > 0.25 ? "text-rose-600" : "text-emerald-600"}`}>
+                  {stats.pageSales > 0 ? ((stats.pageDebt / stats.pageSales) * 100).toFixed(1) : 0}%
+                </span>
               </div>
-              <div className="flex justify-between text-xs font-medium">
-                <span className="text-slate-500">Tỷ lệ nợ/doanh số:</span>
-                <span className="text-rose-600 font-bold">{stats.totalSales > 0 ? ((stats.totalDebt / stats.totalSales) * 100).toFixed(1) : 0}%</span>
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                 <div 
+                    className={`h-full transition-all duration-1000 ${stats.pageSales > 0 && (stats.pageDebt / stats.pageSales) > 0.25 ? "bg-rose-500" : "bg-indigo-600"}`}
+                    style={{ width: `${Math.min(100, stats.pageSales > 0 ? (stats.pageDebt / stats.pageSales) * 100 : 0)}%` }}
+                 />
               </div>
             </div>
           </div>
@@ -273,15 +435,26 @@ export default function CustomerPage() {
       <CustomerFormModal isOpen={modalOpen} onClose={() => setModalOpen(false)} customer={selectedCustomer} />
       <CustomerDetailModal isOpen={detailOpen} onClose={() => setDetailOpen(false)} customer={viewingCustomer} />
 
+      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-3xl p-8 max-w-md">
+        <AlertDialogContent className="rounded-3xl p-8 max-w-md border-none shadow-2xl">
           <AlertDialogHeader>
+            <div className="mx-auto bg-rose-50 w-20 h-20 rounded-3xl flex items-center justify-center mb-6">
+              <Trash2 className="h-10 w-10 text-rose-600" />
+            </div>
             <AlertDialogTitle className="text-2xl font-black uppercase text-center text-slate-900">Xác nhận xóa?</AlertDialogTitle>
-            <AlertDialogDescription className="text-center font-medium py-2">Xóa đối tác <span className="text-indigo-600 font-bold">"{customerToDelete?.fullName}"</span>?</AlertDialogDescription>
+            <AlertDialogDescription className="text-center font-medium py-2 text-slate-500">
+              Mọi dữ liệu của đối tác <span className="text-indigo-600 font-bold italic">"{customerToDelete?.fullName}"</span> sẽ bị xóa vĩnh viễn.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 flex gap-3 sm:justify-center">
-            <AlertDialogCancel className="flex-1 rounded-xl font-bold h-12">HỦY BỎ</AlertDialogCancel>
-            <AlertDialogAction onClick={() => customerToDelete && deleteMutation.mutate(customerToDelete.id)} className="flex-1 rounded-xl font-bold bg-rose-600 h-12 hover:bg-rose-700">XÁC NHẬN</AlertDialogAction>
+          <AlertDialogFooter className="mt-8 flex gap-3 sm:justify-center">
+            <AlertDialogCancel className="flex-1 rounded-xl font-bold h-12 border-slate-200 text-slate-500">HỦY</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => customerToDelete && deleteMutation.mutate(customerToDelete.id)} 
+              className="flex-1 rounded-xl font-bold bg-rose-600 h-12 hover:bg-rose-700 shadow-lg"
+            >
+              {deleteMutation.isPending ? <Loader2 className="animate-spin h-5 w-5" /> : "XÁC NHẬN"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -291,13 +464,13 @@ export default function CustomerPage() {
 
 function StatCard({ title, value, icon, alert }: { title: string; value: string; icon: React.ReactNode; alert?: boolean }) {
   return (
-    <Card className="border-none shadow-lg bg-white rounded-2xl overflow-hidden hover:shadow-indigo-100 transition-all group">
+    <Card className="border-none shadow-lg bg-white rounded-2xl overflow-hidden hover:shadow-indigo-100 transition-all group cursor-default">
       <CardContent className="p-6 flex justify-between items-center">
         <div>
           <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">{title}</p>
-          <h3 className={`text-2xl font-black tracking-tight ${alert ? "text-rose-600" : "text-slate-900"}`}>{value}</h3>
+          <h3 className={`text-2xl font-black tracking-tighter ${alert ? "text-rose-600" : "text-slate-900"}`}>{value}</h3>
         </div>
-        <div className="p-3 bg-slate-50 rounded-xl group-hover:bg-indigo-50 transition-colors">{icon}</div>
+        <div className="p-3.5 bg-slate-50 rounded-2xl group-hover:bg-indigo-50 transition-colors shadow-sm">{icon}</div>
       </CardContent>
     </Card>
   );
