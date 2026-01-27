@@ -54,7 +54,13 @@ export default function LoginPage() {
         if (response.data.result.refreshToken) {
           localStorage.setItem("refreshToken", response.data.result.refreshToken);
         }
-        router.push("/");
+
+        // Check role và điều hướng
+        if (response.data.result.role === "ADMIN") {
+            router.push("/admin/dashboard");
+        } else {
+            router.push("/");
+        }
       } else {
         setError("Đăng nhập thất bại. Vui lòng thử lại.");
       }

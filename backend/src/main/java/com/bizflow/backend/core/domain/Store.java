@@ -34,7 +34,7 @@ public class Store {
     private String taxCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('ACTIVE', 'INACTIVE') DEFAULT 'ACTIVE'")
+    @Column(columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'LOCKED') DEFAULT 'ACTIVE'")
     private StoreStatus status;
 
     @CreationTimestamp
@@ -46,6 +46,6 @@ public class Store {
     private LocalDateTime updatedAt;
 
     public enum StoreStatus {
-        ACTIVE, INACTIVE
+        ACTIVE, INACTIVE, LOCKED
     }
 }

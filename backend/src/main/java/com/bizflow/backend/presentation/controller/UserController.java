@@ -4,12 +4,14 @@ import com.bizflow.backend.presentation.dto.response.ApiResponse;
 import com.bizflow.backend.core.domain.User;
 import com.bizflow.backend.infrastructure.persistence.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/v1/users")
+@PreAuthorize("hasRole('ADMIN')") // Chỉ ADMIN được truy cập toàn bộ controller này
 public class UserController {
 
     @Autowired

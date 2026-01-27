@@ -8,7 +8,8 @@ import {
   CreditCard,
   ShieldAlert,
   Activity,
-  LogOut
+  LogOut,
+  ArrowLeftRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 // Menu cho SaaS Super Admin
 const adminMenuItems = [
   { title: "Dashboard SaaS", icon: LayoutGrid, href: "/admin/dashboard" },
+  { title: "Quản lý Tenant", icon: Store, href: "/admin/stores" },
   { title: "Gói dịch vụ", icon: CreditCard, href: "/admin/plans" },
   { title: "Phân quyền Global", icon: ShieldAlert, href: "/admin/roles" },
   { title: "System Logs", icon: Activity, href: "/admin/logs" },
@@ -26,8 +28,11 @@ export function AdminSidebar() {
   const router = useRouter();
 
   const handleLogout = () => {
-    // Xử lý logout cho admin
-    router.push("/auth/admin/login");
+    // Xóa token khỏi localStorage
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    // Chuyển hướng về trang Login
+    router.push("/auth/login");
   };
 
   return (
@@ -72,6 +77,16 @@ export function AdminSidebar() {
             </Link>
           );
         })}
+
+        <div className="pt-4 mt-4 border-t border-slate-800">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"
+          >
+            <ArrowLeftRight size={20} />
+            <span>Vào Trang Chủ</span>
+          </Link>
+        </div>
       </nav>
 
       {/* 3. FOOTER */}
