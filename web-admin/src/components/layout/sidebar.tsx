@@ -11,12 +11,11 @@ import {
   Settings,
   Store,
   LogOut,
-  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Menu items
+// Menu items - Đã chọn giữ lại các đường dẫn có /dashboard/...
 const menuItems = [
   { title: "Tổng quan", icon: LayoutDashboard, href: "/dashboard" },
   { title: "Sản phẩm", icon: Package, href: "/dashboard/products" },

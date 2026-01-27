@@ -53,6 +53,6 @@ public class StockMovement {
     private LocalDateTime createdAt;
 
     public enum MovementType {
-        SALE, STOCK_IN, STOCK_ADJUST, RETURN
+        SALE, STOCK_IN, STOCK_ADJUST, IN, OUT, RETURN
     }
 }

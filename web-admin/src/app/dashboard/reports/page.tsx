@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { reportsService } from "@/services/reports.service";
 import { dashboardService } from "@/services/dashboard.service";
@@ -94,6 +94,20 @@ export default function ReportsPage() {
   const [payDebtMethod, setPayDebtMethod] = useState("CASH");
   const [payDebtNote, setPayDebtNote] = useState("");
 
+  // State cho AI Chat
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatSending, setIsChatSending] = useState(false);
+  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatHistory, isChatSending]);
+
   // --- 1. GỌI API THỐNG KÊ TỔNG QUAN ---
   const { data: dashboardStats } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -123,17 +137,47 @@ export default function ReportsPage() {
     queryKey: ["ai-insight", period],
     queryFn: async () => {
       try {
-        const res = await axiosClient.post("/api/v1/ai/chat", {
-          message: `Hãy phân tích tình hình kinh doanh (Doanh thu, Tồn kho) trong ${period} vừa qua và đưa ra lời khuyên ngắn gọn.`,
-          history: [],
-        });
-        return res.data?.reply || "Không có dữ liệu phân tích.";
+        const data = await reportsService.getAiInsight(period);
+        const reply = data?.reply || "Không có dữ liệu phân tích.";
+        // Tự động thêm vào lịch sử chat
+        setChatHistory([{ role: "model", content: reply }]);
+        return reply;
       } catch (e) {
         return "AI đang bận, vui lòng thử lại sau.";
       }
     },
     enabled: !!revenueReport,
   });
+
+  // Xử lý gửi tin nhắn
+  const handleSendChat = async () => {
+    if (!chatInput.trim()) return;
+
+    const userMsg = chatInput;
+    setChatInput("");
+    setChatHistory((prev) => [...prev, { role: "user", content: userMsg }]);
+    setIsChatSending(true);
+
+    try {
+      // Gửi kèm lịch sử để AI hiểu ngữ cảnh
+      const apiHistory = chatHistory.map(msg => ({
+        role: msg.role === "model" ? "model" : "user",
+        content: msg.content
+      }));
+
+      const data = await reportsService.chatWithAi(userMsg, apiHistory);
+      const reply = data?.reply || "Xin lỗi, tôi không hiểu ý bạn.";
+      
+      setChatHistory((prev) => [...prev, { role: "model", content: reply }]);
+    } catch (error) {
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "model", content: "Lỗi kết nối tới AI Service." },
+      ]);
+    } finally {
+      setIsChatSending(false);
+    }
+  };
 
   // --- MAP DỮ LIỆU ---
 
@@ -529,26 +573,102 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* AI INSIGHTS */}
-      <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200 shadow-md">
-        <CardHeader>
+      {/* AI CHATBOT INTERFACE */}
+      <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200 shadow-md flex flex-col h-[600px]">
+        <CardHeader className="border-b border-indigo-100 bg-white/50 backdrop-blur-sm rounded-t-xl">
           <CardTitle className="flex items-center gap-2 text-indigo-800">
-            <Sparkles className="h-5 w-5 text-indigo-600 animate-pulse" />
+            <Sparkles className="h-5 w-5 text-indigo-600" />
             Trợ lý AI Phân tích & Đề xuất
           </CardTitle>
+          <CardDescription>
+            Hỏi chi tiết về doanh thu, tồn kho, hoặc yêu cầu lên đơn hàng.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          {isLoadingAi ? (
-            <div className="space-y-2 animate-pulse">
-              <div className="h-4 bg-indigo-200 rounded w-3/4"></div>
-              <div className="h-4 bg-indigo-200 rounded w-1/2"></div>
+        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+          {chatHistory.length === 0 && isLoadingAi ? (
+            <div className="flex items-start gap-3">
+              <div className="bg-indigo-100 p-2 rounded-full">
+                <Sparkles className="h-4 w-4 text-indigo-600 animate-pulse" />
+              </div>
+              <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm text-sm text-slate-600 animate-pulse">
+                Đang phân tích dữ liệu...
+              </div>
             </div>
           ) : (
-            <div className="p-4 bg-white/90 rounded-xl border border-indigo-100 shadow-sm text-slate-700 whitespace-pre-line leading-relaxed">
-              {aiInsight}
-            </div>
+            <>
+              {chatHistory.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex w-full ${
+                    msg.role === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div className={`flex max-w-[80%] items-start gap-2 ${
+                    msg.role === "user" ? "flex-row-reverse" : "flex-row"
+                  }`}>
+                    <div
+                      className={`p-2 rounded-full shadow-sm ${
+                        msg.role === "user"
+                          ? "bg-blue-600 text-white"
+                          : "bg-indigo-100 text-indigo-600"
+                      }`}
+                    >
+                      {msg.role === "user" ? (
+                        <Users className="h-4 w-4" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div
+                      className={`p-3 rounded-2xl text-sm shadow-sm whitespace-pre-line ${
+                        msg.role === "user"
+                          ? "bg-blue-600 text-white rounded-tr-none"
+                          : "bg-white border text-slate-700 rounded-tl-none"
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {isChatSending && (
+                 <div className="flex items-start gap-3">
+                 <div className="bg-indigo-100 p-2 rounded-full">
+                   <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" />
+                 </div>
+                 <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm text-sm text-slate-400">
+                   Đang trả lời...
+                 </div>
+               </div>
+              )}
+               <div ref={messagesEndRef} />
+            </>
           )}
         </CardContent>
+        <div className="p-4 bg-white/50 backdrop-blur-sm border-t border-indigo-100 rounded-b-xl">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendChat();
+            }}
+            className="flex gap-2"
+          >
+            <Input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Hỏi AI về tình hình kinh doanh..."
+              className="bg-white"
+              disabled={isChatSending}
+            />
+            <Button
+              type="submit"
+              className="bg-indigo-600 hover:bg-indigo-700"
+              disabled={!chatInput.trim() || isChatSending}
+            >
+              <TrendingUp className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
       </Card>
 
       {/* DIALOG THANH TOÁN */}

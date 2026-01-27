@@ -48,4 +48,21 @@ export const reportsService = {
     });
     return response.data;
   },
+
+  // Gọi AI Phân tích (tự động theo kỳ)
+  getAiInsight: async (period: string) => {
+    return reportsService.chatWithAi(
+      `Hãy phân tích tình hình kinh doanh (Doanh thu, Tồn kho) trong ${period} vừa qua và đưa ra lời khuyên ngắn gọn.`,
+      []
+    );
+  },
+
+  // Chat trực tiếp với AI
+  chatWithAi: async (message: string, history: any[]) => {
+    const response = await axiosClient.post("/v1/ai/chat", {
+      message,
+      history,
+    });
+    return response.data;
+  },
 };

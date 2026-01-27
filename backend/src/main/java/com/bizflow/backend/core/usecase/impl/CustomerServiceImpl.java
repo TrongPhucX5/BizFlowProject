@@ -41,11 +41,11 @@ public class CustomerServiceImpl implements CustomerService {
 
         Customer customer = Customer.builder()
                 .storeId(storeId)
-                .name(request.getName())
+                .name(request.getFullName())
                 .phone(request.getPhone())
                 .email(request.getEmail())
                 .address(request.getAddress())
-                .type(request.getType() != null ? Customer.CustomerType.valueOf(request.getType())
+                .type(request.getType() != null ? Customer.CustomerType.valueOf(request.getType().toUpperCase())
                         : Customer.CustomerType.RETAIL)
                 .taxCode(request.getTaxCode())
                 .contactPerson(request.getContactPerson())
@@ -59,32 +59,37 @@ public class CustomerServiceImpl implements CustomerService {
         return mapToDTO(customerRepository.save(customer));
     }
 
+    // --- ĐÃ SỬA: Thêm tham số String search để khớp với Interface ---
     @Override
-    @Cacheable(value = "customers_page", key = "#storeId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
-    public Page<CustomerDTO> getCustomersByStore(Long storeId, Pageable pageable) {
-        if (storeId == null) {
-            return Page.empty(pageable);
+    public Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable) {
+        if (storeId == null) return Page.empty(pageable);
+
+        if (search != null && !search.trim().isEmpty()) {
+            return customerRepository.findByStoreIdAndStatusWithSearch(
+                            storeId, Customer.CustomerStatus.ACTIVE, search, pageable)
+                    .map(this::mapToDTO);
         }
-        return customerRepository.findByStoreId(storeId, pageable).map(this::mapToDTO);
+        return getAllActiveCustomers(storeId, pageable);
+    }
+
+    // Thêm hàm bổ trợ nếu interface yêu cầu 2 tham số ở chỗ khác
+    public Page<CustomerDTO> getCustomersByStore(Long storeId, Pageable pageable) {
+        return getCustomersByStore(storeId, null, pageable);
     }
 
     @Override
     @Transactional
-    @Caching(evict = {
-            @CacheEvict(value = "customers", key = "#id"),
-            @CacheEvict(value = "customers_page", allEntries = true)
-    })
     public CustomerDTO updateCustomer(Long id, CreateCustomerRequest request) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
 
-        customer.setName(request.getName());
+        customer.setName(request.getFullName());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
         customer.setAddress(request.getAddress());
 
         if (request.getType() != null) {
-            customer.setType(Customer.CustomerType.valueOf(request.getType()));
+            customer.setType(Customer.CustomerType.valueOf(request.getType().toUpperCase()));
         }
 
         customer.setTaxCode(request.getTaxCode());
@@ -105,16 +110,42 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
         customer.setStatus(Customer.CustomerStatus.INACTIVE);
+        customer.setUpdatedAt(LocalDateTime.now());
         customerRepository.save(customer);
     }
 
     @Override
-    @Cacheable(value = "customers", key = "#id")
     public Optional<Customer> getCustomerById(Long id) {
         return customerRepository.findById(id);
     }
 
-    // --- HÀM MAP DỮ LIỆU ĐÃ SỬA LỖI ---
+    @Override
+    public Optional<Customer> getCustomerByPhone(String phone) {
+        return Optional.ofNullable(customerRepository.findByStoreIdAndPhone(1L, phone));
+    }
+
+    @Override
+    public Page<CustomerDTO> searchCustomers(String keyword, Long storeId, Pageable pageable) {
+        return getCustomersByStore(storeId, keyword, pageable);
+    }
+
+    @Override
+    public Page<CustomerDTO> getAllActiveCustomers(Long storeId, Pageable pageable) {
+        return customerRepository.findByStoreIdAndStatus(
+                        storeId, Customer.CustomerStatus.ACTIVE, pageable)
+                .map(this::mapToDTO);
+    }
+
+    @Override
+    public Page<CustomerDTO> getCustomersBySegment(String segment, Long storeId, Pageable pageable) {
+        return Page.empty(pageable);
+    }
+
+    @Override
+    public CustomerDTO updateSegment(Long id, String segment) {
+        return null;
+    }
+
     private CustomerDTO mapToDTO(Customer customer) {
         return CustomerDTO.builder()
                 .id(customer.getId())
@@ -127,43 +158,12 @@ public class CustomerServiceImpl implements CustomerService {
                 .taxCode(customer.getTaxCode())
                 .contactPerson(customer.getContactPerson())
                 .notes(customer.getNotes())
-
                 .totalDebt(customer.getTotalDebt() != null ? customer.getTotalDebt() : BigDecimal.ZERO)
-
-                // --- ĐÃ SỬA TỪ .totalSpent() THÀNH .totalPurchaseAmount() ---
                 .totalPurchaseAmount(BigDecimal.ZERO)
                 .totalOrders(0)
-                // -----------------------------------------------------------
-
                 .storeId(customer.getStoreId())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())
                 .build();
-    }
-
-    // Placeholder methods
-    @Override
-    public Optional<Customer> getCustomerByPhone(String phone) {
-        return Optional.empty();
-    }
-
-    @Override
-    public Page<CustomerDTO> searchCustomers(String k, Long s, Pageable p) {
-        return Page.empty();
-    }
-
-    @Override
-    public Page<CustomerDTO> getCustomersBySegment(String s, Long st, Pageable p) {
-        return Page.empty();
-    }
-
-    @Override
-    public CustomerDTO updateSegment(Long id, String s) {
-        return null;
-    }
-
-    @Override
-    public Page<CustomerDTO> getAllActiveCustomers(Long s, Pageable p) {
-        return getCustomersByStore(s, p);
     }
 }

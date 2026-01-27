@@ -1,6 +1,5 @@
 package com.bizflow.backend.infrastructure.persistence.repository;
 
-import com.bizflow.backend.core.domain.Debt;
 import com.bizflow.backend.core.domain.Order;
 import com.bizflow.backend.presentation.dto.response.RevenueChartDto;
 import com.bizflow.backend.presentation.dto.response.StatusChartDto;
@@ -19,79 +18,89 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
-        // --- 1. CÁC HÀM CƠ BẢN (Sửa lỗi Service của bạn ở đây) ---
+    // --- 1. CÁC HÀM TRUY VẤN CƠ BẢN ---
 
-        // Hàm này đang bị thiếu khiến OrderService báo lỗi
-        Page<Order> findByStoreId(Long storeId, Pageable pageable);
+    // Tìm đơn hàng theo mã (VD: ORD-123)
+    Optional<Order> findByOrderNumber(String orderNumber);
 
-        // Tìm đơn hàng theo mã (VD: ORD-123)
-        Optional<Order> findByOrderNumber(String orderNumber);
+    // Tìm tất cả đơn hàng theo Store
+    Page<Order> findByStoreId(Long storeId, Pageable pageable);
 
-        // Tìm đơn hàng của khách cụ thể
-        Page<Order> findByCustomerId(Long customerId, Pageable pageable);
+    // Tìm đơn hàng của khách cụ thể
+    Page<Order> findByCustomerId(Long customerId, Pageable pageable);
 
-        // --- 2. CÁC HÀM BÁO CÁO (Level 4 - Giữ nguyên) ---
+    // --- 2. PHƯƠNG THỨC LỌC ĐA NĂNG (Dùng cho trang danh sách) ---
+    @Query("SELECT o FROM Order o WHERE " +
+            "o.storeId = :storeId AND " +
+            "(:status IS NULL OR o.status = :status) AND " +
+            "(:customerId IS NULL OR o.customerId = :customerId) AND " +
+            "(:startDate IS NULL OR o.createdAt >= :startDate) AND " +
+            "(:endDate IS NULL OR o.createdAt <= :endDate)")
+    Page<Order> findAllWithFilters(
+            @Param("storeId") Long storeId,
+            @Param("status") Order.OrderStatus status,
+            @Param("customerId") Long customerId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable);
 
-        // Thống kê tổng doanh thu
-        @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o " +
-                        "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED'")
-        BigDecimal sumTotalRevenue(@Param("storeId") Long storeId,
-                        @Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+    // --- 3. CÁC HÀM THỐNG KÊ BÁO CÁO ---
 
-        // Đếm tổng đơn hàng
-        @Query("SELECT COUNT(o) FROM Order o " +
-                        "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED'")
-        Long countOrders(@Param("storeId") Long storeId,
-                        @Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+    // Thống kê tổng doanh thu (Trừ các đơn đã hủy)
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o " +
+            "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
+            "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED")
+    BigDecimal sumTotalRevenue(@Param("storeId") Long storeId,
+                               @Param("startDate") LocalDateTime startDate,
+                               @Param("endDate") LocalDateTime endDate);
 
-        // Đếm đơn theo trạng thái
-        @Query("SELECT COUNT(o) FROM Order o " +
-                        "WHERE o.storeId = :storeId AND o.status = :status AND o.createdAt BETWEEN :startDate AND :endDate")
-        Long countOrdersByStatus(@Param("storeId") Long storeId,
-                        @Param("status") Order.OrderStatus status,
-                        @Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+    // Đếm tổng số đơn hàng (Trừ các đơn đã hủy)
+    @Query("SELECT COUNT(o) FROM Order o " +
+            "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
+            "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED")
+    Long countOrders(@Param("storeId") Long storeId,
+                     @Param("startDate") LocalDateTime startDate,
+                     @Param("endDate") LocalDateTime endDate);
 
-        // Tính tổng tiền chờ thanh toán (remainingAmount)
-        // Giả sử logic: Đơn chưa hoàn thành thanh toán -> remainingAmount > 0
-        // Hoặc query theo debt?
-        // Theo OrderDTO logic trước đó: remainingAmount được tính toán runtime hoặc từ
-        // Debt.
-        // Tuy nhiên để query nhanh, ta có thể join bảng Debt.
-        // Nhưng hiện tại Order chưa có field remainingAmount trong DB (chỉ có trong
-        // DTO).
-        // Giải pháp: Query bảng Debt join Order.
-        @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d " +
-                        "WHERE d.storeId = :storeId AND d.status = 'UNPAID'")
-        BigDecimal sumPendingPayment(@Param("storeId") Long storeId);
+    // Đếm đơn theo một trạng thái cụ thể
+    @Query("SELECT COUNT(o) FROM Order o " +
+            "WHERE o.storeId = :storeId AND o.status = :status " +
+            "AND o.createdAt BETWEEN :startDate AND :endDate")
+    Long countOrdersByStatus(@Param("storeId") Long storeId,
+                             @Param("status") Order.OrderStatus status,
+                             @Param("startDate") LocalDateTime startDate,
+                             @Param("endDate") LocalDateTime endDate);
 
-        // --- 3. CHARTS DATA (New) ---
+    // Tính tổng tiền nợ khách hàng đang nợ store
+    @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d " +
+            "WHERE d.storeId = :storeId AND d.status = 'UNPAID'")
+    BigDecimal sumPendingPayment(@Param("storeId") Long storeId);
 
-        // Biểu đồ trạng thái (Status Chart)
-        @Query("SELECT new com.bizflow.backend.presentation.dto.response.StatusChartDto(o.status, COUNT(o)) " +
-                        "FROM Order o " +
-                        "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
-                        "GROUP BY o.status")
-        List<StatusChartDto> getOrdersGroupedByStatus(
-                        @Param("storeId") Long storeId,
-                        @Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+    // --- 4. DỮ LIỆU BIỂU ĐỒ (CHARTS DATA) ---
 
-        // Biểu đồ doanh thu (Revenue Chart)
-        @Query("SELECT new com.bizflow.backend.presentation.dto.response.RevenueChartDto( " +
-                        "   FUNCTION('DATE', o.createdAt), " +
-                        "   SUM(o.totalAmount), " +
-                        "   COUNT(o) " +
-                        ") " +
-                        "FROM Order o " +
-                        "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED' "
-                        +
-                        "GROUP BY FUNCTION('DATE', o.createdAt) " +
-                        "ORDER BY FUNCTION('DATE', o.createdAt) ASC")
-        List<RevenueChartDto> getRevenueChartData(
-                        @Param("storeId") Long storeId,
-                        @Param("startDate") LocalDateTime startDate,
-                        @Param("endDate") LocalDateTime endDate);
+    // Gom nhóm đơn hàng theo trạng thái để vẽ biểu đồ tròn
+    @Query("SELECT new com.bizflow.backend.presentation.dto.response.StatusChartDto(o.status, COUNT(o)) " +
+            "FROM Order o " +
+            "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
+            "GROUP BY o.status")
+    List<StatusChartDto> getOrdersGroupedByStatus(
+            @Param("storeId") Long storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+
+    // Gom nhóm doanh thu theo ngày để vẽ biểu đồ đường
+    @Query("SELECT new com.bizflow.backend.presentation.dto.response.RevenueChartDto( " +
+            "   FUNCTION('DATE', o.createdAt), " +
+            "   SUM(o.totalAmount), " +
+            "   COUNT(o) " +
+            ") " +
+            "FROM Order o " +
+            "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
+            "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED " +
+            "GROUP BY FUNCTION('DATE', o.createdAt) " +
+            "ORDER BY FUNCTION('DATE', o.createdAt) ASC")
+    List<RevenueChartDto> getRevenueChartData(
+            @Param("storeId") Long storeId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
 }

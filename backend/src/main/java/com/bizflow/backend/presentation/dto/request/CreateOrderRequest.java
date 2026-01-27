@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -29,7 +30,10 @@ public class CreateOrderRequest {
 
     private String paymentType; // CASH, CREDIT, TRANSFER
 
-    @jakarta.validation.constraints.Size(max = 500)
+    // --- THÊM TRƯỜNG NÀY ĐỂ HẾT LỖI getStatus() ---
+    private String status; // PENDING, CONFIRMED, COMPLETED, CANCELLED
+
+    @Size(max = 500)
     private String notes;
 
     @Data
@@ -43,5 +47,9 @@ public class CreateOrderRequest {
         @NotNull(message = "Số lượng không được rỗng")
         @DecimalMin(value = "1", message = "Số lượng phải >= 1")
         private Integer quantity;
+
+        @NotNull(message = "Đơn giá không được rỗng")
+        @DecimalMin(value = "0", message = "Đơn giá không được âm")
+        private BigDecimal unitPrice;
     }
 }
