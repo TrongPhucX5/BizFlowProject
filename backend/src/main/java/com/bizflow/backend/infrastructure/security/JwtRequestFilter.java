@@ -1,7 +1,9 @@
 package com.bizflow.backend.infrastructure.security;
 
 import com.bizflow.backend.core.domain.User;
+import com.bizflow.backend.core.domain.Store;
 import com.bizflow.backend.infrastructure.persistence.repository.UserRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -39,6 +41,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -62,6 +65,17 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 User user = userRepository.findByUsername(username).orElse(null);
                 
                 if (user != null && isUserActive(user)) {
+                    // Check logic Block Store
+                    if (storeId != null && !"ADMIN".equals(role)) {
+                         Store store = storeRepository.findById(storeId).orElse(null);
+                         if (store != null && store.getStatus() == Store.StoreStatus.LOCKED) {
+                             log.warn("Store is LOCKED. Blocking access for user: {}", username);
+                             SecurityContextHolder.clearContext();
+                             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Store is LOCKED");
+                             return;
+                         }
+                    }
+
                     // 5. Create CustomUserDetails with info from BOTH token and database
                     CustomUserDetails userDetails = new CustomUserDetails(
                             userId,

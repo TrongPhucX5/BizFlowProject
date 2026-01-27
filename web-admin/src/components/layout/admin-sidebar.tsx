@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 // Menu cho SaaS Super Admin
 const adminMenuItems = [
   { title: "Dashboard SaaS", icon: LayoutGrid, href: "/admin/dashboard" },
+  { title: "Quản lý Tenant", icon: Store, href: "/admin/stores" },
   { title: "Gói dịch vụ", icon: CreditCard, href: "/admin/plans" },
   { title: "Phân quyền Global", icon: ShieldAlert, href: "/admin/roles" },
   { title: "System Logs", icon: Activity, href: "/admin/logs" },
