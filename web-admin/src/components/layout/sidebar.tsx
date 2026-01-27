@@ -11,9 +11,12 @@ import {
   Settings,
   Store,
   LogOut,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import axiosClient from "@/lib/axios-client";
+import { useEffect, useState } from "react";
 
 // Menu items - Đã chọn giữ lại các đường dẫn có /dashboard/...
 const menuItems = [
@@ -28,6 +31,21 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const response = await axiosClient.get("/v1/auth/me");
+        if (response.data.result.role === "ADMIN") {
+          setIsAdmin(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user role", error);
+      }
+    };
+    checkUserRole();
+  }, []);
 
   // Hàm xử lý Đăng xuất ngay tại Sidebar
   const handleLogout = () => {
@@ -95,6 +113,18 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {isAdmin && (
+          <div className="pt-4 mt-4 border-t border-slate-100">
+            <Link
+              href="/admin/dashboard"
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-amber-600 hover:bg-amber-50 transition-all duration-200"
+            >
+              <ShieldAlert size={20} />
+              <span>Quản trị hệ thống</span>
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* 3. FOOTER ACCOUNT (Tích hợp Logout tại đây) */}

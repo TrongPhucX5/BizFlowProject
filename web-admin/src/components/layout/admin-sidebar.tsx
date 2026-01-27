@@ -8,7 +8,8 @@ import {
   CreditCard,
   ShieldAlert,
   Activity,
-  LogOut
+  LogOut,
+  ArrowLeftRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -76,6 +77,16 @@ export function AdminSidebar() {
             </Link>
           );
         })}
+
+        <div className="pt-4 mt-4 border-t border-slate-800">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"
+          >
+            <ArrowLeftRight size={20} />
+            <span>Vào Trang Chủ</span>
+          </Link>
+        </div>
       </nav>
 
       {/* 3. FOOTER */}
