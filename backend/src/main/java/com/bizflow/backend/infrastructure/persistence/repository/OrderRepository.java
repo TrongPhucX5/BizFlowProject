@@ -130,4 +130,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         @Param("storeId") Long storeId,
                         @Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
+
+        // 7. GLOBAL REVENUE CHART (Phần này thêm mới cho SuperAdmin)
+        @Query("SELECT new com.bizflow.backend.presentation.dto.response.RevenueChartDto( " +
+                        "   FUNCTION('DATE', o.createdAt), " +
+                        "   SUM(o.totalAmount), " +
+                        "   COUNT(o), " +
+                        "   SUM(o.totalAmount) " + // Placeholder for profit
+                        ") " +
+                        "FROM Order o " +
+                        "WHERE o.createdAt BETWEEN :startDate AND :endDate " +
+                        "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED " +
+                        "GROUP BY FUNCTION('DATE', o.createdAt) " +
+                        "ORDER BY FUNCTION('DATE', o.createdAt) ASC")
+        List<RevenueChartDto> getGlobalRevenueChartData(
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate);
+
+        @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE (:startDate IS NULL OR o.createdAt >= :startDate) AND (:endDate IS NULL OR o.createdAt <= :endDate)")
+        BigDecimal calculateTotalRevenue(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+        @Query("SELECT COUNT(o) FROM Order o WHERE (:startDate IS NULL OR o.createdAt >= :startDate) AND (:endDate IS NULL OR o.createdAt <= :endDate)")
+        long countOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }
