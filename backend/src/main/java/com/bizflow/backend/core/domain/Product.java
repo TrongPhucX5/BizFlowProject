@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 @Table(name = "products", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_store_sku", columnNames = {"store_id", "sku"})
+        @UniqueConstraint(name = "uk_store_sku", columnNames = { "store_id", "sku" })
 })
 public class Product {
     @Id
@@ -59,6 +59,10 @@ public class Product {
     // Changed to LONGTEXT to store Base64 image string
     @Column(name = "image_url", columnDefinition = "LONGTEXT")
     private String imageUrl;
+
+    @Column(name = "track_stock", nullable = false)
+    @Builder.Default
+    private Boolean trackStock = true;
 
     @Enumerated(EnumType.STRING)
     @Column(columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'DISCONTINUED') DEFAULT 'ACTIVE'")

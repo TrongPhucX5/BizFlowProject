@@ -1,4 +1,4 @@
-package com.bizflow.backend.infrastructure.config;
+package com.bizflow.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

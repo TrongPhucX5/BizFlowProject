@@ -38,8 +38,14 @@ public class OrderDTO {
     public static class OrderItemDTO {
         private Long id;
         private Long productId;
+        private String productName; // Added for invoice printing
         private Integer quantity;
         private BigDecimal unitPrice;
         private BigDecimal totalAmount;
+
+        // Alias for totalAmount - used in invoice printing
+        public BigDecimal getSubtotal() {
+            return totalAmount;
+        }
     }
 }

@@ -54,6 +54,7 @@ public class ProductServiceImpl implements ProductService {
 
         product.setDescription(request.getDescription());
         product.setImageUrl(request.getImageUrl());
+        product.setTrackStock(request.getTrackStock() != null ? request.getTrackStock() : true);
         product.setStatus(Product.ProductStatus.ACTIVE);
         product.setCreatedAt(LocalDateTime.now());
         product.setReorderLevel(10);
@@ -79,6 +80,8 @@ public class ProductServiceImpl implements ProductService {
         product.setUnitId(request.getUnitId());
         product.setDescription(request.getDescription());
         product.setImageUrl(request.getImageUrl());
+        if (request.getTrackStock() != null)
+            product.setTrackStock(request.getTrackStock());
         product.setUpdatedAt(LocalDateTime.now());
 
         return mapToDTO(productRepository.save(product));
@@ -120,8 +123,8 @@ public class ProductServiceImpl implements ProductService {
 
                 // 1. STOCK: Lấy từ bảng Inventory
                 .stock(stock)
+                .trackStock(product.getTrackStock() != null ? product.getTrackStock() : true)
                 .reorderLevel(product.getReorderLevel() != null ? product.getReorderLevel() : 10)
-
                 .status(product.getStatus() != null ? product.getStatus().toString() : "INACTIVE")
                 .storeId(product.getStoreId())
                 .description(product.getDescription())

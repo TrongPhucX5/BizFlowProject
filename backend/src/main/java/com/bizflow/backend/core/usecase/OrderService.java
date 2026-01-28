@@ -114,7 +114,8 @@ public class OrderService {
         orderRepository.save(order);
     }
 
-    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId, Pageable pageable) {
+    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId,
+            Pageable pageable) {
         Long storeId = UserContext.getCurrentStoreId();
         LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;
         LocalDateTime end = (endDate != null) ? endDate.atTime(23, 59, 59) : null;
@@ -131,7 +132,8 @@ public class OrderService {
     public OrderDTO getOrderById(Long id) {
         Long storeId = UserContext.getCurrentStoreId();
         Order order = orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        if (!order.getStoreId().equals(storeId)) throw new BusinessException(4003, "Access denied");
+        if (!order.getStoreId().equals(storeId))
+            throw new BusinessException(4003, "Access denied");
         return mapToDTO(order, orderItemRepository.findByOrderId(order.getId()));
     }
 
@@ -140,25 +142,55 @@ public class OrderService {
     private Customer validateCustomerExists(Long customerId, Long storeId) {
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found: " + customerId));
-        if (!customer.getStoreId().equals(storeId)) throw new BusinessException(4003, "Store mismatch");
+        if (!customer.getStoreId().equals(storeId))
+            throw new BusinessException(4003, "Store mismatch");
         return customer;
     }
 
     private void validateOrderItems(List<CreateOrderRequest.OrderItemRequest> items) {
-        if (items == null || items.isEmpty()) throw new BusinessException(4002, "Order items empty");
+        if (items == null || items.isEmpty())
+            throw new BusinessException(4002, "Order items empty");
     }
 
-    private List<OrderItemData> checkAndBuildOrderItems(List<CreateOrderRequest.OrderItemRequest> itemRequests, Long storeId) {
+    private List<OrderItemData> checkAndBuildOrderItems(List<CreateOrderRequest.OrderItemRequest> itemRequests,
+            Long storeId) {
         List<OrderItemData> itemDataList = new ArrayList<>();
         for (CreateOrderRequest.OrderItemRequest req : itemRequests) {
             Product prod = productRepository.findById(req.getProductId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
+            // Find or create inventory for product
             Inventory inv = inventoryRepository.findByStoreIdAndProductId(storeId, prod.getId())
-                    .orElseThrow(() -> new BusinessException(4005, "No inventory for product: " + prod.getName()));
+                    .orElseGet(() -> {
+                        // Auto-create inventory if product doesn't track stock OR create with 0
+                        // quantity
+                        if (!prod.getTrackStock()) {
+                            // Product không theo dõi kho -> cho phép bán không giới hạn
+                            Inventory newInv = Inventory.builder()
+                                    .storeId(storeId)
+                                    .productId(prod.getId())
+                                    .quantity(999999) // Số lượng lớn để không bị hết
+                                    .availableQuantity(999999)
+                                    .build();
+                            return inventoryRepository.save(newInv);
+                        } else {
+                            // Product có theo dõi kho nhưng chưa nhập -> tạo với số lượng 0
+                            Inventory newInv = Inventory.builder()
+                                    .storeId(storeId)
+                                    .productId(prod.getId())
+                                    .quantity(0)
+                                    .availableQuantity(0)
+                                    .build();
+                            inventoryRepository.save(newInv);
+                            throw new BusinessException(4005,
+                                    "Sản phẩm '" + prod.getName() + "' hết hàng. Vui lòng nhập kho trước.");
+                        }
+                    });
 
-            if (inv.getAvailableQuantity() < req.getQuantity()) {
-                throw new BusinessException(4006, "Hết hàng: " + prod.getName());
+            // Check available quantity only if product tracks stock
+            if (prod.getTrackStock() && inv.getAvailableQuantity() < req.getQuantity()) {
+                throw new BusinessException(4006,
+                        "Hết hàng: " + prod.getName() + " (Còn: " + inv.getAvailableQuantity() + ")");
             }
 
             itemDataList.add(OrderItemData.builder()
@@ -178,11 +210,13 @@ public class OrderService {
 
     private BigDecimal calculateTotal(BigDecimal subtotal, BigDecimal discount) {
         BigDecimal total = subtotal.subtract(discount);
-        if (total.compareTo(BigDecimal.ZERO) < 0) throw new BusinessException(4007, "Discount too high");
+        if (total.compareTo(BigDecimal.ZERO) < 0)
+            throw new BusinessException(4007, "Discount too high");
         return total;
     }
 
-    private Order buildOrder(Long storeId, Long customerId, BigDecimal subtotal, BigDecimal total, CreateOrderRequest req, String user) {
+    private Order buildOrder(Long storeId, Long customerId, BigDecimal subtotal, BigDecimal total,
+            CreateOrderRequest req, String user) {
         return Order.builder()
                 .storeId(storeId)
                 .orderNumber(generateOrderNumber(storeId))
@@ -192,20 +226,24 @@ public class OrderService {
                 .discountAmount(req.getDiscountAmount() != null ? req.getDiscountAmount() : BigDecimal.ZERO)
                 .totalAmount(total)
                 .status(Order.OrderStatus.CONFIRMED)
-                .paymentType(req.getPaymentType() != null ? Order.PaymentType.valueOf(req.getPaymentType().toUpperCase()) : Order.PaymentType.CASH)
+                .paymentType(
+                        req.getPaymentType() != null ? Order.PaymentType.valueOf(req.getPaymentType().toUpperCase())
+                                : Order.PaymentType.CASH)
                 .notes(req.getNotes())
                 .createdBy(user)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
 
-    private void updateOrderEntity(Order order, Long customerId, BigDecimal subtotal, BigDecimal discount, BigDecimal total, CreateOrderRequest request) {
+    private void updateOrderEntity(Order order, Long customerId, BigDecimal subtotal, BigDecimal discount,
+            BigDecimal total, CreateOrderRequest request) {
         order.setCustomerId(customerId);
         order.setSubtotal(subtotal);
         order.setDiscountAmount(discount);
         order.setTotalAmount(total);
         order.setNotes(request.getNotes());
-        if (request.getStatus() != null) order.setStatus(Order.OrderStatus.valueOf(request.getStatus().toUpperCase()));
+        if (request.getStatus() != null)
+            order.setStatus(Order.OrderStatus.valueOf(request.getStatus().toUpperCase()));
     }
 
     private void persistOrderItems(Long orderId, List<OrderItemData> items) {
@@ -223,7 +261,8 @@ public class OrderService {
 
     private void reduceInventory(Long storeId, List<OrderItemData> items, Long orderId) {
         for (OrderItemData item : items) {
-            Inventory inv = inventoryRepository.findByStoreIdAndProductId(storeId, item.getProduct().getId()).orElseThrow();
+            Inventory inv = inventoryRepository.findByStoreIdAndProductId(storeId, item.getProduct().getId())
+                    .orElseThrow();
             inv.setQuantity(inv.getQuantity() - item.getQuantity());
             inv.setAvailableQuantity(inv.getAvailableQuantity() - item.getQuantity());
             inventoryRepository.save(inv);
@@ -253,13 +292,17 @@ public class OrderService {
         debtRepository.save(Debt.builder()
                 .storeId(storeId).orderId(order.getId()).customerId(customer.getId())
                 .originalAmount(order.getTotalAmount()).paidAmount(BigDecimal.ZERO).unpaidAmount(order.getTotalAmount())
-                .status(Debt.DebtStatus.UNPAID).dueDate(LocalDateTime.now().plusDays(30).toLocalDate()).createdAt(LocalDateTime.now()).build());
+                .status(Debt.DebtStatus.UNPAID).dueDate(LocalDateTime.now().plusDays(30).toLocalDate())
+                .createdAt(LocalDateTime.now()).build());
     }
 
     private void sendOrderNotification(Long storeId, Order order, Customer customer, BigDecimal total) {
         try {
-            notificationService.sendTopicNotification("store_" + storeId, "Đơn mới: " + order.getOrderNumber(), "Khách: " + customer.getName() + " - " + total);
-        } catch (Exception e) { log.warn("Notify failed"); }
+            notificationService.sendTopicNotification("store_" + storeId, "Đơn mới: " + order.getOrderNumber(),
+                    "Khách: " + customer.getName() + " - " + total);
+        } catch (Exception e) {
+            log.warn("Notify failed");
+        }
     }
 
     private String generateOrderNumber(Long storeId) {
@@ -268,6 +311,19 @@ public class OrderService {
 
     private OrderDTO mapToDTO(Order order, List<OrderItem> items) {
         Customer customer = customerRepository.findById(order.getCustomerId()).orElse(null);
+
+        // Build items with product names
+        List<OrderDTO.OrderItemDTO> itemDTOs = items.stream().map(i -> {
+            Product product = productRepository.findById(i.getProductId()).orElse(null);
+            return OrderDTO.OrderItemDTO.builder()
+                    .productId(i.getProductId())
+                    .productName(product != null ? product.getName() : "Unknown")
+                    .quantity(i.getQuantity())
+                    .unitPrice(i.getUnitPrice())
+                    .totalAmount(i.getTotalAmount())
+                    .build();
+        }).toList();
+
         return OrderDTO.builder()
                 .id(order.getId())
                 .orderCode(order.getOrderNumber())
@@ -279,12 +335,7 @@ public class OrderService {
                 .status(order.getStatus().toString())
                 .paymentType(order.getPaymentType().toString())
                 .createdAt(order.getCreatedAt())
-                .items(items.stream().map(i -> OrderDTO.OrderItemDTO.builder()
-                        .productId(i.getProductId())
-                        .quantity(i.getQuantity())
-                        .unitPrice(i.getUnitPrice())
-                        .totalAmount(i.getTotalAmount())
-                        .build()).toList())
+                .items(itemDTOs)
                 .build();
     }
 

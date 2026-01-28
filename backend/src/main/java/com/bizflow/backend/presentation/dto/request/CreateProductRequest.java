@@ -41,4 +41,6 @@ public class CreateProductRequest {
 
     // Xóa bỏ validation @Size để cho phép lưu chuỗi Base64
     private String imageUrl;
+
+    private Boolean trackStock;
 }

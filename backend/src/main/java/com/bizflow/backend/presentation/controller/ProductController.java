@@ -56,6 +56,7 @@ public class ProductController {
                             .unitName(product.getUnitName())
                             .description(product.getDescription())
                             .imageUrl(product.getImageUrl())
+                            .trackStock(product.getTrackStock() != null ? product.getTrackStock() : true)
                             .status(product.getStatus().toString())
                             .storeId(product.getStoreId())
                             .build();

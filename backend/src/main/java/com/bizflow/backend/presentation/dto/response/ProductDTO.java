@@ -32,6 +32,7 @@ public class ProductDTO {
 
     private String description;
     private String imageUrl;
+    private Boolean trackStock;
     private String status;
     private Long storeId;
 }
