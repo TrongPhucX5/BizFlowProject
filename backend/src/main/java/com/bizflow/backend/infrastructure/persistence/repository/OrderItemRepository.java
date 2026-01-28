@@ -15,22 +15,25 @@ import java.util.List;
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
-    List<OrderItem> findByOrderId(Long orderId);
+        List<OrderItem> findByOrderId(Long orderId);
 
-    // --- PHƯƠNG THỨC XÓA (Đã sửa vị trí) ---
-    @Modifying
-    @Transactional
-    @Query("DELETE FROM OrderItem oi WHERE oi.orderId = :orderId")
-    void deleteByOrderId(@Param("orderId") Long orderId);
+        // --- PHƯƠNG THỨC XÓA (Đã sửa vị trí) ---
+        @Modifying
+        @Transactional
+        @Query("DELETE FROM OrderItem oi WHERE oi.orderId = :orderId")
+        void deleteByOrderId(@Param("orderId") Long orderId);
 
-    // --- PHƯƠNG THỨC THỐNG KÊ ---
-    @Query("SELECT oi.productId, SUM(oi.quantity) as totalQty, SUM(oi.totalAmount) as totalRevenue " +
-            "FROM OrderItem oi JOIN Order o ON oi.orderId = o.id " +
-            "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate AND o.status != 'CANCELLED' " +
-            "GROUP BY oi.productId " +
-            "ORDER BY totalQty DESC")
-    List<Object[]> findTopSellingProducts(@Param("storeId") Long storeId,
-                                          @Param("startDate") LocalDateTime startDate,
-                                          @Param("endDate") LocalDateTime endDate,
-                                          Pageable pageable);
+        // --- PHƯƠNG THỨC THỐNG KÊ ---
+        @Query("SELECT oi.productId, p.name, SUM(oi.quantity) as totalQty, SUM(oi.totalAmount) as totalRevenue " +
+                        "FROM OrderItem oi " +
+                        "JOIN Order o ON oi.orderId = o.id " +
+                        "JOIN Product p ON oi.productId = p.id " +
+                        "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
+                        "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED " +
+                        "GROUP BY oi.productId, p.name " +
+                        "ORDER BY totalQty DESC")
+        List<Object[]> findTopSellingProducts(@Param("storeId") Long storeId,
+                        @Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate,
+                        Pageable pageable);
 }

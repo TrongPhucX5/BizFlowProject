@@ -25,10 +25,10 @@ public class ReportController {
     private final DebtRepository debtRepository;
     private final ProductRepository productRepository;
 
-    public ReportController(OrderRepository orderRepository, 
-                           OrderItemRepository orderItemRepository,
-                           DebtRepository debtRepository,
-                           ProductRepository productRepository) {
+    public ReportController(OrderRepository orderRepository,
+            OrderItemRepository orderItemRepository,
+            DebtRepository debtRepository,
+            ProductRepository productRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.debtRepository = debtRepository;
@@ -50,6 +50,7 @@ public class ReportController {
             Map<String, Object> item = new HashMap<>();
             item.put("date", row.getDate().toString());
             item.put("totalAmount", row.getRevenue());
+            item.put("profit", row.getProfit()); // Include profit
             item.put("orderCount", row.getOrderCount());
             result.add(item);
         }
@@ -59,29 +60,44 @@ public class ReportController {
     // 2. API THỐNG KÊ TỔNG QUAN (4 ô vuông đầu trang)
     @GetMapping("/dashboard-stats")
     public ResponseEntity<?> getDashboardStats() {
-        Long storeId = UserContext.getCurrentStoreId();
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime startToday = LocalDate.now().atStartOfDay();
+        try {
+            Long storeId = UserContext.getCurrentStoreId();
+            System.out.println("DEBUG: getDashboardStats called. StoreId=" + storeId);
 
-        BigDecimal revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now);
-        Long ordersToday = orderRepository.countOrders(storeId, startToday, now);
-        
-        // Lấy tổng công nợ thật từ DebtRepository (UNPAID + PAID_PARTIAL)
-        BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId, 
-                Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID, 
-                              com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
-        
-        // Đếm số sản phẩm có số lượng tồn kho <= mức tối thiểu (reorderLevel)
-        // Giả sử reorderLevel trung bình là 10
-        long warningProducts = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime startToday = LocalDate.now().atStartOfDay();
+            System.out.println("DEBUG: Querying from " + startToday + " to " + now);
 
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("revenueToday", revenueToday.doubleValue());
-        stats.put("ordersToday", ordersToday);
-        stats.put("totalDebt", totalDebt.doubleValue());
-        stats.put("warningProducts", warningProducts);
+            BigDecimal revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now);
+            Long ordersToday = orderRepository.countOrders(storeId, startToday, now);
 
-        return ResponseEntity.ok(stats);
+            System.out.println("DEBUG: revenueToday=" + revenueToday + ", ordersToday=" + ordersToday);
+
+            // Lấy tổng công nợ thật từ DebtRepository (UNPAID + PAID_PARTIAL)
+            BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId,
+                    Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID,
+                            com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
+
+            // Đếm số sản phẩm có số lượng tồn kho <= mức tối thiểu (reorderLevel)
+            long warningProducts = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
+
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("revenueToday", revenueToday != null ? revenueToday.doubleValue() : 0.0);
+            stats.put("ordersToday", ordersToday != null ? ordersToday : 0L);
+            stats.put("totalDebt", totalDebt != null ? totalDebt.doubleValue() : 0.0);
+            stats.put("warningProducts", warningProducts);
+
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            e.printStackTrace();
+            // Return empty stats instead of error to avoid crashing frontend
+            Map<String, Object> emptyStats = new HashMap<>();
+            emptyStats.put("revenueToday", 0);
+            emptyStats.put("ordersToday", 0);
+            emptyStats.put("totalDebt", 0);
+            emptyStats.put("warningProducts", 0);
+            return ResponseEntity.ok(emptyStats);
+        }
     }
 
     // 3. API TOP SẢN PHẨM BÁN CHẠY
@@ -113,7 +129,7 @@ public class ReportController {
     public ResponseEntity<byte[]> exportGeneralReport() {
         Long storeId = UserContext.getCurrentStoreId();
         StringBuilder csv = new StringBuilder();
-        
+
         // Header
         csv.append("\uFEFF"); // BOM for UTF-8 Excel support
         csv.append("BAO CAO TONG QUAN CUA HANG\n");
@@ -122,43 +138,45 @@ public class ReportController {
         // 1. Thong ke chung
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startToday = LocalDate.now().atStartOfDay();
-        
+
         BigDecimal revenueToday = orderRepository.sumTotalRevenue(storeId, startToday, now);
         Long ordersToday = orderRepository.countOrders(storeId, startToday, now);
-        BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId, 
-                Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID, 
-                              com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
+        BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId,
+                Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID,
+                        com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
         long warningProducts = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
 
         csv.append("--- THONG KE TRONG NGAY ---\n");
         csv.append("Doanh thu hom nay (VNĐ),Tong don hang,Tong cong no (VNĐ),Canh bao ton kho\n");
         csv.append(revenueToday != null ? revenueToday : 0).append(",")
-           .append(ordersToday).append(",")
-           .append(totalDebt != null ? totalDebt : 0).append(",")
-           .append(warningProducts).append("\n\n");
+                .append(ordersToday).append(",")
+                .append(totalDebt != null ? totalDebt : 0).append(",")
+                .append(warningProducts).append("\n\n");
 
         // 2. Top San Pham Ban Chay (30 ngay)
         csv.append("--- TOP 10 SAN PHAM BAN CHAY (30 NGAY) ---\n");
         csv.append("Ten San Pham,So Luong Ban,Doanh Thu (VNĐ)\n");
-        
-        List<Object[]> topProducts = orderItemRepository.findTopSellingProducts(storeId, 
-                now.minusDays(30), now, 
+
+        List<Object[]> topProducts = orderItemRepository.findTopSellingProducts(storeId,
+                now.minusDays(30), now,
                 PageRequest.of(0, 10));
-        
+
         for (Object[] row : topProducts) {
             String name = (String) (row[1] != null ? row[1] : "SP #" + row[0]);
             // Escape commas in name
-            if (name.contains(",")) name = "\"" + name + "\"";
-            
+            if (name.contains(","))
+                name = "\"" + name + "\"";
+
             csv.append(name).append(",")
-               .append(row[2]).append(",")
-               .append(row[3]).append("\n");
+                    .append(row[2]).append(",")
+                    .append(row[3]).append("\n");
         }
 
         byte[] bytes = csv.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
         return ResponseEntity.ok()
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=bao-cao-tong-quan.csv")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=bao-cao-tong-quan.csv")
                 .contentType(org.springframework.http.MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(bytes);
     }

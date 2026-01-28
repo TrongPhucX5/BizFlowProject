@@ -19,18 +19,19 @@ public class RevenueChartDto implements Serializable {
     private LocalDate date;
     private BigDecimal revenue;
     private Long orderCount;
+    private BigDecimal profit;
 
-    public RevenueChartDto(Object date, BigDecimal revenue, Long orderCount) {
+    public RevenueChartDto(Object date, BigDecimal revenue, Long orderCount, BigDecimal profit) {
         if (date instanceof java.sql.Date) {
             this.date = ((java.sql.Date) date).toLocalDate();
         } else if (date instanceof LocalDate) {
             this.date = (LocalDate) date;
         } else if (date != null) {
-            // Fallback strategy if needed, or just toString() parser?
-            // For now, assume it's one of the date types.
+            // Fallback strategy if needed
             this.date = LocalDate.parse(date.toString());
         }
         this.revenue = revenue;
         this.orderCount = orderCount;
+        this.profit = profit != null ? profit : BigDecimal.ZERO;
     }
 }
