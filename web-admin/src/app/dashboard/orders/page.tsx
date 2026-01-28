@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ordersService } from "@/services/orders.service";
+import { orderService } from "@/services/orders.service";
 import { dashboardService } from "@/services/dashboard.service";
 import {
   Table,
@@ -109,7 +109,7 @@ export default function OrdersPage() {
       if (dateFilter === "TODAY")
         params.startDate = format(new Date(), "yyyy-MM-dd");
 
-      const res = await ordersService.getOrders(params);
+      const res = await orderService.getOrders(params);
       return res as ApiResponse<PageResponse<Order>>;
     },
     retry: 1,
@@ -125,7 +125,7 @@ export default function OrdersPage() {
 
   // --- MUTATIONS ---
   const createMutation = useMutation({
-    mutationFn: ordersService.createOrder,
+    mutationFn: orderService.createOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders-list"] });
       setIsDialogOpen(false);
@@ -145,7 +145,7 @@ export default function OrdersPage() {
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
-      ordersService.updateOrderStatus(id, status),
+      orderService.updateOrderStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders-list"] });
       alert("Cập nhật trạng thái thành công!");
@@ -153,7 +153,7 @@ export default function OrdersPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => ordersService.deleteOrder(id),
+    mutationFn: (id: number) => orderService.deleteOrder(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders-list"] });
       alert("Xóa đơn hàng thành công!");
@@ -162,7 +162,7 @@ export default function OrdersPage() {
 
   const paymentMutation = useMutation({
     mutationFn: ({ id, amount }: { id: number; amount: number }) =>
-      ordersService.makePayment(id, {
+      orderService.makePayment(id, {
         amount,
         paymentMethod: "CASH",
         transactionId: `TRX-${Date.now()}`,
