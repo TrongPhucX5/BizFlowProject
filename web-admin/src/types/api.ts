@@ -105,3 +105,15 @@ export interface DebtReport {
   totalDebt: number;
   lastPurchaseDate: string;
 }
+
+export interface SubscriptionPlan {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  durationMonths: number;
+  features: string; // JSON string from backend
+  status: "ACTIVE" | "INACTIVE";
+  createdAt: string;
+  usageCount?: number;
+}
