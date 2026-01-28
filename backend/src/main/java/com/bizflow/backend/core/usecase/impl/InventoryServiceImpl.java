@@ -85,6 +85,7 @@ public class InventoryServiceImpl implements InventoryService {
      * - Create StockMovement record
      */
     @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "products_page", allEntries = true)
     public Inventory importStock(ImportInventoryRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         String username = UserContext.getCurrentUsername();
@@ -130,7 +131,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .createdBy(username)
                 .createdAt(LocalDateTime.now())
                 .build();
-        
+
         stockMovementRepository.save(movement);
 
         return savedInventory;
