@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orderService } from "@/services/orders.service";
 import { dashboardService } from "@/services/dashboard.service";
@@ -77,6 +78,9 @@ import type { Order, ApiResponse, PageResponse, Product } from "@/types/api";
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const viewId = searchParams.get("viewId");
 
   // --- STATE ---
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,6 +98,8 @@ export default function OrdersPage() {
     items: [] as { productId: number; quantity: number; price: number; name: string }[],
     paymentType: "CASH",
     notes: "",
+    status: "PENDING",    // Added to satisfy interface
+    discountAmount: 0,    // Added to satisfy interface
   });
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -109,8 +115,8 @@ export default function OrdersPage() {
       if (dateFilter === "TODAY")
         params.startDate = format(new Date(), "yyyy-MM-dd");
 
-      const res = await orderService.getOrders(params);
-      return res as ApiResponse<PageResponse<Order>>;
+      const res = await orderService.getAllOrders(params);
+      return res as unknown as ApiResponse<PageResponse<Order>>;
     },
     retry: 1,
   });
@@ -134,6 +140,8 @@ export default function OrdersPage() {
         items: [],
         paymentType: "CASH",
         notes: "",
+        status: "PENDING",
+        discountAmount: 0,
       });
       alert("Tạo đơn hàng thành công!");
     },
@@ -143,9 +151,32 @@ export default function OrdersPage() {
     },
   });
 
+  // --- AUTO OPEN DETAIL ---
+  useEffect(() => {
+    if (viewId) {
+      const fetchAndOpen = async () => {
+        try {
+          const res = await orderService.getOrderById(Number(viewId));
+          if (res?.result) {
+            // Need to cast to match existing state type if there are mismatches, 
+            // but assuming close enough or strictly mapped
+            setCurrentOrder(res.result as unknown as Order);
+            setIsViewDialogOpen(true);
+
+            // Clean URL
+            router.replace("/dashboard/orders");
+          }
+        } catch (e) {
+          console.error("Failed to load order detail", e);
+        }
+      };
+      fetchAndOpen();
+    }
+  }, [viewId, router]);
+
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) =>
-      orderService.updateOrderStatus(id, status),
+      orderService.updateOrderStatus(id, status as any), // Cast to any or OrderStatus
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["orders-list"] });
       alert("Cập nhật trạng thái thành công!");
@@ -245,7 +276,20 @@ export default function OrdersPage() {
       alert("Vui lòng chọn ít nhất một sản phẩm!");
       return;
     }
-    createMutation.mutate(newOrder);
+
+    // Convert state to API request format
+    const payload: any = {
+      ...newOrder,
+      items: newOrder.items.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.price
+      })),
+      status: newOrder.status as any,
+      paymentType: newOrder.paymentType as any
+    };
+
+    createMutation.mutate(payload);
   };
 
   const handleProcessPayment = () => {

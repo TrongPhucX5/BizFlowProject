@@ -94,10 +94,62 @@ const inventoryAlertData = [
   { product: "Gạch men 60x60", current: 15, min: 30, unit: "thùng" },
 ];
 
+import { toast } from "sonner";
+
 export default function ReportsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("week");
+
+  // --- WEBSOCKET CONNECTION ---
+  useEffect(() => {
+    // Try to connect to WebSocket
+    // Note: Adjust URL if backend is on different port/host
+    const ws = new WebSocket("ws://localhost:8080/ws/notifications");
+
+    ws.onopen = () => {
+      console.log("Connected to Real-time Notification Server");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WS Message:", data);
+
+        // Show notification
+        toast(data.title || "Thông báo mới", {
+          description: data.body,
+          action: {
+            label: "Xem ngay",
+            onClick: () => {
+              queryClient.invalidateQueries();
+              // Navigate to orders page with viewId if available
+              if (data.orderId) {
+                router.push(`/dashboard/orders?viewId=${data.orderId}`);
+              } else {
+                router.push("/dashboard/orders");
+              }
+            },
+          },
+        });
+
+        // Auto refresh data
+        queryClient.invalidateQueries();
+
+      } catch (e) {
+        console.error("Error parsing WS message", e);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("Disconnected from Notification Server");
+    };
+
+    return () => {
+      if (ws.readyState === 1) ws.close();
+    };
+  }, [queryClient]);
+
   const [activeTab, setActiveTab] = useState("revenue"); // Control tabs
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
@@ -1071,6 +1123,6 @@ export default function ReportsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
