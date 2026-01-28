@@ -6,6 +6,10 @@ import 'package:mobile/data/repositories/auth_repository.dart';
 import 'personal_info_screen.dart';
 import 'business_info_screen.dart';
 import 'kyc_screen.dart';
+import 'help_support_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_service_screen.dart';
+import 'contact_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -143,7 +147,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ProfileGridItemData(Icons.headset_mic_outlined, 'Liên hệ', Colors.orange),
                   ],
                   onItemTap: (index) {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng liên hệ admin@bizflow.com")));
+                    switch (index) {
+                      case 0: // Trợ giúp
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
+                        break;
+                      case 1: // Điều khoản
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()));
+                        break;
+                      case 2: // Chính sách
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
+                        break;
+                      case 3: // Liên hệ
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactScreen()));
+                        break;
+                    }
                   },
                 ),
 

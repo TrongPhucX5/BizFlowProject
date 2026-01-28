@@ -11,6 +11,7 @@ import 'package:mobile/features/product/presentation/stock_in_screen.dart';
 import 'package:mobile/features/product/presentation/product_create_screen.dart';
 import 'package:mobile/features/report/presentation/report_screen.dart';
 import 'package:mobile/data/repositories/debt_screen.dart';
+import 'package:mobile/features/order/presentation/manual_order_screen.dart';
 import 'dart:convert';
 
 class ManagementScreen extends StatefulWidget {
@@ -440,10 +441,13 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   void _showQuickActions() {
+    // Capture the outer context to avoid issues with shadow context in builder
+    final parentContext = context;
+    
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (context) => Column(
+      builder: (ctx) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 16),
@@ -452,29 +456,33 @@ class _ManagementScreenState extends State<ManagementScreen> {
           ListTile(
             leading: const CircleAvatar(backgroundColor: Colors.blue, child: Icon(Icons.assignment_add, color: Colors.white)),
             title: const Text("Tạo đơn hàng mới"),
-            subtitle: const Text("Chuyển đến tab Đơn hàng"),
+            subtitle: const Text("Mở màn hình soạn đơn"),
             onTap: () {
-               Navigator.pop(context);
-               MainScreen.of(context)?.setTabIndex(1); 
+               Navigator.pop(ctx);
+               Navigator.push(
+                 parentContext, 
+                 MaterialPageRoute(builder: (_) => const ManualOrderScreen())
+               );
             },
           ),
           ListTile(
             leading: const CircleAvatar(backgroundColor: Colors.teal, child: Icon(Icons.add_box, color: Colors.white)),
             title: const Text("Thêm sản phẩm"),
             onTap: () {
-               Navigator.pop(context);
+               Navigator.pop(ctx);
                Navigator.push(
-                 context, 
+                 parentContext, 
                  MaterialPageRoute(builder: (_) => const ProductCreateScreen())
                ).then((_) => _fetchData());
             },
           ),
           ListTile(
+            leading: const CircleAvatar(backgroundColor: Colors.orange, child: Icon(Icons.person_add, color: Colors.white)),
             title: const Text("Thêm khách hàng"),
             subtitle: const Text("Chuyển đến tab Khách hàng"),
             onTap: () {
-               Navigator.pop(context);
-               MainScreen.of(context)?.setTabIndex(3);
+               Navigator.pop(ctx);
+               MainScreen.of(parentContext)?.setTabIndex(3);
             },
           ),
           const SizedBox(height: 24),

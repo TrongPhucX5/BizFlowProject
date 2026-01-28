@@ -30,7 +30,6 @@ class BizFlowApp extends StatelessWidget {
         '/management': (context) => const ManagementScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MainScreen(),
-
         '/order': (context) => const OrderScreen(),
         '/product': (context) => const ProductScreen(),
         '/customer': (context) => const CustomerScreen(),

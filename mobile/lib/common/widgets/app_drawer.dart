@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/auth/presentation/login_screen.dart';
 import 'package:mobile/features/report/presentation/report_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
+import 'package:mobile/features/profile/presentation/contact_screen.dart';
+import 'package:mobile/features/profile/presentation/help_support_screen.dart';
+import 'package:mobile/features/profile/presentation/subscription_plan_screen.dart';
+import 'package:mobile/features/profile/presentation/store_settings_screen.dart';
+import 'package:mobile/features/home/presentation/main_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -134,6 +139,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   title: "Hỗ trợ",
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ContactScreen()),
+                    );
                   },
                 ),
                 _drawerItem(
@@ -141,16 +150,12 @@ class _AppDrawerState extends State<AppDrawer> {
                   title: "Hướng dẫn",
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+                    );
                   },
                 ),
-                _drawerItem(
-                  icon: Icons.groups,
-                  title: "Cộng đồng",
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-
                 const Divider(),
 
                 _drawerItem(
@@ -158,6 +163,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   title: "Cài đặt cửa hàng",
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StoreSettingsScreen()),
+                    );
                   },
                 ),
                 _drawerItem(
@@ -165,6 +174,10 @@ class _AppDrawerState extends State<AppDrawer> {
                   title: "Gói đang sử dụng",
                   onTap: () {
                     Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SubscriptionPlanScreen()),
+                    );
                   },
                 ),
                 _drawerItem(
@@ -172,6 +185,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   title: "Cài đặt cá nhân",
                   onTap: () {
                     Navigator.pop(context);
+                    MainScreen.of(context)?.setTabIndex(4); // Switch to Profile Tab
                   },
                 ),
 
