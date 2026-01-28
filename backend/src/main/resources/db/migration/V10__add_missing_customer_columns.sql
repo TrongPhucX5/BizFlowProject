@@ -1,0 +1,8 @@
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS gender VARCHAR(10);
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS dob VARCHAR(20);
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS group_id BIGINT;
+
+ALTER TABLE customers
+ADD CONSTRAINT fk_customers_group FOREIGN KEY (group_id) REFERENCES customer_groups (id) ON DELETE SET NULL;

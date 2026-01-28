@@ -24,10 +24,14 @@ public class CustomerDTO {
     private String status;
     private String notes;
 
+    private String gender;
+    private String dob;
+    private Long groupId; // Để hiển thị nhóm khách hàng nếu cần
+
     // --- CÁC TRƯỜNG THỐNG KÊ (Đã sửa tên khớp Frontend) ---
-    private BigDecimal totalDebt;           // Tổng nợ
+    private BigDecimal totalDebt; // Tổng nợ
     private BigDecimal totalPurchaseAmount; // Tổng tiền mua (Khớp với frontend đang gọi)
-    private Integer totalOrders;            // Tổng đơn hàng
+    private Integer totalOrders; // Tổng đơn hàng
     // ------------------------------------------------------
 
     private Long storeId;

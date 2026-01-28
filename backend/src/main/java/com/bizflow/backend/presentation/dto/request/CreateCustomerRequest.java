@@ -33,6 +33,12 @@ public class CreateCustomerRequest {
     @Size(max = 255)
     private String address;
 
+    private String gender;
+
+    private String dob;
+
+    private Long groupId;
+
     private String type; // RETAIL, WHOLESALE, CORPORATE
 
     @Size(max = 20)

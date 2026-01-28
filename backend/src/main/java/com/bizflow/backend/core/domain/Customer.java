@@ -22,6 +22,10 @@ public class Customer {
     @Column(name = "store_id", nullable = false)
     private Long storeId;
 
+    // Relationship with CustomerGroup
+    @Column(name = "group_id")
+    private Long groupId;
+
     // Giữ nguyên name để khớp với cột trong Database hiện tại
     @Column(nullable = false, length = 100)
     private String name;
@@ -31,6 +35,12 @@ public class Customer {
 
     @Column(length = 100)
     private String email;
+
+    @Column(length = 10)
+    private String gender; // Nam / Nữ / Khác
+
+    @Column(length = 20)
+    private String dob; // dd/MM/yyyy
 
     @Column(length = 255)
     private String address;
