@@ -9,6 +9,8 @@ import '../data/models/product_dto.dart';
 import 'main_screen.dart';
 import 'package:mobile/features/product/presentation/stock_in_screen.dart';
 import 'package:mobile/features/product/presentation/product_create_screen.dart';
+import 'package:mobile/features/report/presentation/report_screen.dart';
+import 'package:mobile/data/repositories/debt_screen.dart';
 import 'dart:convert';
 
 class ManagementScreen extends StatefulWidget {
@@ -233,23 +235,33 @@ class _ManagementScreenState extends State<ManagementScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildStatCard(
-                  "DOANH THU",
-                  _formatCurrency(_summary!.totalRevenue),
-                  "Tổng các đơn thành công",
-                  Icons.trending_up,
-                  Colors.green,
+                child: InkWell(
+                  onTap: () {
+                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen()));
+                  },
+                  child: _buildStatCard(
+                    "DOANH THU",
+                    _formatCurrency(_summary!.totalRevenue),
+                    "Tổng các đơn thành công",
+                    Icons.trending_up,
+                    Colors.green,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStatCard(
-                  "HÀNG SẮP HẾT",
-                  "${_summary!.lowStockCount}",
-                  "Cần nhập hàng ngay",
-                  Icons.warning_amber_rounded,
-                  Colors.orange,
-                  isAlert: _summary!.lowStockCount > 0,
+                child: InkWell(
+                  onTap: () {
+                     Navigator.push(context, MaterialPageRoute(builder: (_) => const StockInScreen()));
+                  },
+                  child: _buildStatCard(
+                    "HÀNG SẮP HẾT",
+                    "${_summary!.lowStockCount}",
+                    "Cần nhập hàng ngay",
+                    Icons.warning_amber_rounded,
+                    Colors.orange,
+                    isAlert: _summary!.lowStockCount > 0,
+                  ),
                 ),
               ),
             ],
@@ -258,22 +270,33 @@ class _ManagementScreenState extends State<ManagementScreen> {
           Row(
             children: [
               Expanded(
-                child: _buildStatCard(
-                  "CÔNG NỢ KHÁCH",
-                  _formatCurrency(_summary!.pendingPayment),
-                  "Số tiền chưa thu hồi",
-                  Icons.people_alt_outlined,
-                  Colors.blue,
+                 child: InkWell(
+                  onTap: () {
+                     Navigator.push(context, MaterialPageRoute(builder: (_) => const DebtScreen()));
+                  },
+                  child: _buildStatCard(
+                    "CÔNG NỢ KHÁCH",
+                    _formatCurrency(_summary!.pendingPayment),
+                    "Số tiền chưa thu hồi",
+                    Icons.people_alt_outlined,
+                    Colors.blue,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildStatCard(
-                  "MÃ HÀNG",
-                  "${_summary!.totalProducts}",
-                  "Trong danh mục kho",
-                  Icons.inventory_2_outlined,
-                  Colors.purple,
+                 child: InkWell(
+                  onTap: () {
+                     // Navigate to Product Tab
+                     MainScreen.of(context)?.setTabIndex(2);
+                  },
+                  child: _buildStatCard(
+                    "MÃ HÀNG",
+                    "${_summary!.totalProducts}",
+                    "Trong danh mục kho",
+                    Icons.inventory_2_outlined,
+                    Colors.purple,
+                  ),
                 ),
               ),
             ],
@@ -447,7 +470,6 @@ class _ManagementScreenState extends State<ManagementScreen> {
             },
           ),
           ListTile(
-            leading: const CircleAvatar(backgroundColor: Colors.purple, child: Icon(Icons.person_add, color: Colors.white)),
             title: const Text("Thêm khách hàng"),
             subtitle: const Text("Chuyển đến tab Khách hàng"),
             onTap: () {

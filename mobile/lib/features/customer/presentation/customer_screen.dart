@@ -205,7 +205,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
                               "dob": dobController.text,
                               "email": emailController.text,
                               "address": addressController.text,
-                              "storeId": storeId, // FIX: Gửi kèm StoreID
+                              "storeId": storeId,
+                              // Keep existing groupId if any, or null
+                              "groupId": existingCustomer?['groupId'], 
                             };
 
                             // Gọi API

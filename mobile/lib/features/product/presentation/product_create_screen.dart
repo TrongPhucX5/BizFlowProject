@@ -422,7 +422,26 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                           if (_trackStock)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
-                              child: _buildInput("Tồn kho ban đầu", _stockController, isNumber: true, action: TextInputAction.done),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildInput(
+                                      widget.existingProduct != null ? "Tồn kho hiện tại" : "Tồn kho ban đầu", 
+                                      _stockController, 
+                                      isNumber: true, 
+                                      action: TextInputAction.done,
+                                      readOnly: widget.existingProduct != null
+                                  ),
+                                  if (widget.existingProduct != null)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        "Để sửa số lượng, vui lòng dùng chức năng 'Nhập hàng' hoặc 'Kiểm kê'",
+                                        style: TextStyle(color: Colors.orange, fontSize: 12, fontStyle: FontStyle.italic),
+                                      ),
+                                    )
+                                ],
+                              ),
                             ),
                           
                           // Logic hiển thị theo yêu cầu:
@@ -495,7 +514,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
 
   // Helpers
   Widget _buildLabel(String text, {bool isRequired = false}) => RichText(text: TextSpan(text: text, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey), children: [if (isRequired) const TextSpan(text: " *", style: TextStyle(color: Colors.red))]));
-  Widget _buildInput(String label, TextEditingController ctrl, {bool isNumber = false, Function(String)? onChanged, TextInputAction? action}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel(label), TextFormField(controller: ctrl, onChanged: onChanged, textInputAction: action, keyboardType: isNumber ? TextInputType.number : TextInputType.text, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12))))]);
+  Widget _buildInput(String label, TextEditingController ctrl, {bool isNumber = false, Function(String)? onChanged, TextInputAction? action, bool readOnly = false}) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_buildLabel(label), TextFormField(controller: ctrl, onChanged: onChanged, textInputAction: action, readOnly: readOnly, keyboardType: isNumber ? TextInputType.number : TextInputType.text, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(vertical: 8), enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black12))))]);
   
   // Cập nhật Chip để set cả ID và Name
   Widget _buildChip(String text, int id) => InkWell(onTap: () => setState(() { 
