@@ -32,12 +32,30 @@ public class DashboardController {
         return ResponseEntity.ok(ApiResponse.success(summary, "Dashboard summary retrieved successfully"));
     }
 
+    @GetMapping("/orders/recent")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<ApiResponse<List<com.bizflow.backend.presentation.dto.response.OrderDTO>>> getRecentOrders() {
+        Long storeId = UserContext.getCurrentStoreId();
+        List<com.bizflow.backend.presentation.dto.response.OrderDTO> orders = dashboardService.getRecentOrders(storeId);
+        return ResponseEntity.ok(ApiResponse.success(orders, "Recent orders retrieved successfully"));
+    }
+
     @GetMapping("/orders/status-chart")
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<List<StatusChartDto>>> getOrderStatusChart() {
         Long storeId = UserContext.getCurrentStoreId();
         List<StatusChartDto> chart = dashboardService.getOrderStatusChart(storeId);
         return ResponseEntity.ok(ApiResponse.success(chart, "Status chart retrieved successfully"));
+    }
+
+    @GetMapping("/customers/top")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<ApiResponse<List<com.bizflow.backend.presentation.dto.response.TopCustomerDto>>> getTopCustomers(
+            @RequestParam(defaultValue = "30d") String range) {
+        Long storeId = UserContext.getCurrentStoreId();
+        List<com.bizflow.backend.presentation.dto.response.TopCustomerDto> customers = dashboardService
+                .getTopCustomers(storeId, range);
+        return ResponseEntity.ok(ApiResponse.success(customers, "Top customers retrieved successfully"));
     }
 
     @GetMapping("/orders/revenue-chart")
@@ -65,5 +83,15 @@ public class DashboardController {
         List<com.bizflow.backend.presentation.dto.response.ProductDTO> products = dashboardService
                 .getLowStockProducts(storeId);
         return ResponseEntity.ok(ApiResponse.success(products, "Low stock products retrieved successfully"));
+    }
+
+    @GetMapping("/orders/by-date")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<ApiResponse<List<com.bizflow.backend.presentation.dto.response.OrderDTO>>> getOrdersByDate(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
+        Long storeId = UserContext.getCurrentStoreId();
+        List<com.bizflow.backend.presentation.dto.response.OrderDTO> orders = dashboardService.getOrdersByDate(storeId,
+                date);
+        return ResponseEntity.ok(ApiResponse.success(orders, "Orders retrieved successfully"));
     }
 }
