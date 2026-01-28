@@ -44,7 +44,8 @@ public class CustomerServiceImpl implements CustomerService {
     @CacheEvict(value = "customers_page", allEntries = true)
     public CustomerDTO createCustomer(CreateCustomerRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
-        if (storeId == null) storeId = 1L;
+        if (storeId == null)
+            storeId = 1L;
 
         if (request.getPhone() != null && !request.getPhone().isEmpty()) {
             Customer existing = customerRepository.findByStoreIdAndPhone(storeId, request.getPhone());
@@ -68,9 +69,13 @@ public class CustomerServiceImpl implements CustomerService {
                 .status(Customer.CustomerStatus.ACTIVE)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .gender(request.getGender())
+                .dob(request.getDob())
+                .groupId(request.getGroupId())
                 // Lưu các giá trị số từ request, mặc định là 0 nếu null
                 .totalDebt(request.getTotalDebt() != null ? request.getTotalDebt() : BigDecimal.ZERO)
-                .totalPurchaseAmount(request.getTotalPurchaseAmount() != null ? request.getTotalPurchaseAmount() : BigDecimal.ZERO)
+                .totalPurchaseAmount(
+                        request.getTotalPurchaseAmount() != null ? request.getTotalPurchaseAmount() : BigDecimal.ZERO)
                 .totalOrders(request.getTotalOrders() != null ? request.getTotalOrders() : 0)
                 .build();
 
@@ -91,6 +96,11 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setTaxCode(request.getTaxCode());
         customer.setContactPerson(request.getContactPerson());
         customer.setNotes(request.getNotes());
+        customer.setGender(request.getGender());
+        customer.setDob(request.getDob());
+        if (request.getGroupId() != null) {
+            customer.setGroupId(request.getGroupId());
+        }
         customer.setUpdatedAt(LocalDateTime.now());
 
         // CẬP NHẬT TRỰC TIẾP CÁC TRƯỜNG TÀI CHÍNH (Sửa lỗi luôn bằng 0)
@@ -168,9 +178,13 @@ public class CustomerServiceImpl implements CustomerService {
                 .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
                 .type(customer.getType() != null ? customer.getType().toString() : "RETAIL")
                 .totalDebt(customer.getTotalDebt() != null ? customer.getTotalDebt() : BigDecimal.ZERO)
-                .totalPurchaseAmount(customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
+                .totalPurchaseAmount(
+                        customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
                 .totalOrders(customer.getTotalOrders() != null ? customer.getTotalOrders() : 0)
                 .storeId(customer.getStoreId())
+                .gender(customer.getGender())
+                .dob(customer.getDob())
+                .groupId(customer.getGroupId())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())
                 .build();
