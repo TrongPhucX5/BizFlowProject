@@ -1,118 +1,59 @@
 "use client";
 
-import React from "react";
-import { 
-  LayoutDashboard, 
-  Box, 
-  ShoppingCart, 
-  Users, 
-  BarChart3, 
-  Settings, 
-  LogOut,
-  Mic
-} from "lucide-react";
-import { useRouter, usePathname } from "next/navigation";
-import { AiChatBox } from "@/components/ai-chat-box"; // Đảm bảo bạn đã có component này
+import React, { useEffect, useState } from "react";
+import { Mic, Search, Bell } from "lucide-react";
+import { Sidebar } from "@/components/layout/sidebar";
 
-export default function OrderLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
+// Tách function ra riêng
+function CustomerLayout({ children }: { children: React.ReactNode }) {
+  const [userData, setUserData] = useState({
+    fullName: "Lê Trọng Phúc",
+    role: "Chủ cửa hàng"
+  });
 
-  const menuItems = [
-    { icon: <LayoutDashboard size={20} />, label: "Tổng quan", path: "/dashboard" },
-    { icon: <Box size={20} />, label: "Sản phẩm", path: "dashboard/products" },
-    { icon: <ShoppingCart size={20} />, label: "Đơn hàng", path: "dashboard/orders" },
-    { icon: <Users size={20} />, label: "Khách hàng", path: "/customers" },
-    { icon: <BarChart3 size={20} />, label: "Báo cáo", path: "dashboard/reports" },
-    { icon: <Settings size={20} />, label: "Cấu hình", path: "dashboard/settings" },
-  ];
-
-  const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    router.push("/auth/login");
-  };
-
-  // Hàm lấy nhãn trang hiện tại để hiển thị trên Header
-  const getCurrentPageLabel = () => {
-    const current = menuItems.find(item => item.path === pathname);
-    return current ? current.label : "Quản trị";
-  };
+  useEffect(() => {
+    const storedName = localStorage.getItem("userFullName");
+    const storedRole = localStorage.getItem("userRole");
+    if (storedName) {
+      setUserData(prev => ({
+        ...prev,
+        fullName: storedName,
+        role: storedRole || prev.role
+      }));
+    }
+  }, []);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      {/* Sidebar - Cố định bên trái */}
-      <aside className="w-64 bg-[#1a2332] text-slate-400 hidden md:flex flex-col fixed h-full">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold text-blue-500 mb-1">BizFlow</h2>
-          <p className="text-xs text-slate-500 italic">Quản lý hộ kinh doanh</p>
-        </div>
-
-        <nav className="flex-1 px-3 space-y-1">
-          {menuItems.map((item) => (
-            <div
-              key={item.path}
-              onClick={() => router.push(item.path)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all ${
-                pathname === item.path 
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" 
-                  : "hover:bg-slate-800 hover:text-slate-200"
-              }`}
-            >
-              {item.icon}
-              <span className="font-bold text-sm">{item.label}</span>
-            </div>
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-slate-800">
-            <div className="text-[10px] text-slate-600 font-medium">v1.0.0 by Team BizFlow</div>
-        </div>
-      </aside>
-
-      {/* Main Content Area - Cách ra 64 đơn vị để không bị Sidebar đè */}
-      <div className="flex-1 flex flex-col md:ml-64">
-        {/* Header - Giữ nguyên style bạn yêu cầu */}
-        <header className="h-20 bg-white border-b flex items-center justify-between px-8 sticky top-0 z-10">
-          <div className="text-sm font-medium text-slate-500">
-            Trang quản trị / <span className="text-slate-900 font-bold">{getCurrentPageLabel()}</span>
+    <div className="flex min-h-screen bg-slate-50/50">
+      <Sidebar />
+      <div className="flex-1 flex flex-col md:pl-64">
+        <header className="h-20 bg-white border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-40">
+          <div className="flex flex-col">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Trang quản trị</p>
+            <h1 className="text-sm font-bold text-slate-900">Quản lý khách hàng</h1>
           </div>
-          
-          <div className="flex items-center gap-6">
-            <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
-                <Mic size={18} /> Trợ lý giọng nói
-            </button>
-
-            <div className="flex items-center gap-3 border-l pl-6">
-              <div className="text-right">
-                <div className="text-sm font-bold text-slate-800">Lê Trọng Phúc</div>
-                <div className="text-[10px] text-slate-500 font-medium">Chủ cửa hàng</div>
-              </div>
-              <img 
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" 
-                className="h-10 w-10 rounded-xl border-2 border-slate-100 object-cover shadow-sm" 
-                alt="Avatar" 
-              />
-              <button 
-                onClick={handleLogout}
-                className="ml-2 p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex items-center gap-1 text-sm font-bold"
-              >
-                <LogOut size={18} />
-                <span className="hidden lg:inline uppercase tracking-tighter">Thoát</span>
-              </button>
+          <div className="flex items-center gap-4">
+            <div className="hidden lg:flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
+              <Search size={16} className="text-slate-400" />
+              <input type="text" placeholder="Tìm khách hàng..." className="bg-transparent border-none outline-none text-sm w-48" />
             </div>
+            <button className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-indigo-700">
+                <Mic size={18} /> <span>Trợ lý AI</span>
+            </button>
+            <div className="h-8 w-[1px] bg-slate-100 mx-2" />
+            <button className="p-2 text-slate-400 hover:bg-slate-50 rounded-lg relative">
+              <Bell size={20} />
+              <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+            </button>
           </div>
         </header>
-
-        {/* Nội dung trang Order sẽ được render tại đây */}
-        <main className="flex-1 overflow-auto relative">
+        <main className="flex-1 p-8">
           {children}
-
-          {/* Nút Chat AI luôn lơ lửng ở góc dưới bên phải */}
-          <div className="fixed bottom-6 right-6 z-50">
-            <AiChatBox />
-          </div>
         </main>
       </div>
     </div>
   );
 }
+
+// Export default ở cuối file
+export default CustomerLayout;

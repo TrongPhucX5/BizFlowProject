@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -15,40 +16,64 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Menu items - Đã chọn giữ lại các đường dẫn có /dashboard/...
 const menuItems = [
+  { title: "Giới thiệu", icon: LayoutDashboard, href: "/about" },
   { title: "Tổng quan", icon: LayoutDashboard, href: "/dashboard" },
   { title: "Sản phẩm", icon: Package, href: "/dashboard/products" },
-  { title: "Đơn hàng", icon: ShoppingCart, href: "/dashboard/orders" },
-  { title: "Khách hàng", icon: Users, href: "/dashboard/customers" },
+  { title: "Đơn hàng", icon: ShoppingCart, href: "/orders" },
+  { title: "Khách hàng", icon: Users, href: "/customers" },
   { title: "Báo cáo", icon: BarChart3, href: "/dashboard/reports" },
   { title: "Cấu hình", icon: Settings, href: "/dashboard/settings" },
+  
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Hàm xử lý Đăng xuất ngay tại Sidebar
+  // Khởi tạo state với giá trị mặc định
+  const [userData, setUserData] = useState({
+    fullName: "Lê Trọng Phúc",
+    email: "demo@bizflow.vn",
+    storeName: "BizFlow",
+    role: "Chủ cửa hàng"
+  });
+
+  // Lấy dữ liệu từ localStorage khi trang web load xong (Client-side)
+  useEffect(() => {
+    const storedName = localStorage.getItem("userFullName");
+    const storedStore = localStorage.getItem("storeName");
+    const storedRole = localStorage.getItem("userRole");
+
+    if (storedName || storedStore) {
+      setUserData(prev => ({
+        ...prev,
+        fullName: storedName || prev.fullName,
+        storeName: storedStore || prev.storeName,
+        role: storedRole || prev.role
+      }));
+    }
+  }, []);
+
   const handleLogout = () => {
-    // 1. Xóa token
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
-    // 2. Chuyển hướng về trang login
+    // Nếu bạn muốn xóa cả thông tin demo khi logout:
+    // localStorage.removeItem("userFullName");
     router.push("/auth/login");
   };
 
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed inset-y-0 left-0 z-50 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]">
-      {/* 1. LOGO SECTION */}
+      {/* 1. LOGO SECTION - Cập nhật theo Store Name */}
       <div className="h-20 flex items-center px-6 border-b border-slate-50">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="h-9 w-9 bg-indigo-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-indigo-200">
             <Store className="text-white h-5 w-5" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 tracking-tight leading-none">
-              BizFlow
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-none truncate">
+              {userData.storeName}
             </h1>
             <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-1">
               Admin Portal
@@ -95,33 +120,30 @@ export function Sidebar() {
             </Link>
           );
         })}
-
-
       </nav>
 
-      {/* 3. FOOTER ACCOUNT (Tích hợp Logout tại đây) */}
+      {/* 3. FOOTER ACCOUNT - Giữ Avatar cũ, cập nhật tên và vai trò */}
       <div className="p-4 border-t border-slate-50">
         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 transition-all hover:bg-white hover:shadow-md group">
-          {/* Avatar Shadcn */}
-          <Avatar className="h-9 w-9 border-2 border-white shadow-sm">
+          {/* Giữ nguyên Avatar cũ từ Shadcn */}
+          <Avatar className="h-9 w-9 border-2 border-white shadow-sm flex-shrink-0">
             <AvatarImage src="https://github.com/shadcn.png" />
             <AvatarFallback className="bg-indigo-600 text-white font-bold">
-              LP
+              {userData.fullName.substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
 
-          {/* User Info */}
+          {/* Cập nhật thông tin thực tế từ Form */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-slate-700 truncate">
-              Lê Trọng Phúc
+              {userData.fullName}
             </p>
-            <p className="text-xs text-slate-500 truncate">Chủ cửa hàng</p>
+            <p className="text-xs text-slate-500 truncate">{userData.role}</p>
           </div>
 
-          {/* Nút Logout */}
           <button
             onClick={handleLogout}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors flex-shrink-0"
             title="Đăng xuất"
           >
             <LogOut size={18} />
