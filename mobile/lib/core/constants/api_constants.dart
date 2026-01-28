@@ -40,4 +40,12 @@ class ApiConstants {
 
   // Payment
   static const String paymentsEndpoint = "/v1/payments";
+
+  // Report
+  static const String reportDashboardStatsEndpoint = "/v1/reports/dashboard-stats";
+  static const String reportRevenueEndpoint = "/v1/reports/revenue";
+  static const String reportBestSellingEndpoint = "/v1/reports/best-selling";
+
+  // Upload
+  static const String uploadImageEndpoint = "/v1/upload/image";
 }

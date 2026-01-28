@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'attribute_modal.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/data/repositories/inventory_repository.dart';
+import 'package:image_picker/image_picker.dart';
+// import 'dart:io';
 
 class ProductCreateScreen extends StatefulWidget {
   // Tham số tùy chọn: Nếu có -> Chế độ Sửa, Nếu null -> Chế độ Tạo
@@ -30,6 +32,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
   bool _isExpanded = false;
   bool _trackStock = false;
   String _status = 'ACTIVE'; // Thay _stockStatus bằng _status khớp DB
+  String? _imageUrl; // Lưu URL ảnh sản phẩm
 
   List<Map<String, dynamic>> _attributes = [];
 
@@ -58,15 +61,17 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
     // FILL DỮ LIỆU NẾU ĐANG SỬA
     if (widget.existingProduct != null) {
       final p = widget.existingProduct!;
-      _nameController.text = p['name'] ?? '';
-      _priceController.text = p['price'] ?? '';
-      _costController.text = (p['costPrice'] ?? p['cost'] ?? '').toString(); // Support cả 2 key
+      _nameController.text = p['name']?.toString() ?? '';
+      // Sửa lỗi type casting: price có thể là double, int hoặc String
+      _priceController.text = (p['price'] ?? '').toString();
+      _costController.text = (p['costPrice'] ?? p['cost'] ?? '').toString();
       _stockController.text = (p['stock'] ?? '0').toString();
-      _unitController.text = p['unitName'] ?? '';
-      _skuController.text = p['sku'] ?? '';
-      _barcodeController.text = p['barcode'] ?? '';
+      _unitController.text = p['unitName']?.toString() ?? '';
+      _skuController.text = p['sku']?.toString() ?? '';
+      _barcodeController.text = p['barcode']?.toString() ?? '';
       _trackStock = p['trackStock'] ?? false;
-      _status = p['status'] ?? 'ACTIVE';
+      _status = p['status']?.toString() ?? 'ACTIVE';
+      _imageUrl = p['imageUrl'];
 
       // Load ID từ dữ liệu cũ nếu có
       _selectedUnitId = p['unitId'] ?? DEFAULT_UNIT_ID;
@@ -95,6 +100,31 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
     _skuController.dispose();
     _barcodeController.dispose();
     super.dispose();
+  }
+
+  // --- XỬ LÝ ẢNH ---
+  Future<void> _pickAndUploadImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: source);
+    
+    if (image != null) {
+      setState(() => _isLoading = true);
+      try {
+        final url = await _authRepository.uploadImage(image.path);
+        if (url != null) {
+          setState(() {
+            _imageUrl = url;
+          });
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upload ảnh thất bại")));
+        }
+      } catch (e) {
+        print("Upload error: $e");
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lỗi upload ảnh")));
+      } finally {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // Hiện modal thuộc tính
@@ -168,6 +198,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
       'description': null, // UI chưa có nhập mô tả -> gửi null
       'reorderLevel': 0, // Mặc định mức báo động tồn kho là 0
       'attributes': _attributes, // <-- Lưu mảng thuộc tính
+      'imageUrl': _imageUrl, // <-- Gửi URL ảnh
     };
 
     try {
@@ -286,14 +317,32 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Tạm ẩn tính năng ảnh vì chưa có API Upload thật
-                    // Tránh để UI giả gây hiểu nhầm
-                    // Row(children: [
-                    //   _buildImageBox(Icons.image, "Thêm ảnh"),
-                    //   const SizedBox(width: 12),
-                    //   _buildImageBox(Icons.camera_alt, "Chụp ảnh"),
-                    // ]),
-                    // const SizedBox(height: 24),
+                    // FEATURE ẢNH SẢN PHẨM
+                    if (_imageUrl != null && _imageUrl!.isNotEmpty)
+                       Center(
+                         child: Stack(
+                           children: [
+                             ClipRRect(
+                               borderRadius: BorderRadius.circular(8),
+                               child: Image.network(_imageUrl!, height: 150, fit: BoxFit.cover),
+                             ),
+                             Positioned(
+                               right: 0, top: 0,
+                               child: IconButton(
+                                 icon: const Icon(Icons.close, color: Colors.red),
+                                 onPressed: () => setState(() => _imageUrl = null),
+                               ),
+                             )
+                           ],
+                         ),
+                       )
+                    else
+                      Row(children: [
+                        _buildImageBox(Icons.image, "Thư viện", () => _pickAndUploadImage(ImageSource.gallery)),
+                        const SizedBox(width: 12),
+                        _buildImageBox(Icons.camera_alt, "Chụp ảnh", () => _pickAndUploadImage(ImageSource.camera)),
+                      ]),
+                    const SizedBox(height: 24),
 
                     _buildLabel("Tên sản phẩm", isRequired: true),
                     TextFormField(
@@ -456,5 +505,6 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
   }), child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(4)), child: Text(text)));
   
   Widget _buildStatusBtn(String text, String val) { bool sel = _status == val; return InkWell(onTap: () => setState(() => _status = val), child: Container(margin: const EdgeInsets.only(left: 8), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: sel ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(6), boxShadow: sel ? [const BoxShadow(color: Colors.black12, blurRadius: 2)] : []), child: Text(text, style: TextStyle(color: sel ? kPrimaryGreen : Colors.black54, fontWeight: FontWeight.bold, fontSize: 12)))); }
-  Widget _buildImageBox(IconData icon, String label) => Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFFF8F9FA), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: Colors.blue), Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54))]));
+  // Cập nhật buildImageBox để nhận callback
+  Widget _buildImageBox(IconData icon, String label, VoidCallback onTap) => InkWell(onTap: onTap, child: Container(width: 80, height: 80, decoration: BoxDecoration(color: const Color(0xFFF8F9FA), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: Colors.blue), Text(label, style: const TextStyle(fontSize: 10, color: Colors.black54))])));
 }

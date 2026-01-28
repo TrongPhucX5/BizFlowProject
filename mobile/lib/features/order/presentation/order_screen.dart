@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile/features/order/presentation/payment_screen.dart';
 import 'package:mobile/features/order/presentation/ai_order_screen.dart';
+import 'package:mobile/features/order/presentation/manual_order_screen.dart';
 import 'package:mobile/data/repositories/order_repository.dart';
 import 'package:mobile/features/order/presentation/print_order_screen.dart';
 
@@ -35,16 +36,24 @@ class _OrderScreenState extends State<OrderScreen> {
     }
   }
 
-
-
   void _navigateToAiOrder() async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => const AiOrderScreen()));
     _fetchOrders(); // Reload sau khi tạo đơn AI
   }
 
+  void _navigateToManualOrder() async {
+    final result = await Navigator.push(
+      context, 
+      MaterialPageRoute(builder: (context) => const ManualOrderScreen())
+    );
+    if (result == true) {
+      _fetchOrders(); // Reload sau khi tạo đơn thủ công
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    const Color kPrimaryColor = Color(0xff289ca7);
+    const Color kPrimaryBlue = Color(0xFF1565C0);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -64,9 +73,32 @@ class _OrderScreenState extends State<OrderScreen> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                Expanded(child: _buildActionButton("AI Order", Icons.mic, Colors.purple, _navigateToAiOrder)),
+                Expanded(
+                  child: _buildActionButton(
+                    "Tạo đơn", 
+                    Icons.add_shopping_cart, 
+                    kPrimaryBlue, 
+                    _navigateToManualOrder
+                  )
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _buildActionButton("Thu tiền", Icons.attach_money, Colors.green, () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentScreen())))),
+                Expanded(
+                  child: _buildActionButton(
+                    "AI Order", 
+                    Icons.mic, 
+                    Colors.purple, 
+                    _navigateToAiOrder
+                  )
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionButton(
+                    "Thu tiền", 
+                    Icons.attach_money, 
+                    Colors.green, 
+                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentScreen()))
+                  )
+                ),
               ],
             ),
           ),
@@ -77,39 +109,76 @@ class _OrderScreenState extends State<OrderScreen> {
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
               : _orders.isEmpty
-                ? const Center(child: Text("Chưa có đơn hàng nào"))
-                : ListView.separated(
-                    itemCount: _orders.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final order = _orders[index];
-                      final total = order['totalAmount'] ?? 0;
-                      final status = order['status'] ?? 'PENDING';
-                      
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Colors.blue.shade50,
-                          child: const Icon(Icons.receipt_long, color: Colors.blue),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.receipt_long, size: 64, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Chưa có đơn hàng nào",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
                         ),
-                        title: Text(order['orderCode'] ?? 'Đơn hàng #${order['id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          "${order['customerName'] ?? 'Khách lẻ'} • ${DateFormat('dd/MM HH:mm').format(DateTime.parse(order['createdAt'] ?? DateTime.now().toString()))}",
-                          style: const TextStyle(fontSize: 12),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: _navigateToManualOrder,
+                          icon: const Icon(Icons.add),
+                          label: const Text("Tạo đơn hàng đầu tiên"),
                         ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text("${NumberFormat('#,###', 'vi_VN').format(total)} đ", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                            Text(_mapStatus(status), style: TextStyle(fontSize: 10, color: _getStatusColor(status))),
-                          ],
-                        ),
-                        onTap: () {
-                          // Mở màn hình in hóa đơn khi bấm vào
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => PrintOrderScreen(orderId: order['id'])));
-                        },
-                      );
-                    },
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _fetchOrders,
+                    child: ListView.separated(
+                      itemCount: _orders.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final order = _orders[index];
+                        final total = order['totalAmount'] ?? 0;
+                        final status = order['status'] ?? 'PENDING';
+                        
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: _getStatusColor(status).withOpacity(0.1),
+                            child: Icon(Icons.receipt_long, color: _getStatusColor(status)),
+                          ),
+                          title: Text(
+                            order['orderCode'] ?? 'Đơn hàng #${order['id']}', 
+                            style: const TextStyle(fontWeight: FontWeight.bold)
+                          ),
+                          subtitle: Text(
+                            "${order['customerName'] ?? 'Khách lẻ'} • ${DateFormat('dd/MM HH:mm').format(DateTime.parse(order['createdAt'] ?? DateTime.now().toString()))}",
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                "${NumberFormat('#,###', 'vi_VN').format(total)} đ", 
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(status).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _mapStatus(status), 
+                                  style: TextStyle(fontSize: 10, color: _getStatusColor(status), fontWeight: FontWeight.w500)
+                                ),
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            // Mở màn hình in hóa đơn khi bấm vào
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => PrintOrderScreen(orderId: order['id'])));
+                          },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
@@ -121,8 +190,8 @@ class _OrderScreenState extends State<OrderScreen> {
     switch (status) {
       case 'CONFIRMED': return 'Đã xác nhận';
       case 'PAID': return 'Đã thanh toán';
-      case 'PAID_PARTIAL': return 'Thanh toán 1 phần';
-      case 'UNPAID': return 'Chưa thanh toán';
+      case 'PAID_PARTIAL': return 'TT 1 phần';
+      case 'UNPAID': return 'Chưa TT';
       case 'CANCELLED': return 'Đã hủy';
       default: return status;
     }
@@ -142,10 +211,10 @@ class _OrderScreenState extends State<OrderScreen> {
     return ElevatedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 16, color: Colors.white),
-      label: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
+      label: Text(label, style: const TextStyle(fontSize: 11, color: Colors.white)),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );

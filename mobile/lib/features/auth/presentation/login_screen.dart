@@ -4,11 +4,7 @@ import 'package:mobile/common/widgets/CustomTextField.dart';
 import 'package:mobile/common/widgets/PrimaryButton.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/features/home/presentation/main_screen.dart';
-import 'package:mobile/features/home/presentation/management_screen.dart';
-import 'package:mobile/features/auth/presentation/forgot_password_screen.dart';
 import 'package:mobile/features/auth/presentation/register_screen.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -22,31 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
-
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-
-  Future<void> _handleGoogleSignIn() async {
-    try {
-      setState(() => _isLoading = true);
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-
-      if (googleUser != null) {
-        debugPrint("User: ${googleUser.displayName} - Email: ${googleUser.email}");
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const ManagementScreen()),
-          );
-        }
-      }
-    } catch (error) {
-      debugPrint("Lỗi Google Sign-In: $error");
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
 
   @override
   void initState() {
@@ -122,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 16),
                 const Text(
                   "BizFlow",
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -170,7 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 32),
 
                 // 4. Login Button
-                
                 PrimaryButton(
                   text: "Đăng nhập",
                   isLoading: _isLoading,
@@ -179,77 +152,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // 5. Or Divider
+                // 5. Register Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Expanded(child: Divider()),
-                    const SizedBox(width: 16),
-                    const Text("Chưa có tài khoản? "),
-                    GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegisterScreen())),
-                      child: const Text("Đăng ký ngay", style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold)),
+                    Text(
+                      "Chưa có tài khoản? ",
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
                     ),
-                    const Expanded(child: Divider()),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (_) => const RegisterScreen())
+                      ),
+                      child: Text(
+                        "Đăng ký ngay",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: primaryBlue,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 24),
-
-                // 6. Google Sign-In
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _handleGoogleSignIn,
-                  icon: const FaIcon(FontAwesomeIcons.google, color: Colors.red, size: 18),
-                  label: Text(
-                    "Đăng nhập bằng Google",
-                    style: GoogleFonts.poppins(
-                        color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 14),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: BorderSide(color: Colors.grey.shade300),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
                 const SizedBox(height: 32),
-
-                // 7. Footer: Forgot Password & Register
-                Center(
-                  child: Column(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ForgotPasswordScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          "Quên mật khẩu?",
-                          style: GoogleFonts.poppins(
-                              color: primaryBlue, fontWeight: FontWeight.w600, fontSize: 14),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegisterScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          "Chưa có tài khoản? Đăng ký",
-                          style: GoogleFonts.poppins(
-                              color: primaryBlue, fontWeight: FontWeight.w600, fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

@@ -3,7 +3,8 @@ import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/data/repositories/inventory_repository.dart';
 
 class StockInScreen extends StatefulWidget {
-  const StockInScreen({super.key});
+  final int? initialProductId;
+  const StockInScreen({super.key, this.initialProductId});
 
   @override
   State<StockInScreen> createState() => _StockInScreenState();
@@ -37,11 +38,19 @@ class _StockInScreenState extends State<StockInScreen> {
       final products = await _authRepository.getProducts();
       setState(() {
         _products = products;
+        // Pre-select logic
+        if (widget.initialProductId != null) {
+           try {
+             _selectedProduct = _products.firstWhere(
+               (p) => p['id'] == widget.initialProductId
+             );
+           } catch (_) {}
+        }
       });
     } catch (e) {
-      _showSnackBar("Lỗi tải sản phẩm: $e", Colors.red);
+      if (mounted) _showSnackBar("Lỗi tải sản phẩm: $e", Colors.red);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

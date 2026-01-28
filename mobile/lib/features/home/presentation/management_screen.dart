@@ -395,7 +395,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                            // Navigate to Stock In Screen
                            Navigator.push(
                              context,
-                             MaterialPageRoute(builder: (_) => const StockInScreen()),
+                             MaterialPageRoute(builder: (_) => StockInScreen(initialProductId: product.id)),
                            ).then((_) => _fetchData()); // Refresh if returned
                         },
                         style: OutlinedButton.styleFrom(

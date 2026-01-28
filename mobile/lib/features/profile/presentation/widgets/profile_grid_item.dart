@@ -10,16 +10,19 @@ class ProfileGridItemData {
 
 class ProfileGridItem extends StatelessWidget {
   final ProfileGridItemData data;
+  final VoidCallback? onTap;
 
-  const ProfileGridItem({super.key, required this.data});
+  const ProfileGridItem({
+    super.key, 
+    required this.data,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () {
-        // TODO: Điều hướng chức năng sau
-      },
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,

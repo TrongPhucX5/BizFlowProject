@@ -4,11 +4,13 @@ import 'profile_grid_item.dart';
 class ProfileSection extends StatelessWidget {
   final String title;
   final List<ProfileGridItemData> items;
+  final void Function(int index)? onItemTap;
 
   const ProfileSection({
     super.key,
     required this.title,
     required this.items,
+    this.onItemTap,
   });
 
   @override
@@ -37,7 +39,10 @@ class ProfileSection extends StatelessWidget {
             ),
             itemCount: items.length,
             itemBuilder: (_, index) {
-              return ProfileGridItem(data: items[index]);
+              return ProfileGridItem(
+                data: items[index],
+                onTap: onItemTap != null ? () => onItemTap!(index) : null,
+              );
             },
           ),
         ],

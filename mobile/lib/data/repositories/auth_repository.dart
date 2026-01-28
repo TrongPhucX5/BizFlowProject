@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/network/dio_client.dart';
@@ -10,7 +9,6 @@ class AuthRepository {
   final FlutterSecureStorage _storage = const FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final Dio _dio = DioClient.instance;
 
 
@@ -78,9 +76,6 @@ class AuthRepository {
   Future<void> logout() async {
     try {
       await _storage.deleteAll();
-      try {
-        await _googleSignIn.signOut();
-      } catch (_) {}
     } catch (e) {
       rethrow;
     }
@@ -323,6 +318,48 @@ class AuthRepository {
       await _dio.post(ApiConstants.productsBatchEndpoint, data: products);
     } on DioException catch (e) {
       _handleDioError(e);
+    }
+  }
+
+  // ================== UPLOAD FILE ==================
+  Future<String?> uploadImage(String filePath) async {
+    try {
+      final file = await MultipartFile.fromFile(filePath);
+      final formData = FormData.fromMap({'file': file});
+      
+      final response = await _dio.post(ApiConstants.uploadImageEndpoint, data: formData);
+      final apiResponse = ApiResponse.fromJson(response.data);
+      
+      if (apiResponse.isSuccess && apiResponse.result != null) {
+        if (apiResponse.result is Map) {
+          return apiResponse.result['url'];
+        }
+        return apiResponse.result.toString();
+      }
+      return null;
+    } catch (e) {
+      print("Upload error: $e");
+      return null;
+    }
+  }
+
+  // ================== GET CURRENT USER ==================
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    try {
+      final response = await _dio.get('/v1/auth/me');
+      final apiResponse = ApiResponse.fromJson(response.data);
+      
+      if (apiResponse.isSuccess && apiResponse.result != null) {
+        return Map<String, dynamic>.from(apiResponse.result);
+      }
+      return null;
+    } on DioException catch (e) {
+      print("Lỗi lấy thông tin user: ${e.message}");
+      // Trả về mock data nếu offline hoặc lỗi để không crash app
+      return null;
+    } catch (e) {
+      print("Lỗi: $e");
+      return null;
     }
   }
 }
