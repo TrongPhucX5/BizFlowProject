@@ -83,4 +83,24 @@ export const dashboardService = {
     const response = await axiosClient.get(`/v1/dashboard/orders/daily-count-chart?range=${range}`);
     return response.data;
   },
+
+  getRecentOrders: async () => {
+    const response = await axiosClient.get("/v1/dashboard/orders/recent");
+    return response?.data?.result || [];
+  },
+
+  getOrdersByDate: async (date: string) => {
+    const response = await axiosClient.get(`/v1/dashboard/orders/by-date?date=${date}`);
+    return response?.data?.result || [];
+  },
+
+  getTopCustomers: async (range: string = "30d") => {
+    const response = await axiosClient.get(`/v1/dashboard/customers/top?range=${range}`);
+    return response?.data?.result || [];
+  },
+
+  getLowStockProducts: async () => {
+    const response = await axiosClient.get("/v1/dashboard/products/low-stock");
+    return response?.data?.result || [];
+  },
 };

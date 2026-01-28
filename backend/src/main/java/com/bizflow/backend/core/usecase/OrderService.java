@@ -299,7 +299,7 @@ public class OrderService {
     private void sendOrderNotification(Long storeId, Order order, Customer customer, BigDecimal total) {
         try {
             notificationService.sendTopicNotification("store_" + storeId, "Đơn mới: " + order.getOrderNumber(),
-                    "Khách: " + customer.getName() + " - " + total);
+                    "Khách: " + customer.getName() + " - " + total, order.getId());
         } catch (Exception e) {
             log.warn("Notify failed");
         }

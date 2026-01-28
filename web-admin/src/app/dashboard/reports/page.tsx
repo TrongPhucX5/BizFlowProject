@@ -1,6 +1,8 @@
 "use client";
 
+
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { reportsService } from "@/services/reports.service";
 import { dashboardService } from "@/services/dashboard.service";
@@ -44,6 +46,7 @@ import {
   Loader2,
   CreditCard,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 import {
   BarChart,
@@ -59,8 +62,16 @@ import {
   AreaChart,
   Area,
 } from "recharts";
-import { format } from "date-fns";
-import { vi } from "date-fns/locale";
+
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { DateRange } from "react-day-picker";
+import { addDays, format, subDays } from "date-fns";
+import { cn } from "@/lib/utils";
 import axiosClient from "@/lib/axios-client";
 
 // Dữ liệu mẫu cho PieChart (vì API chưa trả về cái này, giữ lại để UI không bị trống)
@@ -83,9 +94,67 @@ const inventoryAlertData = [
   { product: "Gạch men 60x60", current: 15, min: 30, unit: "thùng" },
 ];
 
+import { toast } from "sonner";
+
 export default function ReportsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("week");
+
+  // --- WEBSOCKET CONNECTION ---
+  useEffect(() => {
+    // Try to connect to WebSocket
+    // Note: Adjust URL if backend is on different port/host
+    const ws = new WebSocket("ws://localhost:8080/ws/notifications");
+
+    ws.onopen = () => {
+      console.log("Connected to Real-time Notification Server");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log("WS Message:", data);
+
+        // Show notification
+        toast(data.title || "Thông báo mới", {
+          description: data.body,
+          action: {
+            label: "Xem ngay",
+            onClick: () => {
+              queryClient.invalidateQueries();
+              // Navigate to orders page with viewId if available
+              if (data.orderId) {
+                router.push(`/dashboard/orders?viewId=${data.orderId}`);
+              } else {
+                router.push("/dashboard/orders");
+              }
+            },
+          },
+        });
+
+        // Auto refresh data
+        queryClient.invalidateQueries();
+
+      } catch (e) {
+        console.error("Error parsing WS message", e);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log("Disconnected from Notification Server");
+    };
+
+    return () => {
+      if (ws.readyState === 1) ws.close();
+    };
+  }, [queryClient]);
+
+  const [activeTab, setActiveTab] = useState("revenue"); // Control tabs
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 7),
+    to: new Date(),
+  });
 
   // State cho thanh toán nợ
   const [isPayDebtDialogOpen, setIsPayDebtDialogOpen] = useState(false);
@@ -99,6 +168,9 @@ export default function ReportsPage() {
   const [chatInput, setChatInput] = useState("");
   const [isChatSending, setIsChatSending] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+
+  // Drill-down state
+  const [selectedDrillDate, setSelectedDrillDate] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -130,6 +202,37 @@ export default function ReportsPage() {
   const { data: debtsData, refetch: refetchDebts } = useQuery({
     queryKey: ["debts-list"],
     queryFn: dashboardService.getDebts,
+  });
+
+  // --- 4.5. GỌI API ĐƠN HÀNG GẦN ĐÂY ---
+  const { data: recentOrders } = useQuery({
+    queryKey: ["recent-orders"],
+    queryFn: dashboardService.getRecentOrders,
+  });
+
+  // --- 4.5.2 GỌI API SẢN PHẨM SẮP HẾT HÀNG ---
+  const { data: lowStockProducts } = useQuery({
+    queryKey: ["low-stock-products"],
+    queryFn: dashboardService.getLowStockProducts,
+  });
+
+  // --- 4.5.1 GỌI API ĐƠN HÀNG THEO NGÀY (DRILL-DOWN) ---
+  const { data: ordersByDate, refetch: refetchOrdersByDate } = useQuery({
+    queryKey: ["orders-by-date", selectedDrillDate],
+    queryFn: () =>
+      selectedDrillDate
+        ? dashboardService.getOrdersByDate(selectedDrillDate)
+        : Promise.resolve([]),
+    enabled: !!selectedDrillDate,
+  });
+
+  // Determine which list of orders to show
+  const displayOrders = selectedDrillDate ? ordersByDate : recentOrders;
+
+  // --- 4.6. GỌI API TOP KHÁCH HÀNG ---
+  const { data: topCustomers } = useQuery({
+    queryKey: ["top-customers", period],
+    queryFn: () => dashboardService.getTopCustomers(period),
   });
 
   // --- 5. GỌI AI PHÂN TÍCH ---
@@ -167,7 +270,7 @@ export default function ReportsPage() {
 
       const data = await reportsService.chatWithAi(userMsg, apiHistory);
       const reply = data?.reply || "Xin lỗi, tôi không hiểu ý bạn.";
-      
+
       setChatHistory((prev) => [...prev, { role: "model", content: reply }]);
     } catch (error) {
       setChatHistory((prev) => [
@@ -186,7 +289,9 @@ export default function ReportsPage() {
     revenueReport?.map((item: any) => ({
       date: format(new Date(item.date), "dd/MM"),
       revenue: item.totalAmount,
+      profit: item.profit || 0, // Map profit
       orders: item.orderCount,
+      fullDate: format(new Date(item.date), "yyyy-MM-dd"), // Store full date for drill-down
     })) || [];
 
   // Top sản phẩm
@@ -238,7 +343,7 @@ export default function ReportsPage() {
       queryKey: ["best-selling"],
     });
     refetchDebts();
-    
+
     // Giả lập delay một chút để người dùng thấy hiệu ứng xoay (nếu mạng quá nhanh)
     setTimeout(() => setIsRefreshing(false), 800);
   };
@@ -300,10 +405,10 @@ export default function ReportsPage() {
             className="bg-white"
             disabled={isRefreshing}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} /> 
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Đang tải..." : "Làm mới"}
           </Button>
-          <Button 
+          <Button
             className="bg-indigo-600 hover:bg-indigo-700"
             onClick={handleExport}
           >
@@ -313,38 +418,91 @@ export default function ReportsPage() {
       </div>
 
       {/* FILTERS */}
-      <div className="bg-white p-4 rounded-xl border shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-slate-500" />
-            <span className="text-sm font-medium text-slate-700">Bộ lọc:</span>
-          </div>
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Chọn kỳ" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hôm nay</SelectItem>
-              <SelectItem value="week">Tuần này</SelectItem>
-              <SelectItem value="month">Tháng này</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="bg-white p-1.5 rounded-xl border shadow-sm inline-flex items-center">
+        {[
+          { id: "today", label: "Hôm nay" },
+          { id: "week", label: "Tuần này" },
+          { id: "month", label: "Tháng này" },
+        ].map((p) => (
+          <button
+            key={p.id}
+            onClick={() => setPeriod(p.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p.id
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+              }`}
+          >
+            {p.label}
+          </button>
+        ))}
+        <div className="w-px h-5 bg-slate-200 mx-2"></div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all",
+                period.startsWith("custom")
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+              )}
+            >
+              <Calendar className="h-4 w-4" />
+              <span>
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <>
+                      {format(dateRange.from, "dd/MM")} -{" "}
+                      {format(dateRange.to, "dd/MM")}
+                    </>
+                  ) : (
+                    format(dateRange.from, "dd/MM")
+                  )
+                ) : (
+                  "Tùy chọn"
+                )}
+              </span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <CalendarComponent
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={(range) => {
+                setDateRange(range);
+                if (range?.from && range?.to) {
+                  setPeriod(
+                    `custom:${format(range.from, "yyyy-MM-dd")}:${format(
+                      range.to,
+                      "yyyy-MM-dd"
+                    )}`
+                  );
+                }
+              }}
+              numberOfMonths={2}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* QUICK STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Doanh thu */}
-        <Card className="bg-white border-none shadow-sm">
+        <Card className="bg-emerald-50 border-emerald-100 shadow-sm transition-all hover:shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Doanh thu hôm nay</p>
-                <p className="text-2xl font-bold text-emerald-600">
+                <p className="text-sm font-medium text-emerald-800 mb-1">Doanh thu hôm nay</p>
+                <p className="text-3xl font-bold text-emerald-700">
                   {stats.revenueToday?.toLocaleString()}đ
                 </p>
+                <div className="flex items-center mt-2 gap-1 text-xs font-semibold text-emerald-600 bg-emerald-100/50 w-fit px-2 py-1 rounded-full">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>+12% so với hôm qua</span>
+                </div>
               </div>
-              <div className="p-3 bg-emerald-50 rounded-full">
+              <div className="p-3 bg-white rounded-xl shadow-sm">
                 <DollarSign className="h-6 w-6 text-emerald-600" />
               </div>
             </div>
@@ -352,54 +510,68 @@ export default function ReportsPage() {
         </Card>
 
         {/* Tổng đơn */}
-        <Card className="bg-white border-none shadow-sm">
+        <Card
+          className="bg-blue-50 border-blue-100 shadow-sm transition-all hover:shadow-md cursor-pointer hover:bg-blue-100"
+          onClick={() => router.push("/dashboard/orders")}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Tổng đơn hôm nay</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-sm font-medium text-blue-800 mb-1">Tổng đơn hôm nay</p>
+                <p className="text-3xl font-bold text-blue-700">
                   {stats.ordersToday}
                 </p>
+                <div className="flex items-center mt-2 gap-1 text-xs font-semibold text-blue-600 bg-blue-100/50 w-fit px-2 py-1 rounded-full">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>+5% so với hôm qua</span>
+                </div>
               </div>
-              <div className="p-3 bg-blue-50 rounded-full">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-white rounded-xl shadow-sm">
+                <Package className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Công nợ */}
-        <Card className="bg-white border-none shadow-sm">
+        <Card className="bg-amber-50 border-amber-100 shadow-sm transition-all hover:shadow-md">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Tổng công nợ</p>
-                <p className="text-2xl font-bold text-amber-600">
-                  {stats.totalDebt?.toLocaleString() || "0"}đ
+                <p className="text-sm font-medium text-amber-800 mb-1">Tổng công nợ</p>
+                <p className="text-3xl font-bold text-amber-700">
+                  {stats.totalDebt?.toLocaleString()}đ
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  {debts.length} khách hàng nợ
-                </p>
+                <div className="flex items-center mt-2 gap-1 text-xs font-semibold text-amber-600 bg-amber-100/50 w-fit px-2 py-1 rounded-full">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Cần thu hồi sớm</span>
+                </div>
               </div>
-              <div className="p-3 bg-amber-50 rounded-full">
+              <div className="p-3 bg-white rounded-xl shadow-sm">
                 <Users className="h-6 w-6 text-amber-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Cảnh báo */}
-        <Card className="bg-white border-none shadow-sm">
+        {/* Cảnh báo tồn kho */}
+        <Card
+          className="bg-red-50 border-red-100 shadow-sm transition-all hover:shadow-md cursor-pointer hover:bg-red-100"
+          onClick={() => setActiveTab("inventory")}
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500 mb-1">Cảnh báo tồn kho</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {inventoryAlertData.length}
+                <p className="text-sm font-medium text-red-800 mb-1">Sắp hết hàng</p>
+                <p className="text-3xl font-bold text-red-700">
+                  {stats.warningProducts} <span className="text-lg font-normal text-red-600">sp</span>
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Mặt hàng sắp hết</p>
+                <div className="flex items-center mt-2 gap-1 text-xs font-semibold text-red-600 bg-red-100/50 w-fit px-2 py-1 rounded-full">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Cần nhập thêm</span>
+                </div>
               </div>
-              <div className="p-3 bg-red-50 rounded-full">
+              <div className="p-3 bg-white rounded-xl shadow-sm">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
             </div>
@@ -407,66 +579,316 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* CHARTS & DETAILS */}
-      <Tabs defaultValue="revenue" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="revenue">Doanh thu</TabsTrigger>
-          <TabsTrigger value="inventory">Tồn kho</TabsTrigger>
-          <TabsTrigger value="debt">Công nợ</TabsTrigger>
+      {/* TABS CONTENT */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-white p-1 rounded-xl shadow-sm border">
+          <TabsTrigger value="revenue" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <BarChart3 className="mr-2 h-4 w-4" /> Doanh thu & Lợi nhuận
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <Package className="mr-2 h-4 w-4" /> Tồn kho & Sản phẩm
+          </TabsTrigger>
+          <TabsTrigger value="debt" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <DollarSign className="mr-2 h-4 w-4" /> Công nợ khách hàng
+          </TabsTrigger>
         </TabsList>
 
         {/* TAB 1: REVENUE */}
         <TabsContent value="revenue" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <Card className="lg:col-span-2">
+            {/* CHART */}
+            <Card className="lg:col-span-3 shadow-md border-indigo-100">
               <CardHeader>
                 <CardTitle>Biểu đồ doanh thu</CardTitle>
-                <CardDescription>Dữ liệu thực tế từ hệ thống</CardDescription>
+                <CardDescription>
+                  Theo dõi doanh thu và lợi nhuận theo thời gian
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="h-[350px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={realRevenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="date" stroke="#6b7280" />
-                      <YAxis stroke="#6b7280" />
+                    <AreaChart
+                      data={realRevenueData}
+                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                      onClick={(data: any) => {
+                        if (data && data.activePayload && data.activePayload.length > 0) {
+                          const payload = data.activePayload[0].payload;
+                          if (payload && payload.fullDate) {
+                            setSelectedDrillDate(payload.fullDate);
+                            // Scroll to orders section gently
+                            const element = document.getElementById("orders-section");
+                            if (element) {
+                              element.scrollIntoView({ behavior: "smooth" });
+                            }
+                          }
+                        }
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <defs>
+                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis
+                        dataKey="date"
+                        stroke="#94a3b8"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        dy={10}
+                      />
+                      <YAxis
+                        stroke="#94a3b8"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `${value / 1000}k`}
+                        dx={-10}
+                      />
                       <Tooltip
-                        formatter={(value) => [
+                        contentStyle={{
+                          backgroundColor: "#fff",
+                          borderRadius: "8px",
+                          border: "none",
+                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                        }}
+                        formatter={(value, name) => [
                           `${Number(value).toLocaleString()}đ`,
-                          "Doanh thu",
+                          name === "revenue" ? "Doanh thu" : "Lợi nhuận",
                         ]}
                       />
                       <Area
                         type="monotone"
                         dataKey="revenue"
                         stroke="#10b981"
-                        fill="#10b981"
-                        fillOpacity={0.2}
+                        strokeWidth={3}
+                        fill="url(#colorRevenue)"
+                        activeDot={{ r: 6, strokeWidth: 0 }}
+                        dot={{ r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="profit"
+                        stroke="#f59e0b"
+                        strokeWidth={3}
+                        fill="url(#colorProfit)"
+                        activeDot={{ r: 6, strokeWidth: 0 }}
+                        dot={{ r: 4, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Sản Phẩm</CardTitle>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* RECENT ORDERS */}
+            {/* RECENT ORDERS */}
+            <Card className="lg:col-span-2 shadow-sm" id="orders-section">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>
+                    {selectedDrillDate
+                      ? `Đơn hàng ngày ${format(new Date(selectedDrillDate), "dd/MM/yyyy")}`
+                      : "Đơn hàng vừa phát sinh"}
+                  </CardTitle>
+                  <CardDescription>
+                    {selectedDrillDate
+                      ? `Danh sách đơn hàng cụ thể trong ngày`
+                      : "5 giao dịch mới nhất trên hệ thống"}
+                  </CardDescription>
+                </div>
+                {selectedDrillDate && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedDrillDate(null)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Xóa lọc
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-slate-500">
+                        <th className="text-left font-medium py-3">Mã đơn</th>
+                        <th className="text-left font-medium py-3">Khách hàng</th>
+                        <th className="text-left font-medium py-3">Tổng tiền</th>
+                        <th className="text-left font-medium py-3">Trạng thái</th>
+                        <th className="text-left font-medium py-3">Thời gian</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {displayOrders && displayOrders.length > 0 ? (
+                        displayOrders.map((order: any) => (
+                          <tr key={order.id} className="hover:bg-slate-50">
+                            <td className="py-3 font-medium text-slate-900">
+                              {order.orderCode}
+                            </td>
+                            <td className="py-3 text-slate-600">
+                              {order.customerName}
+                            </td>
+                            <td className="py-3 font-semibold text-slate-900">
+                              {order.totalAmount?.toLocaleString()}đ
+                            </td>
+                            <td className="py-3">
+                              <Badge
+                                variant={
+                                  order.status === "PAID"
+                                    ? "default"
+                                    : order.status === "UNPAID"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                                className={
+                                  order.status === "PAID"
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200"
+                                    : order.status === "UNPAID"
+                                      ? "bg-red-100 text-red-700 hover:bg-red-100 border-red-200"
+                                      : "bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200"
+                                }
+                              >
+                                {order.status === "PAID" ? "Đã thanh toán" : order.status === "UNPAID" ? "Chưa thanh toán" : order.status}
+                              </Badge>
+                            </td>
+                            <td className="py-3 text-slate-500 text-xs">
+                              {format(new Date(order.createdAt), "HH:mm dd/MM")}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="text-center py-8 text-slate-400">
+                            Chưa có đơn hàng nào
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* TOP CUSTOMERS */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Khách hàng VIP</CardTitle>
+                <CardDescription>Top chi tiêu cao nhất</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topCustomers && topCustomers.length > 0 ? (
+                    topCustomers.map((customer: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`
+                            w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
+                            ${index === 0 ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-200' :
+                              index === 1 ? 'bg-slate-200 text-slate-700' :
+                                index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-slate-100 text-slate-600'}
+                          `}>
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-900 truncate w-[100px] sm:w-auto" title={customer.name}>
+                              {customer.name}
+                            </p>
+                            <p className="text-xs text-slate-500">{customer.orderCount} đơn hàng</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-sm text-indigo-600">
+                            {customer.totalSpent?.toLocaleString()}đ
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center text-slate-400 py-8">
+                      Chưa có dữ liệu khách hàng
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* TAB 2: INVENTORY */}
+        {/* TAB 2: INVENTORY */}
+        <TabsContent value="inventory" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* LOW STOCK TABLE */}
+            <Card className="shadow-sm border-red-100">
+              <CardHeader>
+                <CardTitle className="text-red-700 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Sản phẩm cần nhập thêm
+                </CardTitle>
+                <CardDescription>Danh sách sản phẩm dưới định mức tồn kho</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-slate-500">
+                        <th className="text-left font-medium py-2">Sản phẩm</th>
+                        <th className="text-left font-medium py-2">Tồn kho</th>
+                        <th className="text-left font-medium py-2">Giá nhập</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {lowStockProducts && lowStockProducts.length > 0 ? (
+                        lowStockProducts.map((p: any) => (
+                          <tr key={p.id} className="hover:bg-red-50/50">
+                            <td className="py-2 text-slate-900 font-medium">{p.name}</td>
+                            <td className="py-2 text-red-600 font-bold">{p.stockQuantity}</td>
+                            <td className="py-2 text-slate-600">{p.costPrice?.toLocaleString()}đ</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={3} className="text-center py-4 text-slate-400">
+                            Tồn kho ổn định
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* TOP SELLING CHART */}
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle>Phân loại tồn kho theo Top bán chạy</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[350px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={realProductData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis type="number" />
-                      <YAxis
-                        type="category"
+                    <BarChart data={realProductData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis
                         dataKey="name"
-                        width={80}
+                        stroke="#6b7280"
                         style={{ fontSize: "11px" }}
                       />
-                      <Tooltip />
-                      <Bar dataKey="sales" fill="#3b82f6" name="Số lượng" />
+                      <YAxis stroke="#6b7280" />
+                      <Tooltip formatter={(value) => [value, "Đã bán"]} />
+                      <Bar dataKey="sales" fill="#8b5cf6" name="Số lượng bán" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -475,33 +897,7 @@ export default function ReportsPage() {
           </div>
         </TabsContent>
 
-        {/* TAB 2: INVENTORY */}
-        <TabsContent value="inventory" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Phân loại tồn kho theo Top bán chạy</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={realProductData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis
-                      dataKey="name"
-                      stroke="#6b7280"
-                      style={{ fontSize: "11px" }}
-                    />
-                    <YAxis stroke="#6b7280" />
-                    <Tooltip formatter={(value) => [value, "Đã bán"]} />
-                    <Bar dataKey="sales" fill="#8b5cf6" name="Số lượng bán" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* TAB 3: DEBT - Đã khôi phục bảng */}
+        {/* TAB 3: DEBT */}
         <TabsContent value="debt">
           <Card>
             <CardHeader>
@@ -599,19 +995,18 @@ export default function ReportsPage() {
               {chatHistory.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex w-full ${
-                    msg.role === "user" ? "justify-end" : "justify-start"
-                  }`}
+                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                 >
-                  <div className={`flex max-w-[80%] items-start gap-2 ${
-                    msg.role === "user" ? "flex-row-reverse" : "flex-row"
-                  }`}>
-                    <div
-                      className={`p-2 rounded-full shadow-sm ${
-                        msg.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "bg-indigo-100 text-indigo-600"
+                  <div
+                    className={`flex items-start max-w-[80%] gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"
                       }`}
+                  >
+                    <div
+                      className={`p-2 rounded-full shadow-sm ${msg.role === "user"
+                        ? "bg-slate-700 text-white"
+                        : "bg-white text-indigo-600 border border-indigo-100"
+                        }`}
                     >
                       {msg.role === "user" ? (
                         <Users className="h-4 w-4" />
@@ -620,11 +1015,10 @@ export default function ReportsPage() {
                       )}
                     </div>
                     <div
-                      className={`p-3 rounded-2xl text-sm shadow-sm whitespace-pre-line ${
-                        msg.role === "user"
-                          ? "bg-blue-600 text-white rounded-tr-none"
-                          : "bg-white border text-slate-700 rounded-tl-none"
-                      }`}
+                      className={`p-3 rounded-2xl text-sm shadow-sm ${msg.role === "user"
+                        ? "bg-slate-700 text-white rounded-tr-none"
+                        : "bg-white text-slate-700 border border-indigo-50 rounded-tl-none"
+                        }`}
                     >
                       {msg.content}
                     </div>
@@ -632,20 +1026,20 @@ export default function ReportsPage() {
                 </div>
               ))}
               {isChatSending && (
-                 <div className="flex items-start gap-3">
-                 <div className="bg-indigo-100 p-2 rounded-full">
-                   <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" />
-                 </div>
-                 <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm text-sm text-slate-400">
-                   Đang trả lời...
-                 </div>
-               </div>
+                <div className="flex items-start gap-3">
+                  <div className="bg-indigo-100 p-2 rounded-full">
+                    <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" />
+                  </div>
+                  <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm text-sm text-slate-500 italic">
+                    AI đang soạn tin...
+                  </div>
+                </div>
               )}
-               <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} />
             </>
           )}
         </CardContent>
-        <div className="p-4 bg-white/50 backdrop-blur-sm border-t border-indigo-100 rounded-b-xl">
+        <div className="p-4 border-t bg-white/50 backdrop-blur-sm rounded-b-xl">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -656,106 +1050,79 @@ export default function ReportsPage() {
             <Input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Hỏi AI về tình hình kinh doanh..."
-              className="bg-white"
-              disabled={isChatSending}
+              placeholder="Nhập câu hỏi của bạn..."
+              className="flex-1 bg-white border-indigo-200 focus-visible:ring-indigo-500"
             />
             <Button
               type="submit"
-              className="bg-indigo-600 hover:bg-indigo-700"
-              disabled={!chatInput.trim() || isChatSending}
+              disabled={isChatSending}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
             >
-              <TrendingUp className="h-4 w-4" />
+              {isChatSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Gửi"
+              )}
             </Button>
           </form>
         </div>
       </Card>
 
-      {/* DIALOG THANH TOÁN */}
+      {/* DIALOG THANH TOÁN NỢ */}
       <Dialog open={isPayDebtDialogOpen} onOpenChange={setIsPayDebtDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Thanh toán nợ</DialogTitle>
             <DialogDescription>
-              Ghi nhận thanh toán công nợ cho khách hàng.
+              Cập nhật thanh toán cho khách hàng {selectedDebt?.customerName}
             </DialogDescription>
           </DialogHeader>
-          {selectedDebt && (
-            <form onSubmit={handlePayDebt} className="space-y-4 py-4">
-              <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Khách hàng:</span>
-                  <span className="font-bold">{selectedDebt.customerName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Tổng nợ:</span>
-                  <span className="font-bold text-red-600">
-                    {selectedDebt.unpaidAmount.toLocaleString()}đ
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="payAmount">Số tiền trả (VNĐ)</Label>
-                <Input
-                  id="payAmount"
-                  type="number"
-                  value={payDebtAmount}
-                  onChange={(e) => setPayDebtAmount(Number(e.target.value))}
-                  required
-                  className="font-bold text-lg"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Phương thức thanh toán</Label>
-                <Select value={payDebtMethod} onValueChange={setPayDebtMethod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn phương thức" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CASH">Tiền mặt</SelectItem>
-                    <SelectItem value="TRANSFER">Chuyển khoản</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="payNote">Ghi chú</Label>
-                <Input
-                  id="payNote"
-                  value={payDebtNote}
-                  onChange={(e) => setPayDebtNote(e.target.value)}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setIsPayDebtDialogOpen(false)}
-                >
-                  Hủy
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-green-600 hover:bg-green-700"
-                  disabled={payDebtMutation.isPending}
-                >
-                  {payDebtMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Đang xử
-                      lý
-                    </>
-                  ) : (
-                    "Xác nhận thanh toán"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
+          <form onSubmit={handlePayDebt} className="space-y-4">
+            <div className="grid gap-2">
+              <Label>Số tiền thanh toán</Label>
+              <Input
+                type="number"
+                value={payDebtAmount}
+                onChange={(e) => setPayDebtAmount(Number(e.target.value))}
+                min={0}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phương thức</Label>
+              <Select
+                value={payDebtMethod}
+                onValueChange={(val) => setPayDebtMethod(val)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CASH">Tiền mặt</SelectItem>
+                  <SelectItem value="TRANSFER">Chuyển khoản</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Ghi chú</Label>
+              <Input
+                value={payDebtNote}
+                onChange={(e) => setPayDebtNote(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPayDebtDialogOpen(false)}
+              >
+                Hủy
+              </Button>
+              <Button type="submit">Xác nhận thanh toán</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

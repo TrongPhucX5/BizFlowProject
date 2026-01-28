@@ -20,6 +20,31 @@ public class DashboardServiceImpl {
 
     private final OrderRepository orderRepository;
     private final com.bizflow.backend.infrastructure.persistence.repository.ProductRepository productRepository;
+    private final com.bizflow.backend.infrastructure.persistence.repository.CustomerRepository customerRepository;
+
+    public java.util.List<com.bizflow.backend.presentation.dto.response.OrderDTO> getRecentOrders(Long storeId) {
+        log.info("Fetching recent orders for storeId: {}", storeId);
+        java.util.List<Order> orders = orderRepository.findTop5ByStoreIdOrderByCreatedAtDesc(storeId);
+
+        java.util.List<Long> customerIds = orders.stream().map(Order::getCustomerId)
+                .collect(java.util.stream.Collectors.toList());
+        java.util.List<com.bizflow.backend.core.domain.Customer> customers = customerRepository
+                .findAllById(customerIds);
+        java.util.Map<Long, String> customerMap = customers.stream()
+                .collect(java.util.stream.Collectors.toMap(com.bizflow.backend.core.domain.Customer::getId,
+                        com.bizflow.backend.core.domain.Customer::getName));
+
+        return orders.stream().map(order -> com.bizflow.backend.presentation.dto.response.OrderDTO.builder()
+                .id(order.getId())
+                .orderCode(order.getOrderNumber())
+                .customerId(order.getCustomerId())
+                .customerName(customerMap.getOrDefault(order.getCustomerId(), "Unknown"))
+                .totalAmount(order.getTotalAmount())
+                .status(order.getStatus().name())
+                .createdAt(order.getCreatedAt())
+                .paymentType(order.getPaymentType() != null ? order.getPaymentType().name() : "N/A")
+                .build()).collect(java.util.stream.Collectors.toList());
+    }
 
     @Cacheable(value = "dashboard_summary", key = "#storeId")
     public DashboardSummaryDto getOrderSummary(Long storeId) {
@@ -88,11 +113,9 @@ public class DashboardServiceImpl {
     @Cacheable(value = "dashboard_status_chart", key = "#storeId")
     public java.util.List<com.bizflow.backend.presentation.dto.response.StatusChartDto> getOrderStatusChart(
             Long storeId) {
-        log.info("Calculating status chart for storeId: {}", storeId);
-        // Default to last 30 days for distribution
-        LocalDateTime startDate = LocalDate.now().minusDays(30).atStartOfDay();
+        log.info("Calculating order status chart for storeId: {}", storeId);
         LocalDateTime endDate = LocalDate.now().atTime(LocalTime.MAX);
-
+        LocalDateTime startDate = LocalDate.now().minusDays(30).atStartOfDay(); // Default 30 days for status chart
         return orderRepository.getOrdersGroupedByStatus(storeId, startDate, endDate);
     }
 
@@ -100,10 +123,8 @@ public class DashboardServiceImpl {
     public java.util.List<com.bizflow.backend.presentation.dto.response.RevenueChartDto> getRevenueChart(Long storeId,
             String range) {
         log.info("Calculating revenue chart for storeId: {}, range: {}", storeId, range);
-        LocalDateTime startDate = resolveStartDate(range);
-        LocalDateTime endDate = LocalDate.now().atTime(LocalTime.MAX);
-
-        return orderRepository.getRevenueChartData(storeId, startDate, endDate);
+        LocalDateTime[] dates = resolveDateRange(range);
+        return orderRepository.getRevenueChartData(storeId, dates[0], dates[1]);
     }
 
     // Reuse RevenueChartDto or create new? Reuse is fine as it contains orderCount.
@@ -113,17 +134,92 @@ public class DashboardServiceImpl {
     public java.util.List<com.bizflow.backend.presentation.dto.response.RevenueChartDto> getDailyCountChart(
             Long storeId, String range) {
         log.info("Calculating daily count chart for storeId: {}, range: {}", storeId, range);
-        LocalDateTime startDate = resolveStartDate(range);
-        LocalDateTime endDate = LocalDate.now().atTime(LocalTime.MAX);
-
-        return orderRepository.getRevenueChartData(storeId, startDate, endDate);
+        LocalDateTime[] dates = resolveDateRange(range);
+        return orderRepository.getRevenueChartData(storeId, dates[0], dates[1]);
     }
 
-    private LocalDateTime resolveStartDate(String range) {
-        if ("30d".equals(range)) {
-            return LocalDate.now().minusDays(30).atStartOfDay();
+    @Cacheable(value = "dashboard_top_customers", key = "#storeId + ':' + #range")
+    public java.util.List<com.bizflow.backend.presentation.dto.response.TopCustomerDto> getTopCustomers(Long storeId,
+            String range) {
+        log.info("Fetching top customers for storeId: {}, range: {}", storeId, range);
+        LocalDateTime[] dates = resolveDateRange(range);
+
+        // Return top 5
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 5);
+        return orderRepository.findTopCustomers(storeId, dates[0], dates[1], pageable);
+    }
+
+    public java.util.List<com.bizflow.backend.presentation.dto.response.OrderDTO> getOrdersByDate(Long storeId,
+            java.time.LocalDate date) {
+        log.info("Fetching orders for storeId: {}, date: {}", storeId, date);
+        LocalDateTime startDate = date.atStartOfDay();
+        LocalDateTime endDate = date.atTime(LocalTime.MAX);
+        java.util.List<com.bizflow.backend.core.domain.Order> orders = orderRepository
+                .findByStoreIdAndCreatedAtBetweenOrderByCreatedAtDesc(storeId, startDate, endDate);
+
+        // Map to DTO
+        if (orders.isEmpty()) {
+            return java.util.Collections.emptyList();
         }
-        // Default 7 days
-        return LocalDate.now().minusDays(7).atStartOfDay();
+
+        java.util.List<Long> customerIds = orders.stream().map(com.bizflow.backend.core.domain.Order::getCustomerId)
+                .collect(java.util.stream.Collectors.toList());
+        java.util.List<com.bizflow.backend.core.domain.Customer> customers = customerRepository
+                .findAllById(customerIds);
+        java.util.Map<Long, String> customerMap = customers.stream()
+                .collect(java.util.stream.Collectors.toMap(com.bizflow.backend.core.domain.Customer::getId,
+                        com.bizflow.backend.core.domain.Customer::getName));
+
+        return orders.stream().map(order -> com.bizflow.backend.presentation.dto.response.OrderDTO.builder()
+                .id(order.getId())
+                .orderCode(order.getOrderNumber())
+                .customerId(order.getCustomerId())
+                .customerName(customerMap.getOrDefault(order.getCustomerId(), "Unknown"))
+                .totalAmount(order.getTotalAmount())
+                .status(order.getStatus().name())
+                .createdAt(order.getCreatedAt())
+                .paymentType(order.getPaymentType() != null ? order.getPaymentType().name() : "N/A")
+                .build()).collect(java.util.stream.Collectors.toList());
+    }
+
+    private LocalDateTime[] resolveDateRange(String range) {
+        LocalDateTime endDate = LocalDate.now().atTime(LocalTime.MAX);
+        LocalDateTime startDate = LocalDate.now().minusDays(7).atStartOfDay(); // Default
+
+        if (range == null) {
+            return new LocalDateTime[] { startDate, endDate };
+        }
+
+        if (range.startsWith("custom:")) {
+            // Format: custom:yyyy-MM-dd:yyyy-MM-dd
+            try {
+                String[] parts = range.split(":");
+                if (parts.length >= 3) {
+                    startDate = LocalDate.parse(parts[1]).atStartOfDay();
+                    endDate = LocalDate.parse(parts[2]).atTime(LocalTime.MAX);
+                }
+            } catch (Exception e) {
+                log.error("Error parsing custom date range: {}", range, e);
+            }
+        } else {
+            switch (range) {
+                case "today":
+                    startDate = LocalDate.now().atStartOfDay();
+                    break;
+                case "week":
+                    startDate = LocalDate.now().minusDays(7).atStartOfDay();
+                    break;
+                case "month":
+                case "30d":
+                    startDate = LocalDate.now().minusDays(30).atStartOfDay();
+                    break;
+                default:
+                    // Default is week
+                    startDate = LocalDate.now().minusDays(7).atStartOfDay();
+                    break;
+            }
+        }
+
+        return new LocalDateTime[] { startDate, endDate };
     }
 }

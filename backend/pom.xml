@@ -213,6 +213,16 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<version>9.22.3</version>
+				<configuration>
+					<url>jdbc:mysql://gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test?sslMode=VERIFY_IDENTITY&amp;useSSL=true&amp;allowPublicKeyRetrieval=true</url>
+					<user>2W9Zd4XS2k191K1.root</user>
+					<password>vqhltrsHAtdps05K</password>
+				</configuration>
+			</plugin>
 
 		</plugins>
 	</build>
