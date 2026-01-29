@@ -86,6 +86,7 @@ public class InventoryServiceImpl implements InventoryService {
      */
     @Transactional
     @org.springframework.cache.annotation.CacheEvict(value = "products_page", allEntries = true)
+    @com.bizflow.backend.core.annotation.AuditAction(action = "IMPORT_STOCK", entityType = "INVENTORY")
     public Inventory importStock(ImportInventoryRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         String username = UserContext.getCurrentUsername();

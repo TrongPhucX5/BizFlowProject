@@ -18,15 +18,21 @@ public class CustomUserDetails implements UserDetails {
     private final String username;
     private final String password;
     private final String role;
+    private final String fullName;
     private final Boolean enabled;
 
-    public CustomUserDetails(Long id, Long storeId, String username, String password, String role, Boolean enabled) {
+    public CustomUserDetails(Long id, Long storeId, String username, String fullName, String password, String role, Boolean enabled) {
         this.id = id;
         this.storeId = storeId;
         this.username = username;
+        this.fullName = fullName;
         this.password = password;
         this.role = role;
         this.enabled = enabled;
+    }
+
+    public String getFullName() {
+        return fullName;
     }
 
     // ========== Getters for UserContext ==========

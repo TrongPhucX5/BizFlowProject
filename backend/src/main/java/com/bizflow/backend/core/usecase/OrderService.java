@@ -36,6 +36,7 @@ public class OrderService {
     // ================== CÁC PHƯƠNG THỨC CHÍNH (PUBLIC) ==================
 
     @Transactional
+    @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_ORDER", entityType = "ORDER")
     public OrderDTO createOrder(CreateOrderRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         String createdBy = UserContext.getCurrentUsername();
@@ -67,6 +68,7 @@ public class OrderService {
     }
 
     @Transactional
+    @com.bizflow.backend.core.annotation.AuditAction(action = "UPDATE_ORDER", entityType = "ORDER")
     public OrderDTO updateOrder(Long orderId, CreateOrderRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         Order order = orderRepository.findById(orderId)
@@ -96,6 +98,7 @@ public class OrderService {
     }
 
     @Transactional
+    @com.bizflow.backend.core.annotation.AuditAction(action = "CANCEL_ORDER", entityType = "ORDER")
     public void cancelOrder(Long orderId) {
         Long storeId = UserContext.getCurrentStoreId();
         Order order = orderRepository.findById(orderId)

@@ -21,6 +21,12 @@ public class AuditLog {
     @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "user_name", length = 100)
+    private String userName;
+
+    @Column(name = "user_full_name", length = 100)
+    private String userFullName;
+
     @Column(length = 50)
     private String action;
 
@@ -30,10 +36,10 @@ public class AuditLog {
     @Column(name = "entity_id")
     private Long entityId;
 
-    @Column(name = "old_value", columnDefinition = "JSON")
+    @Column(name = "old_value", columnDefinition = "LONGTEXT")
     private String oldValue;
 
-    @Column(name = "new_value", columnDefinition = "JSON")
+    @Column(name = "new_value", columnDefinition = "LONGTEXT")
     private String newValue;
 
     @Column(name = "ip_address", length = 45)

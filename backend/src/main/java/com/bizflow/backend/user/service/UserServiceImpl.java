@@ -1,16 +1,18 @@
 package com.bizflow.backend.user.service;
 
 import com.bizflow.backend.core.domain.User;
+import com.bizflow.backend.core.domain.AuditLog; // Added
 import com.bizflow.backend.core.usecase.UserService;
+import com.bizflow.backend.core.usecase.AuditLogService; // Added
 import com.bizflow.backend.infrastructure.persistence.repository.UserRepository;
 import com.bizflow.backend.infrastructure.security.CustomUserDetails;
 import com.bizflow.backend.infrastructure.security.JwtUtil;
 import com.bizflow.backend.presentation.dto.request.LoginRequest;
 import com.bizflow.backend.presentation.dto.request.RegisterRequest;
-import com.bizflow.backend.presentation.dto.request.PasswordUpdateRequest; // Cập nhật import
+import com.bizflow.backend.presentation.dto.request.PasswordUpdateRequest;
 import com.bizflow.backend.presentation.dto.response.LoginResponse;
 import com.bizflow.backend.presentation.dto.response.UserDTO;
-import com.bizflow.backend.presentation.dto.response.UserActivityDTO; // Cập nhật import
+import com.bizflow.backend.presentation.dto.response.UserActivityDTO;
 import com.bizflow.backend.presentation.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final AuditLogService auditLogService; // Injected service
 
     // --- ĐỔI MẬT KHẨU (MỚI) ---
     @Override
@@ -91,11 +94,26 @@ public class UserServiceImpl implements UserService {
         }
 
         CustomUserDetails userDetails = new CustomUserDetails(
-                user.getId(), user.getStoreId(), user.getUsername(), user.getPassword(),
+                user.getId(), user.getStoreId(), user.getUsername(), user.getFullName(), user.getPassword(),
                 user.getRole().toString(), true
         );
 
         String token = jwtUtil.generateAccessToken(userDetails);
+
+        // --- GHI LOG ĐĂNG NHẬP ---
+        try {
+            auditLogService.createLog(AuditLog.builder()
+                    .userId(user.getId())
+                    .userName(user.getUsername())
+                    .userFullName(user.getFullName())
+                    .action("LOGIN")
+                    .entityType("USER")
+                    .entityId(user.getId())
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.error("Failed to save login log", e);
+        }
 
         return LoginResponse.builder()
                 .token(token)

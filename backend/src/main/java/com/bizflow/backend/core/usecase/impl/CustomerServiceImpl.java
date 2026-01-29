@@ -42,6 +42,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     @Transactional
     @CacheEvict(value = "customers_page", allEntries = true)
+    @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_CUSTOMER", entityType = "CUSTOMER")
     public CustomerDTO createCustomer(CreateCustomerRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         if (storeId == null)
@@ -84,6 +85,7 @@ public class CustomerServiceImpl implements CustomerService {
 
     @Override
     @Transactional
+    @com.bizflow.backend.core.annotation.AuditAction(action = "UPDATE_CUSTOMER", entityType = "CUSTOMER")
     public CustomerDTO updateCustomer(Long id, CreateCustomerRequest request) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng"));
@@ -131,6 +133,7 @@ public class CustomerServiceImpl implements CustomerService {
             @CacheEvict(value = "customers", key = "#id"),
             @CacheEvict(value = "customers_page", allEntries = true)
     })
+    @com.bizflow.backend.core.annotation.AuditAction(action = "DELETE_CUSTOMER", entityType = "CUSTOMER")
     public void deleteCustomer(Long id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng"));
