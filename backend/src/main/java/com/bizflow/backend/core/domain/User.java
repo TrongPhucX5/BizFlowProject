@@ -36,12 +36,19 @@ public class User {
     @Column(length = 15)
     private String phone;
 
+    // THÊM 2 TRƯỜNG MỚI TẠI ĐÂY
+    @Column(name = "tax_code", length = 20)
+    private String taxCode;
+
+    @Column(length = 255)
+    private String address;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'LOCKED') DEFAULT 'ACTIVE'")
+    @Column(name = "status", columnDefinition = "ENUM('ACTIVE', 'INACTIVE', 'LOCKED') DEFAULT 'ACTIVE'")
     private UserStatus status;
 
     @Column(name = "last_login_at")

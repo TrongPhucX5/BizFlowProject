@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   User, Mail, Save, Camera, 
   Phone, AtSign, BadgeCheck, Loader2, Lock, 
-  Shield, ShieldCheck
+  Shield, MapPin, Hash
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import axiosClient from "@/lib/axios-client";
 
 export default function SettingsPage() {
+  const [isLoading, setIsLoading] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   
-  // State quản lý thông tin profile
+  // 1. State quản lý thông tin profile - Đã thêm taxCode và address
   const [profile, setProfile] = useState({
-    fullName: "Nguyễn Quốc Bảo",
-    username: "QuocBao",
-    email: "quocbao@gmail.com",
-    phone: "0942252521",
+    fullName: "",
+    username: "",
+    email: "",
+    phone: "",
+    taxCode: "",    // Trường mới: Mã số thuế
+    address: "",    // Trường mới: Địa chỉ
     role: "EMPLOYEE",
     avatarUrl: "https://github.com/shadcn.png",
   });
@@ -33,35 +36,78 @@ export default function SettingsPage() {
     confirmPassword: ""
   });
 
-  // Xử lý đổi mật khẩu
+  // 2. Hàm load dữ liệu ban đầu
+  const loadInitialData = useCallback(() => {
+    if (typeof window !== "undefined") {
+      setProfile({
+        fullName: localStorage.getItem("userFullName") || "Người dùng",
+        username: localStorage.getItem("username") || "n/a",
+        email: localStorage.getItem("userEmail") || "chưa cập nhật",
+        phone: localStorage.getItem("userPhone") || "chưa cập nhật",
+        taxCode: localStorage.getItem("userTaxCode") || "", // Tải MST
+        address: localStorage.getItem("userAddress") || "", // Tải Địa chỉ
+        role: (localStorage.getItem("userRole") || "EMPLOYEE").toUpperCase(),
+        avatarUrl: "https://github.com/shadcn.png",
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInitialData();
+    window.addEventListener("storage", loadInitialData);
+    return () => window.removeEventListener("storage", loadInitialData);
+  }, [loadInitialData]);
+
+  // 3. Xử lý cập nhật thông tin (Đã bao gồm MST và Địa chỉ)
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const response = await axiosClient.put("/v1/users/profile", {
+        fullName: profile.fullName,
+        phone: profile.phone,
+        taxCode: profile.taxCode, // Gửi lên API
+        address: profile.address  // Gửi lên API
+      });
+
+      if (response.status === 200) {
+        // Cập nhật lại LocalStorage để đồng bộ dữ liệu
+        localStorage.setItem("userFullName", profile.fullName);
+        localStorage.setItem("userPhone", profile.phone);
+        localStorage.setItem("userTaxCode", profile.taxCode);
+        localStorage.setItem("userAddress", profile.address);
+        
+        // Phát sự kiện để các Component khác (như Sidebar) cập nhật theo
+        window.dispatchEvent(new Event("storage"));
+        alert("Cập nhật thông tin thành công!");
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Lỗi cập nhật dữ liệu");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 4. Xử lý đổi mật khẩu
   const handleChangePassword = async () => {
     if (!passwordForm.oldPassword || !passwordForm.newPassword) {
       alert("Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới.");
       return;
     }
-
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       alert("Mật khẩu xác nhận không trùng khớp.");
       return;
     }
-
-    if (passwordForm.newPassword.length < 6) {
-      alert("Mật khẩu mới phải có ít nhất 6 ký tự.");
-      return;
-    }
-
     setIsChangingPassword(true);
     try {
       await axiosClient.patch("/v1/auth/change-password", {
         oldPassword: passwordForm.oldPassword,
         newPassword: passwordForm.newPassword
       });
-
       alert("Cập nhật mật khẩu thành công!");
       setPasswordForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
     } catch (error: any) {
-      const message = error.response?.data?.message || "Đã xảy ra lỗi, vui lòng thử lại.";
-      alert(message);
+      alert(error.response?.data?.message || "Đã xảy ra lỗi khi đổi mật khẩu.");
     } finally {
       setIsChangingPassword(false);
     }
@@ -69,7 +115,6 @@ export default function SettingsPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
-      {/* HEADER */}
       <div className="space-y-1">
         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Cài đặt hệ thống</h1>
         <p className="text-slate-500 font-medium">Quản lý thông tin cá nhân và bảo mật tài khoản</p>
@@ -87,13 +132,15 @@ export default function SettingsPage() {
 
         {/* --- TAB NGƯỜI DÙNG --- */}
         <TabsContent value="user" className="m-0">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="lg:col-span-1 border-none shadow-sm ring-1 ring-slate-200">
               <CardContent className="pt-12 pb-12 flex flex-col items-center">
                 <div className="relative group cursor-pointer">
                   <Avatar className="h-32 w-32 border-4 border-white shadow-xl">
                     <AvatarImage src={profile.avatarUrl} className="object-cover" />
-                    <AvatarFallback className="text-3xl bg-blue-600 text-white font-bold">NB</AvatarFallback>
+                    <AvatarFallback className="text-3xl bg-blue-600 text-white font-bold">
+                      {profile.fullName.substring(0,2).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="absolute bottom-1 right-1 p-2 bg-blue-600 rounded-full text-white border-2 border-white shadow-lg">
                     <Camera size={16} />
@@ -111,43 +158,90 @@ export default function SettingsPage() {
             <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-slate-200">
               <CardHeader className="border-b border-slate-50">
                 <CardTitle className="text-xl">Thông tin chi tiết</CardTitle>
-                <CardDescription>Cập nhật tên hiển thị và địa chỉ liên lạc của bạn.</CardDescription>
+                <CardDescription>Cập nhật thông tin hiển thị và liên hệ của bạn trên hệ thống.</CardDescription>
               </CardHeader>
               <CardContent className="pt-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Họ và tên */}
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                       <User size={15} className="text-blue-500" /> Họ và tên *
                     </label>
-                    <Input defaultValue={profile.fullName} className="h-12 rounded-xl" />
+                    <Input 
+                      value={profile.fullName} 
+                      onChange={(e) => setProfile({...profile, fullName: e.target.value})}
+                      className="h-12 rounded-xl border-slate-200 focus:ring-blue-600" 
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                      <Mail size={15} className="text-blue-500" /> Email
-                    </label>
-                    <Input value={profile.email} readOnly className="h-12 rounded-xl bg-slate-50 text-slate-400" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                      <AtSign size={15} className="text-blue-500" /> Tên đăng nhập
-                    </label>
-                    <Input value={profile.username} readOnly className="h-12 rounded-xl bg-slate-50 text-slate-400" />
-                  </div>
+
+                  {/* Số điện thoại */}
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                       <Phone size={15} className="text-blue-500" /> Số điện thoại *
                     </label>
-                    <Input defaultValue={profile.phone} className="h-12 rounded-xl" />
+                    <Input 
+                      value={profile.phone} 
+                      onChange={(e) => setProfile({...profile, phone: e.target.value})}
+                      className="h-12 rounded-xl border-slate-200 focus:ring-blue-600" 
+                    />
+                  </div>
+
+                  {/* MÃ SỐ THUẾ (TRƯỜNG MỚI) */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                      <Hash size={15} className="text-blue-500" /> Mã số thuế
+                    </label>
+                    <Input 
+                      placeholder="Nhập mã số thuế..."
+                      value={profile.taxCode} 
+                      onChange={(e) => setProfile({...profile, taxCode: e.target.value})}
+                      className="h-12 rounded-xl border-slate-200 focus:ring-blue-600" 
+                    />
+                  </div>
+
+                  {/* ĐỊA CHỈ (TRƯỜNG MỚI) */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                      <MapPin size={15} className="text-blue-500" /> Địa chỉ
+                    </label>
+                    <Input 
+                      placeholder="Số nhà, tên đường..."
+                      value={profile.address} 
+                      onChange={(e) => setProfile({...profile, address: e.target.value})}
+                      className="h-12 rounded-xl border-slate-200 focus:ring-blue-600" 
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                      <Mail size={15} className="text-blue-500" /> Email
+                    </label>
+                    <Input value={profile.email} readOnly className="h-12 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed" />
+                  </div>
+
+                  {/* Tên đăng nhập */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                      <AtSign size={15} className="text-blue-500" /> Tên đăng nhập
+                    </label>
+                    <Input value={profile.username} readOnly className="h-12 rounded-xl bg-slate-50 text-slate-400 cursor-not-allowed" />
                   </div>
                 </div>
+
                 <div className="flex justify-end pt-8 border-t border-slate-50 mt-8">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 rounded-2xl font-bold transition-all active:scale-95">
-                    <Save className="mr-2 h-5 w-5" /> Lưu thay đổi
+                  <Button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 h-12 rounded-2xl font-bold transition-all active:scale-95"
+                  >
+                    {isLoading ? <Loader2 className="mr-2 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
+                    {isLoading ? "Đang lưu..." : "Lưu thay đổi"}
                   </Button>
                 </div>
               </CardContent>
             </Card>
-          </div>
+          </form>
         </TabsContent>
 
         {/* --- TAB BẢO MẬT --- */}
@@ -197,11 +291,7 @@ export default function SettingsPage() {
                   onClick={handleChangePassword}
                   disabled={isChangingPassword}
                 >
-                  {isChangingPassword ? (
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  ) : (
-                    <Shield size={18} className="mr-2" />
-                  )}
+                  {isChangingPassword ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Shield size={18} className="mr-2" />}
                   {isChangingPassword ? "Đang xử lý..." : "Cập nhật mật khẩu"}
                 </Button>
               </CardContent>
