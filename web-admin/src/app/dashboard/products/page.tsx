@@ -156,8 +156,12 @@ export default function ProductsPage() {
       await refetch();
       alert("Xóa sản phẩm thành công!");
     },
-    onError: () => {
-      alert("Không thể xóa sản phẩm này (có thể do ràng buộc dữ liệu).");
+    onError: (error: any) => {
+      if (error?.response?.status === 403) {
+        alert("Bạn không có quyền thực hiện hành động này.");
+      } else {
+        alert("Không thể xóa sản phẩm này (có thể do ràng buộc dữ liệu hoặc lỗi server).");
+      }
     },
   });
 

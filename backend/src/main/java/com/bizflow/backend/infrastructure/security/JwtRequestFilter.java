@@ -81,6 +81,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                             userId,
                             storeId,
                             username,
+                            user.getFullName(),
                             user.getPassword(),
                             role,
                             user.getStatus() == User.UserStatus.ACTIVE

@@ -1,4 +1,5 @@
 {
     "java.compile.nullAnalysis.mode": "automatic",
-    "cmake.sourceDirectory": "D:/Full projects/BizFlowProject/mobile/linux"
+    "cmake.sourceDirectory": "D:/Full projects/BizFlowProject/mobile/linux",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }

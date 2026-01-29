@@ -31,12 +31,15 @@ public class ProductServiceImpl implements ProductService {
     public Page<ProductDTO> getProductsByStore(Long storeId, Pageable pageable) {
         if (storeId == null)
             return Page.empty(pageable);
-        return productRepository.findByStoreId(storeId, pageable).map(this::mapToDTO);
+        // Chỉ lấy sản phẩm ACTIVE
+        return productRepository.findByStoreIdAndStatus(storeId, Product.ProductStatus.ACTIVE, pageable)
+                .map(this::mapToDTO);
     }
 
     @Override
     @Transactional
     @CacheEvict(value = "products_page", allEntries = true)
+    @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_PRODUCT", entityType = "PRODUCT")
     public ProductDTO createProduct(CreateProductRequest request) {
         Product product = new Product();
         product.setStoreId(1L); // Hard-code tạm store 1
@@ -68,6 +71,7 @@ public class ProductServiceImpl implements ProductService {
             @CacheEvict(value = "products", key = "#id"),
             @CacheEvict(value = "products_page", allEntries = true)
     })
+    @com.bizflow.backend.core.annotation.AuditAction(action = "UPDATE_PRODUCT", entityType = "PRODUCT")
     public ProductDTO updateProduct(Long id, CreateProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
@@ -93,6 +97,7 @@ public class ProductServiceImpl implements ProductService {
             @CacheEvict(value = "products", key = "#id"),
             @CacheEvict(value = "products_page", allEntries = true)
     })
+    @com.bizflow.backend.core.annotation.AuditAction(action = "DELETE_PRODUCT", entityType = "PRODUCT")
     public void deleteProduct(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
@@ -164,6 +169,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Page<ProductDTO> getAllActiveProducts(Long s, Pageable p) {
-        return getProductsByStore(s, p);
+        return productRepository.findByStoreIdAndStatus(s, Product.ProductStatus.ACTIVE, p)
+                .map(this::mapToDTO);
     }
 }

@@ -19,7 +19,7 @@ const adminMenuItems = [
   { title: "Quản lý Tenant", icon: Store, href: "/admin/stores" },
   { title: "Gói dịch vụ", icon: CreditCard, href: "/admin/plans" },
   { title: "Phân quyền Global", icon: ShieldAlert, href: "/admin/roles" },
-  { title: "System Logs", icon: Activity, href: "/admin/logs" },
+  { title: "Nhật ký Hệ thống", icon: Activity, href: "/admin/system-logs" },
 ];
 
 export function AdminSidebar() {

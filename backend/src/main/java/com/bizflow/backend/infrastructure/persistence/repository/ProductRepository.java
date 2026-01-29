@@ -13,6 +13,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Product findByStoreIdAndSku(Long storeId, String sku);
 
     Page<Product> findByStoreId(Long storeId, Pageable pageable);
+    
+    Page<Product> findByStoreIdAndStatus(Long storeId, Product.ProductStatus status, Pageable pageable);
 
     List<Product> findByCategoryId(Long categoryId);
 
