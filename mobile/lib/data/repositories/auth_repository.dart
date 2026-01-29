@@ -312,6 +312,25 @@ class AuthRepository {
     }
   }
 
+  Future<void> updateCustomerGroup(int groupId, String name, List<dynamic> customerIds) async {
+    try {
+      await _dio.put('${ApiConstants.customerGroupsEndpoint}/$groupId', data: {
+        'name': name,
+        'customerIds': customerIds,
+      });
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  Future<void> deleteCustomerGroup(int groupId) async {
+    try {
+      await _dio.delete('${ApiConstants.customerGroupsEndpoint}/$groupId');
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
   // ================== BATCH API ==================
   Future<void> createProductsBatch(List<Map<String, dynamic>> products) async {
     try {

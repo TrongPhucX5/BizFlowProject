@@ -57,10 +57,6 @@ public class CustomerGroupController {
             }
         }
 
-        // Return saved with count 0 (since just created) or actual count if we want to
-        // be safe
-        // Simply return 0 or calculate if needed. The request 'customerIds' list is
-        // local to if block
         int count = 0;
         if (request.containsKey("customerIds")) {
             List<?> ids = (List<?>) request.get("customerIds");
@@ -70,5 +66,47 @@ public class CustomerGroupController {
         saved.setCustomerCount(count);
 
         return ResponseEntity.ok(ApiResponse.success(saved, "Tạo nhóm khách hàng thành công"));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<CustomerGroup>> updateCustomerGroup(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+
+        return customerGroupRepository.findById(id).map(group -> {
+            String name = (String) request.get("name");
+            group.setName(name);
+            CustomerGroup saved = customerGroupRepository.save(group);
+
+            // Xóa hết thành viên cũ và thêm mới
+            customerRepository.clearGroupId(id);
+            if (request.containsKey("customerIds")) {
+                List<Integer> customerIds = (List<Integer>) request.get("customerIds");
+                if (customerIds != null) {
+                    for (Number custId : customerIds) {
+                        customerRepository.findById(custId.longValue()).ifPresent(customer -> {
+                            customer.setGroupId(id);
+                            customerRepository.save(customer);
+                        });
+                    }
+                }
+            }
+
+            saved.setCustomerCount(customerRepository.countByGroupId(id));
+            return ResponseEntity.ok(ApiResponse.success(saved, "Cập nhật nhóm khách hàng thành công"));
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteCustomerGroup(@PathVariable Long id) {
+        if (!customerGroupRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        // Xóa liên kết của khách hàng trước khi xóa nhóm
+        customerRepository.clearGroupId(id);
+        customerGroupRepository.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Xóa nhóm khách hàng thành công"));
     }
 }

@@ -48,4 +48,11 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         Optional<Customer> findByNameContainingIgnoreCase(String name);
 
         long countByGroupId(Long groupId);
+
+        java.util.List<com.bizflow.backend.core.domain.Customer> findByGroupId(Long groupId);
+
+        @org.springframework.data.jpa.repository.Modifying
+        @org.springframework.transaction.annotation.Transactional
+        @org.springframework.data.jpa.repository.Query("UPDATE Customer c SET c.groupId = NULL WHERE c.groupId = :groupId")
+        void clearGroupId(@org.springframework.data.repository.query.Param("groupId") Long groupId);
 }

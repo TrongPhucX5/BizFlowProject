@@ -300,6 +300,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
       itemBuilder: (ctx, index) {
         final group = groups[index];
         return ListTile(
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => GroupCreateScreen(
+                  existingCustomers: customers,
+                  existingGroup: group,
+                ),
+              ),
+            );
+            if (result == true) _fetchData();
+          },
           tileColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
           leading: Container(

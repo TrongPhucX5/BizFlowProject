@@ -62,7 +62,7 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) setState(() {});
     });
@@ -163,8 +163,6 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
                 tabs: const [
                   Tab(text: "Sản phẩm"),
                   Tab(text: "Tồn kho"),
-                  Tab(text: "Bán kèm"),
-                  Tab(text: "Danh mục"),
                 ],
               ),
             ],
@@ -176,8 +174,6 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
         children: [
           _buildProductsTab(),
           _buildInventoryTab(),
-          _buildComboTab(),
-          _buildCategoryTab(),
         ],
       ),
       floatingActionButton: _buildFab(),
