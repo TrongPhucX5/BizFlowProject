@@ -3,6 +3,7 @@ import 'attribute_modal.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/data/repositories/inventory_repository.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 // import 'dart:io';
 
 class ProductCreateScreen extends StatefulWidget {
@@ -318,30 +319,7 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // FEATURE ẢNH SẢN PHẨM
-                    if (_imageUrl != null && _imageUrl!.isNotEmpty)
-                       Center(
-                         child: Stack(
-                           children: [
-                             ClipRRect(
-                               borderRadius: BorderRadius.circular(8),
-                               child: Image.network(_imageUrl!, height: 150, fit: BoxFit.cover),
-                             ),
-                             Positioned(
-                               right: 0, top: 0,
-                               child: IconButton(
-                                 icon: const Icon(Icons.close, color: Colors.red),
-                                 onPressed: () => setState(() => _imageUrl = null),
-                               ),
-                             )
-                           ],
-                         ),
-                       )
-                    else
-                      Row(children: [
-                        _buildImageBox(Icons.image, "Thư viện", () => _pickAndUploadImage(ImageSource.gallery)),
-                        const SizedBox(width: 12),
-                        _buildImageBox(Icons.camera_alt, "Chụp ảnh", () => _pickAndUploadImage(ImageSource.camera)),
-                      ]),
+                    _buildImageSection(),
                     const SizedBox(height: 24),
 
                     _buildLabel("Tên sản phẩm", isRequired: true),
@@ -506,6 +484,149 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageSection() {
+    if (_imageUrl != null && _imageUrl!.isNotEmpty) {
+      return Container(
+        width: double.infinity,
+        height: 220,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: _imageUrl!.startsWith('http') 
+                ? Image.network(_imageUrl!, fit: BoxFit.contain)
+                : Image.memory(
+                    base64Decode(_imageUrl!.split(',').last),
+                    fit: BoxFit.contain,
+                  ),
+            ),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Row(
+                children: [
+                  _buildCircleAction(Icons.edit_rounded, () => _showImageSourcePicker()),
+                  const SizedBox(width: 8),
+                  _buildCircleAction(Icons.delete_outline_rounded, () => setState(() => _imageUrl = null), color: Colors.red),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return InkWell(
+      onTap: _showImageSourcePicker,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        height: 180,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0), style: BorderStyle.solid),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              ),
+              child: const Icon(Icons.add_a_photo_rounded, size: 32, color: Color(0xFF64748B)),
+            ),
+            const SizedBox(height: 16),
+            const Text("Thêm hình ảnh sản phẩm", style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+            const SizedBox(height: 4),
+            const Text("Chụp ảnh hoặc chọn từ thư viện", style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCircleAction(IconData icon, VoidCallback onTap, {Color? color}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 8)],
+        ),
+        child: Icon(icon, size: 20, color: color ?? const Color(0xFF1E293B)),
+      ),
+    );
+  }
+
+  void _showImageSourcePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 24),
+            const Text("Chọn nguồn ảnh", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSourceOption(Icons.image_rounded, "Thư viện", () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage(ImageSource.gallery);
+                }),
+                _buildSourceOption(Icons.camera_alt_rounded, "Máy ảnh", () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage(ImageSource.camera);
+                }),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSourceOption(IconData icon, String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 120,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: const Color(0xFF2563EB)),
+            const SizedBox(height: 12),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
           ],
         ),
       ),

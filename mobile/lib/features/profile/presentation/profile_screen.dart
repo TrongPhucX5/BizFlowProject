@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'widgets/profile_section.dart';
-import 'widgets/profile_grid_item.dart';
 import 'package:mobile/features/auth/presentation/login_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'personal_info_screen.dart';
@@ -10,6 +8,7 @@ import 'help_support_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_service_screen.dart';
 import 'contact_screen.dart';
+import 'subscription_plan_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,7 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String userRole = '';
   String userEmail = '';
   String memberSince = '';
-  String servicePlan = 'BizFlow Pro';
+  String servicePlan = 'Gói miễn phí';
   bool _isLoading = true;
 
   @override
@@ -42,7 +41,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           userFullName = userData['fullName'] ?? 'Người dùng';
           userRole = _mapRole(userData['role'] ?? 'EMPLOYEE');
           userEmail = userData['email'] ?? '';
-          // Format createdAt thành tháng/năm
           if (userData['createdAt'] != null) {
             try {
               final created = DateTime.parse(userData['createdAt']);
@@ -57,7 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      print('Lỗi load user: $e');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -73,281 +70,211 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF1565C0);
-    
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F8FB),
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Cá nhân'),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
       ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                _buildHeader(context, primaryBlue),
-                const SizedBox(height: 16),
-                _buildAccountStats(),
+                _buildProfileHeader(),
                 const SizedBox(height: 24),
-
-                ProfileSection(
+                _buildPlanCard(),
+                const SizedBox(height: 24),
+                _buildMenuSection(
                   title: 'Tài khoản',
                   items: [
-                    ProfileGridItemData(Icons.person_outline, 'Thông tin cá nhân', Colors.blue),
-                    ProfileGridItemData(Icons.storefront_outlined, 'Hộ kinh doanh', Colors.deepPurple),
-                    ProfileGridItemData(Icons.verified_user_outlined, 'Xác thực KYC', Colors.green),
-                    ProfileGridItemData(Icons.email_outlined, 'Email', Colors.orange),
+                    _MenuItem(Icons.person_outline_rounded, 'Thông tin cá nhân', 'Quản lý thông tin cơ bản', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalInfoScreen()))),
+                    _MenuItem(Icons.storefront_rounded, 'Hộ kinh doanh', 'Cài đặt thông tin cửa hàng', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessInfoScreen()))),
+                    _MenuItem(Icons.verified_user_outlined, 'Xác thực KYC', 'Tăng hạn mức giao dịch', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()))),
                   ],
-                  onItemTap: (index) {
-                    switch (index) {
-                      case 0: // Thông tin cá nhân
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalInfoScreen()));
-                        break;
-                      case 1: // Hộ kinh doanh
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessInfoScreen()));
-                        break;
-                      case 2: // KYC
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const KycScreen()));
-                        break;
-                      case 3: // Email - show current email
-                        _showEmailInfo(context);
-                        break;
-                    }
-                  },
                 ),
-
-                ProfileSection(
-                  title: 'Cài đặt',
+                const SizedBox(height: 16),
+                _buildMenuSection(
+                  title: 'Hỗ trợ & Pháp lý',
                   items: [
-                    ProfileGridItemData(Icons.notifications_outlined, 'Thông báo', Colors.blue),
-                    ProfileGridItemData(Icons.lock_outline, 'Đổi mật khẩu', Colors.redAccent),
-                    ProfileGridItemData(Icons.face_retouching_natural, 'Face ID', Colors.teal),
-                    ProfileGridItemData(Icons.settings_outlined, 'Tuỳ chỉnh', Colors.grey),
+                    _MenuItem(Icons.help_outline_rounded, 'Trung tâm trợ giúp', 'Hướng dẫn sử dụng BizFlow', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()))),
+                    _MenuItem(Icons.description_outlined, 'Điều khoản dịch vụ', 'Quyền lợi & Trách nhiệm', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()))),
+                    _MenuItem(Icons.privacy_tip_outlined, 'Chính sách bảo mật', 'Cam kết bảo mật dữ liệu', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()))),
+                    _MenuItem(Icons.headset_mic_outlined, 'Liên hệ hỗ trợ', 'Yêu cầu hỗ trợ kỹ thuật', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactScreen()))),
                   ],
-                  onItemTap: (index) {
-                    if (index == 1) { // Đổi mật khẩu
-                      _showChangePasswordDialog(context);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tính năng đang phát triển")));
-                    }
-                  },
                 ),
-
-                ProfileSection(
-                  title: 'Hỗ trợ',
-                  items: [
-                    ProfileGridItemData(Icons.help_outline, 'Trợ giúp', Colors.blue),
-                    ProfileGridItemData(Icons.description_outlined, 'Điều khoản', Colors.purple),
-                    ProfileGridItemData(Icons.privacy_tip_outlined, 'Chính sách', Colors.green),
-                    ProfileGridItemData(Icons.headset_mic_outlined, 'Liên hệ', Colors.orange),
-                  ],
-                  onItemTap: (index) {
-                    switch (index) {
-                      case 0: // Trợ giúp
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpSupportScreen()));
-                        break;
-                      case 1: // Điều khoản
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()));
-                        break;
-                      case 2: // Chính sách
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
-                        break;
-                      case 3: // Liên hệ
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactScreen()));
-                        break;
-                    }
-                  },
-                ),
-
-                const SizedBox(height: 20),
-                _buildLogoutButton(context, primaryBlue),
+                const SizedBox(height: 32),
+                _buildLogoutButton(),
+                const SizedBox(height: 40),
               ],
             ),
           ),
     );
   }
 
-  void _showEmailInfo(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Email liên kết'),
-        content: Text(userEmail.isNotEmpty ? userEmail : 'Chưa liên kết email'),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showChangePasswordDialog(BuildContext context) {
-    final oldPassCtrl = TextEditingController();
-    final newPassCtrl = TextEditingController();
-    final confirmPassCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Đổi mật khẩu"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: oldPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: "Mật khẩu cũ")),
-            TextField(controller: newPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: "Mật khẩu mới")),
-            TextField(controller: confirmPassCtrl, obscureText: true, decoration: const InputDecoration(labelText: "Xác nhận mật khẩu mới")),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
-          ElevatedButton(
-            onPressed: () async {
-              if (newPassCtrl.text != confirmPassCtrl.text) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Mật khẩu xác nhận không khớp"), backgroundColor: Colors.red));
-                return;
-              }
-              try {
-                // Gọi API đổi pass
-                await _authRepository.changePassword(oldPassCtrl.text, newPassCtrl.text);
-                if (ctx.mounted) Navigator.pop(ctx);
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đổi mật khẩu thành công"), backgroundColor: Colors.green));
-              } catch (e) {
-                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
-              }
-            },
-            child: const Text("Đổi"),
-          )
-        ],
-      ),
-    );
-  }
-
-  // ================= HEADER =================
-  Widget _buildHeader(BuildContext context, Color primaryBlue) {
-    return Column(
+  Widget _buildProfileHeader() {
+    return Row(
       children: [
-        CircleAvatar(
-          radius: 48,
-          backgroundColor: primaryBlue.withOpacity(0.1),
-          child: Text(
-            userFullName.isNotEmpty ? userFullName[0].toUpperCase() : '?',
-            style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: primaryBlue),
+        Container(
+          width: 72, height: 72,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              userFullName.isNotEmpty ? userFullName[0].toUpperCase() : '?',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          userFullName,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(userFullName, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontSize: 20)),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(20)),
+                child: Text(userRole, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+              ),
+            ],
+          ),
         ),
-        Text(userRole, style: const TextStyle(color: Colors.grey)),
-        const SizedBox(height: 12),
-        // Đã xóa nút "Chỉnh sửa hồ sơ" vì thông tin tài khoản cố định
       ],
     );
   }
 
-  // ================= ACCOUNT STATS =================
-  Widget _buildAccountStats() {
+  Widget _buildPlanCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _statItem('Gói dịch vụ', servicePlan, verified: true),
-          _statItem('Thành viên từ', memberSince.isNotEmpty ? memberSince : 'N/A'),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.stars_rounded, color: Color(0xFFFACC15), size: 20),
+                    const SizedBox(width: 8),
+                    Text(servicePlan, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('Sử dụng từ: $memberSince', style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionPlanScreen())),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              minimumSize: Size.zero,
+            ),
+            child: const Text('Nâng cấp', style: TextStyle(fontSize: 12)),
+          ),
         ],
       ),
     );
   }
 
-  Widget _statItem(String title, String value, {bool verified = false}) {
+  Widget _buildMenuSection({required String title, required List<_MenuItem> items}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        Row(
-          children: [
-            Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-            if (verified)
-              const Padding(
-                padding: EdgeInsets.only(left: 4),
-                child: Icon(Icons.verified, size: 16, color: Color(0xFF1565C0)),
-              ),
-          ],
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(title, style: Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700)),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            children: items.asMap().entries.map((entry) {
+              final idx = entry.key;
+              final item = entry.value;
+              return Column(
+                children: [
+                  ListTile(
+                    onTap: item.onTap,
+                    leading: Icon(item.icon, color: const Color(0xFF475569), size: 22),
+                    title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: Text(item.subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                    trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
+                  ),
+                  if (idx < items.length - 1)
+                    const Divider(height: 1, indent: 56, color: Color(0xFFF1F5F9)),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
   }
 
-  // ================= LOGOUT =================
-  Widget _buildLogoutButton(BuildContext context, Color primaryBlue) {
+  Widget _buildLogoutButton() {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
-        onPressed: () => _confirmLogout(context, primaryBlue),
+        onPressed: _handleLogout,
         style: OutlinedButton.styleFrom(
-          foregroundColor: primaryBlue,
-          side: BorderSide(color: primaryBlue),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          foregroundColor: const Color(0xFFEF4444),
+          side: const BorderSide(color: Color(0xFFFCA5A5)),
+          backgroundColor: const Color(0xFFFEF2F2),
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
-        child: const Text('Đăng xuất'),
+        child: const Text('Đăng xuất tài khoản'),
       ),
     );
   }
 
-  // ================= CONFIRM DIALOG =================
-  void _confirmLogout(BuildContext context, Color primaryBlue) {
+  void _handleLogout() {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Xác nhận đăng xuất'),
-        content: const Text('Bạn có chắc chắn muốn đăng xuất khỏi BizFlow không?'),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đăng xuất?'),
+        content: const Text('Bạn có chắc chắn muốn thoát khỏi phiên làm việc này?'),
         actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Huỷ', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryBlue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
             onPressed: () async {
               await _authRepository.logout();
-              if (context.mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  (route) => false,
-                );
+              if (mounted) {
+                Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
               }
             },
-            child: const Text('Đăng xuất'),
+            child: const Text('Đăng xuất', style: TextStyle(color: Color(0xFFEF4444))),
           ),
         ],
       ),
     );
   }
+}
+
+class _MenuItem {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  _MenuItem(this.icon, this.title, this.subtitle, this.onTap);
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:math'; // Để random mã khách hàng
+import 'dart:math';
 import 'package:mobile/features/customer/presentation/group_create_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:intl/intl.dart';
@@ -12,11 +12,9 @@ class CustomerScreen extends StatefulWidget {
 }
 
 class _CustomerScreenState extends State<CustomerScreen> {
-  int _currentTabIndex = 0;
   final AuthRepository _authRepository = AuthRepository();
   bool _isLoading = false;
 
-  // Dữ liệu từ API
   List<Map<String, dynamic>> customers = [];
   List<Map<String, dynamic>> groups = [];
 
@@ -29,12 +27,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
-      // Gọi song song cả 2 API để tối ưu thời gian
       final results = await Future.wait([
         _authRepository.getCustomers(),
         _authRepository.getCustomerGroups(),
       ]);
-      
       setState(() {
         customers = results[0];
         groups = results[1];
@@ -46,396 +42,304 @@ class _CustomerScreenState extends State<CustomerScreen> {
     }
   }
 
-  // --- LOGIC HELPER ---
-
-  // Hàm sinh mã khách hàng tự động (Ví dụ: KH + 5 số ngẫu nhiên)
   String _generateCustomerId() {
     var rng = Random();
-    String code = (10000 + rng.nextInt(90000)).toString(); // Random từ 10000 -> 99999
+    String code = (10000 + rng.nextInt(90000)).toString();
     return "KH$code";
   }
 
-  // --- LOGIC FORM KHÁCH HÀNG ---
+  void _showCustomerForm({Map<String, dynamic>? existingCustomer}) {
+    final idController = TextEditingController(text: (existingCustomer?['id'] ?? _generateCustomerId()).toString());
+    final nameController = TextEditingController(text: (existingCustomer?['fullName'] ?? '').toString());
+    final phoneController = TextEditingController(text: (existingCustomer?['phone'] ?? '').toString());
+    final emailController = TextEditingController(text: (existingCustomer?['email'] ?? '').toString());
+    final dobController = TextEditingController(text: (existingCustomer?['dob'] ?? '').toString());
+    final addressController = TextEditingController(text: (existingCustomer?['address'] ?? '').toString());
 
-  void _showCustomerForm({Map<String, dynamic>? existingCustomer, int? index}) {
-    // Controller quản lý text
-    final idController = TextEditingController(text: existingCustomer?['id'] ?? _generateCustomerId());
-    final nameController = TextEditingController(text: existingCustomer?['fullName'] ?? '');
-    final phoneController = TextEditingController(text: existingCustomer?['phone'] ?? '');
-    final emailController = TextEditingController(text: existingCustomer?['email'] ?? '');
-    final dobController = TextEditingController(text: existingCustomer?['dob'] ?? '');
-    final addressController = TextEditingController(text: existingCustomer?['address'] ?? '');
-
-    // Biến tạm cho Dropdown giới tính
-    String? selectedGender = existingCustomer?['gender'] ?? 'Nam';
+    String rawGender = (existingCustomer?['gender'] ?? 'Nam').toString().toUpperCase();
+    String? selectedGender = rawGender.contains('NAM') ? 'Nam' : (rawGender.contains('NỮ') || rawGender.contains('NU') ? 'Nữ' : 'Khác');
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) {
-        // StatefulBuilder để cập nhật UI trong BottomSheet (cần thiết cho Dropdown)
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, top: 20, left: 16, right: 16),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85), // Max cao 85% màn hình
-                child: SingleChildScrollView( // Cho phép cuộn khi form dài
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom + 24, top: 12, left: 24, right: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(existingCustomer == null ? "Thêm khách hàng" : "Sửa thông tin",
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B))),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: idController,
+                      enabled: false,
+                      decoration: const InputDecoration(labelText: "Mã KH (Tự động)"),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: selectedGender,
+                      decoration: const InputDecoration(labelText: "Giới tính"),
+                      items: ['Nam', 'Nữ', 'Khác'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                      onChanged: (v) => setModalState(() => selectedGender = v),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: "Tên khách hàng", hintText: "Nhập họ và tên"),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: "Số điện thoại", hintText: "Nhập số điện thoại liên hệ"),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(labelText: "Địa chỉ", hintText: "Số nhà, tên đường, phường/xã"),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isEmpty || phoneController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tên và SĐT không được để trống")));
+                      return;
+                    }
+                    try {
+                      final storeId = await _authRepository.getCurrentStoreId();
+                      final data = {
+                        "id": idController.text,
+                        "fullName": nameController.text,
+                        "phone": phoneController.text,
+                        "gender": selectedGender,
+                        "address": addressController.text,
+                        "storeId": storeId,
+                      };
+                      if (existingCustomer == null) {
+                        await _authRepository.createCustomer(data);
+                      } else {
+                        await _authRepository.updateCustomer(existingCustomer['id'], data);
+                      }
+                      Navigator.pop(ctx);
+                      _fetchData();
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã lưu thông tin"), backgroundColor: Colors.green));
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
+                    }
+                  },
+                  child: const Text("Lưu khách hàng"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.background,
+        appBar: AppBar(
+          title: const Text('Khách hàng'),
+          bottom: const TabBar(
+            indicatorWeight: 3,
+            tabs: [Tab(text: "Danh sách"), Tab(text: "Nhóm khách")],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _buildCustomerList(),
+            _buildGroupList(),
+          ],
+        ),
+        floatingActionButton: Builder(builder: (context) {
+          return FloatingActionButton(
+            onPressed: () {
+              final index = DefaultTabController.of(context).index;
+              if (index == 0) {
+                _showCustomerForm();
+              } else {
+                _navigateToCreateGroup();
+              }
+            },
+            child: const Icon(Icons.add_rounded, size: 28),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildCustomerList() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (customers.isEmpty) return _buildEmptyState(Icons.people_outline_rounded, "Chưa có khách hàng", "Thêm khách hàng để bắt đầu quản lý thông tin và công nợ");
+
+    return RefreshIndicator(
+      onRefresh: _fetchData,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: customers.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final item = customers[index];
+          final type = item['type'] ?? 'RETAIL';
+          final gender = (item['gender'] ?? '').toString().toUpperCase();
+          final isFemale = gender.contains('NỮ') || gender.contains('NU');
+
+          return InkWell(
+            onTap: () => _showCustomerForm(existingCustomer: item),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+              ),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(existingCustomer == null ? "Thêm khách hàng" : "Sửa thông tin",
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // 1. MÃ KHÁCH HÀNG (Read-only) & GIỚI TÍNH
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 1,
-                            child: TextField(
-                              controller: idController,
-                              enabled: false, // Không cho sửa mã
-                              decoration: InputDecoration(
-                                labelText: "Mã KH (Auto)",
-                                filled: true, fillColor: Colors.grey[200],
-                                border: const OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 1,
-                            child: DropdownButtonFormField<String>(
-                              value: selectedGender,
-                              decoration: const InputDecoration(labelText: "Giới tính", border: OutlineInputBorder()),
-                              items: ['Nam', 'Nữ', 'Khác'].map((String value) {
-                                return DropdownMenuItem<String>(value: value, child: Text(value));
-                              }).toList(),
-                              onChanged: (newValue) {
-                                setModalState(() => selectedGender = newValue);
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 2. TÊN & SĐT
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(labelText: "Tên khách hàng *", border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: phoneController,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(labelText: "Số điện thoại *", border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // 3. NGÀY SINH (Date Picker)
-                      TextField(
-                        controller: dobController,
-                        readOnly: true, // Không cho gõ phím
-                        decoration: const InputDecoration(
-                          labelText: "Ngày sinh",
-                          hintText: "dd/mm/yyyy",
-                          suffixIcon: Icon(Icons.calendar_today),
-                          border: OutlineInputBorder(),
+                      Container(
+                        width: 48, height: 48,
+                        decoration: BoxDecoration(
+                          color: isFemale ? const Color(0xFFFFF1F2) : const Color(0xFFEFF6FF),
+                          shape: BoxShape.circle,
                         ),
-                        onTap: () async {
-                          DateTime? pickedDate = await showDatePicker(
-                            context: context,
-                            initialDate: DateTime.now(),
-                            firstDate: DateTime(1900),
-                            lastDate: DateTime.now(),
-                          );
-                          if (pickedDate != null) {
-                            // Format đơn giản dd/MM/yyyy
-                            String formattedDate = "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
-                            dobController.text = formattedDate;
-                          }
-                        },
+                        child: Icon(Icons.person_rounded, color: isFemale ? const Color(0xFFF43F5E) : const Color(0xFF3B82F6)),
                       ),
-                      const SizedBox(height: 12),
-
-                      // 4. EMAIL & ĐỊA CHỈ
-                      TextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(labelText: "Email", border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: addressController,
-                        decoration: const InputDecoration(labelText: "Địa chỉ", border: OutlineInputBorder()),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // BUTTON LƯU
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            // Validate cơ bản
-                            if (nameController.text.isEmpty || phoneController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Tên và SĐT là bắt buộc")));
-                              return;
-                            }
-
-                            // Lấy StoreID hiện tại
-                            final storeId = await _authRepository.getCurrentStoreId();
-
-                            final data = {
-                              "id": idController.text,
-                              "fullName": nameController.text,
-                              "phone": phoneController.text,
-                              "gender": selectedGender,
-                              "dob": dobController.text,
-                              "email": emailController.text,
-                              "address": addressController.text,
-                              "storeId": storeId,
-                              // Keep existing groupId if any, or null
-                              "groupId": existingCustomer?['groupId'], 
-                            };
-
-                            // Gọi API
-                            try {
-                              if (existingCustomer == null) {
-                                await _authRepository.createCustomer(data);
-                              } else {
-                                await _authRepository.updateCustomer(existingCustomer['id'], data);
-                              }
-                              if (mounted) {
-                                Navigator.pop(ctx);
-                                _fetchData(); // Reload list
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Lưu thành công!"), backgroundColor: Colors.green));
-                              }
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B66FF)),
-                          child: Text(existingCustomer == null ? "Lưu khách hàng" : "Cập nhật",
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: Text(item['fullName'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+                                const SizedBox(width: 8),
+                                _buildTypeBadge(type),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text("${item['phone']} • ID: ${item['id']}", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
+                  const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                  Row(
+                    children: [
+                      Expanded(child: _buildStatColumn("Tổng mua", _formatCurrency(item['totalPurchaseAmount']))),
+                      Expanded(child: _buildStatColumn("Công nợ", _formatCurrency(item['totalDebt']), color: const Color(0xFFEF4444))),
+                    ],
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTypeBadge(String type) {
+    Color color = type == 'WHOLESALE' ? const Color(0xFF8B5CF6) : (type == 'CORPORATE' ? const Color(0xFF10B981) : const Color(0xFF3B82F6));
+    String label = type == 'WHOLESALE' ? 'KH SỈ' : (type == 'CORPORATE' ? 'CTY' : 'KH LẺ');
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w800)),
+    );
+  }
+
+  Widget _buildStatColumn(String label, String value, {Color? color}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: color ?? const Color(0xFF1E293B))),
+      ],
+    );
+  }
+
+  Widget _buildGroupList() {
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (groups.isEmpty) return _buildEmptyState(Icons.group_work_outlined, "Chưa có nhóm", "Phân loại khách hàng vào các nhóm để dễ quản lý ưu đãi");
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: groups.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (ctx, index) {
+        final group = groups[index];
+        return ListTile(
+          tileColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
+          leading: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+            child: const Icon(Icons.groups_rounded, color: Color(0xFF64748B)),
+          ),
+          title: Text(group['name'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          subtitle: Text("${group['customerCount'] ?? group['count'] ?? 0} thành viên", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+          trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
         );
       },
     );
   }
 
-  // Hàm xóa (Giữ nguyên)
-  void _deleteCustomer(int index) {
-    // ... (Code xóa giữ nguyên như cũ)
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Xác nhận"),
-        content: const Text("Bạn có chắc muốn xóa khách hàng này?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Hủy")),
-          TextButton(
-            onPressed: () async {
-              try {
-                await _authRepository.deleteCustomer(customers[index]['id']);
-                if (mounted) setState(() => customers.removeAt(index));
-                if (ctx.mounted) Navigator.pop(ctx);
-              } catch (e) {
-                if (ctx.mounted) Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi xóa: $e"), backgroundColor: Colors.red));
-              }
-            },
-            child: const Text("Xóa", style: TextStyle(color: Colors.red)),
+  Widget _buildEmptyState(IconData icon, String title, String sub) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 72, color: const Color(0xFFE2E8F0)),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(sub, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
           ),
         ],
       ),
     );
   }
 
-  // --- UI CHÍNH ---
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Khách hàng', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white, elevation: 0.5,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
-          child: Row(
-            children: [
-              _buildTabItem("Khách hàng", 0),
-              _buildTabItem("Nhóm khách hàng", 1),
-            ],
-          ),
-        ),
-      ),
-      body: _currentTabIndex == 0 ? _buildCustomerList() : _buildGroupList(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (_currentTabIndex == 0) _showCustomerForm();
-          else _navigateToCreateGroup();
-        },
-        backgroundColor: const Color(0xFF3B66FF),
-        label: Text(_currentTabIndex == 0 ? 'Thêm khách' : 'Tạo nhóm', style: const TextStyle(color: Colors.white)),
-        icon: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
-
-  Widget _buildTabItem(String title, int index) {
-    bool isActive = _currentTabIndex == index;
-    return Expanded(child: InkWell(
-      onTap: () => setState(() => _currentTabIndex = index),
-      child: Column(children: [
-        Padding(padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(title, style: TextStyle(color: isActive ? const Color(0xFF3B66FF) : Colors.grey, fontWeight: isActive ? FontWeight.bold : FontWeight.normal))),
-        if (isActive) Container(height: 2, color: const Color(0xFF3B66FF)),
-      ]),
-    ));
-  }
-
   String _formatCurrency(dynamic amount) {
-    if (amount == null) return "0đ";
-    double val = double.tryParse(amount.toString()) ?? 0;
-    return NumberFormat.currency(locale: 'vi_VN', symbol: 'đ').format(val);
+    double val = double.tryParse((amount ?? 0).toString()) ?? 0;
+    return NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(val);
   }
 
-  Widget _buildCustomerList() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (customers.isEmpty) return const Center(child: Text("Chưa có khách hàng nào"));
-    return ListView.separated(
-      padding: const EdgeInsets.all(12),
-      itemCount: customers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = customers[index];
-        final type = item['type'] ?? 'RETAIL';
-        final totalDebt = item['totalDebt'] ?? 0;
-        final totalPurchased = item['totalPurchaseAmount'] ?? 0;
-
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: item['gender'] == 'NỮ' ? Colors.pink[50] : Colors.blue[50], // Check case sensitivity if needed
-                      child: Icon(Icons.person, color: item['gender'] == 'NỮ' ? Colors.pink : Colors.blue),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(child: Text(item['fullName'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), overflow: TextOverflow.ellipsis)),
-                              const SizedBox(width: 8),
-                                Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: type == 'WHOLESALE' ? Colors.purple[50] 
-                                       : type == 'CORPORATE' ? Colors.green[50] 
-                                       : Colors.blue[50], // Default RETAIL
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                      color: type == 'WHOLESALE' ? Colors.purple 
-                                           : type == 'CORPORATE' ? Colors.green 
-                                           : Colors.blue, 
-                                      width: 0.5),
-                                ),
-                                child: Text(
-                                  type == 'WHOLESALE' ? 'KH SỈ' : type == 'CORPORATE' ? 'DOANH NGHIỆP' : 'KH LẺ',
-                                  style: TextStyle(
-                                      fontSize: 10, 
-                                      color: type == 'WHOLESALE' ? Colors.purple 
-                                           : type == 'CORPORATE' ? Colors.green 
-                                           : Colors.blue, 
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text("ID: ${item['id']} • ${item['phone']}", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                        icon: const Icon(Icons.edit_outlined, color: Colors.grey),
-                        onPressed: () => _showCustomerForm(existingCustomer: item, index: index),
-                      ),
-                  ],
-                ),
-                const Divider(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Tổng mua", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        const SizedBox(height: 2),
-                        Text(_formatCurrency(totalPurchased), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      ],
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Text("Công nợ", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                        const SizedBox(height: 2),
-                        Text(_formatCurrency(totalDebt), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.red)),
-                      ],
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  // Widget _buildGroupList() và hàm _navigateToCreateGroup() giữ nguyên như bài trước
-  // ...
   void _navigateToCreateGroup() async {
     final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => GroupCreateScreen(existingCustomers: customers)));
-    // Nếu tạo thành công (result == true), reload lại toàn bộ dữ liệu từ server
-    if (result == true) {
-      _fetchData();
-    }
-  }
-
-  Widget _buildGroupList() {
-    if (groups.isEmpty) return const Center(child: Text("Chưa có nhóm nào"));
-    return ListView.builder(
-      itemCount: groups.length,
-      // Hiển thị số lượng thành viên an toàn (backend có thể trả về count hoặc customerCount)
-      itemBuilder: (ctx, index) => ListTile(title: Text(groups[index]['name']), subtitle: Text("${groups[index]['customerCount'] ?? groups[index]['count'] ?? 0} thành viên")),
-    );
+    if (result == true) _fetchData();
   }
 }

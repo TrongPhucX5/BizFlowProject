@@ -38,7 +38,7 @@ class _OrderScreenState extends State<OrderScreen> {
 
   void _navigateToAiOrder() async {
     await Navigator.push(context, MaterialPageRoute(builder: (context) => const AiOrderScreen()));
-    _fetchOrders(); // Reload sau khi tạo đơn AI
+    _fetchOrders();
   }
 
   void _navigateToManualOrder() async {
@@ -47,139 +47,196 @@ class _OrderScreenState extends State<OrderScreen> {
       MaterialPageRoute(builder: (context) => const ManualOrderScreen())
     );
     if (result == true) {
-      _fetchOrders(); // Reload sau khi tạo đơn thủ công
+      _fetchOrders();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color kPrimaryBlue = Color(0xFF1565C0);
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
-        title: const Text('Quản lý đơn hàng', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
-        elevation: 0.5,
-        iconTheme: const IconThemeData(color: Colors.black),
+        title: const Text('Quản lý đơn hàng'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchOrders),
+          IconButton(icon: const Icon(Icons.refresh_rounded, size: 22), onPressed: _fetchOrders),
         ],
       ),
       body: Column(
         children: [
-          // Action Bar
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildActionButton(
-                    "Tạo đơn", 
-                    Icons.add_shopping_cart, 
-                    kPrimaryBlue, 
-                    _navigateToManualOrder
-                  )
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildActionButton(
-                    "AI Order", 
-                    Icons.mic, 
-                    Colors.purple, 
-                    _navigateToAiOrder
-                  )
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildActionButton(
-                    "Thu tiền", 
-                    Icons.attach_money, 
-                    Colors.green, 
-                    () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentScreen()))
-                  )
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          // Order List
+          _buildActionPanel(),
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
               : _orders.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.receipt_long, size: 64, color: Colors.grey[300]),
-                        const SizedBox(height: 16),
-                        Text(
-                          "Chưa có đơn hàng nào",
-                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton.icon(
-                          onPressed: _navigateToManualOrder,
-                          icon: const Icon(Icons.add),
-                          label: const Text("Tạo đơn hàng đầu tiên"),
-                        ),
-                      ],
+                ? _buildEmptyState()
+                : _buildOrderList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionPanel() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildActionButton(
+              "Tạo đơn", 
+              Icons.add_rounded, 
+              Theme.of(context).colorScheme.primary, 
+              _navigateToManualOrder
+            )
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              "AI Order", 
+              Icons.auto_awesome_rounded, 
+              const Color(0xFF6366F1), // Indigo instead of bright purple
+              _navigateToAiOrder
+            )
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              "Thu tiền", 
+              Icons.account_balance_wallet_rounded, 
+              const Color(0xFF64748B), // Slate/Grey for secondary financial action
+              () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentScreen()))
+            )
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOrderList() {
+    return RefreshIndicator(
+      onRefresh: _fetchOrders,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: _orders.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final order = _orders[index];
+          final total = order['totalAmount'] ?? 0;
+          final status = order['status'] ?? 'PENDING';
+          final color = _getStatusColor(status);
+          
+          return InkWell(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PrintOrderScreen(orderId: order['id']))),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 10)],
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _fetchOrders,
-                    child: ListView.separated(
-                      itemCount: _orders.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final order = _orders[index];
-                        final total = order['totalAmount'] ?? 0;
-                        final status = order['status'] ?? 'PENDING';
-                        
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: _getStatusColor(status).withOpacity(0.1),
-                            child: Icon(Icons.receipt_long, color: _getStatusColor(status)),
-                          ),
-                          title: Text(
-                            order['orderCode'] ?? 'Đơn hàng #${order['id']}', 
-                            style: const TextStyle(fontWeight: FontWeight.bold)
-                          ),
-                          subtitle: Text(
-                            "${order['customerName'] ?? 'Khách lẻ'} • ${DateFormat('dd/MM HH:mm').format(DateTime.parse(order['createdAt'] ?? DateTime.now().toString()))}",
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
+                              Expanded(
+                                child: Text(
+                                  order['orderCode'] ?? 'Đơn #${order['id']}', 
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               Text(
                                 "${NumberFormat('#,###', 'vi_VN').format(total)} đ", 
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(status).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  _mapStatus(status), 
-                                  style: TextStyle(fontSize: 10, color: _getStatusColor(status), fontWeight: FontWeight.w500)
-                                ),
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Color(0xFF1E293B))
                               ),
                             ],
                           ),
-                          onTap: () {
-                            // Mở màn hình in hóa đơn khi bấm vào
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => PrintOrderScreen(orderId: order['id'])));
-                          },
-                        );
-                      },
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  order['customerName'] ?? 'Khách lẻ',
+                                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 12, fontWeight: FontWeight.w500),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              _buildStatusBadge(status),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            DateFormat('dd/MM/yyyy • HH:mm').format(DateTime.parse(order['createdAt'] ?? DateTime.now().toString())),
+                            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    final color = _getStatusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        _mapStatus(status), 
+        style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w800, letterSpacing: 0.2)
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle),
+            child: const Icon(Icons.receipt_long_rounded, size: 48, color: Color(0xFFCBD5E1)),
+          ),
+          const SizedBox(height: 20),
+          const Text("Chưa có đơn hàng", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF475569))),
+          const SizedBox(height: 8),
+          const Text("Các đơn hàng bạn tạo sẽ xuất hiện tại đây", style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8))),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _navigateToManualOrder,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text("Tạo đơn ngay"),
           ),
         ],
       ),
@@ -188,34 +245,43 @@ class _OrderScreenState extends State<OrderScreen> {
 
   String _mapStatus(String status) {
     switch (status) {
-      case 'CONFIRMED': return 'Đã xác nhận';
-      case 'PAID': return 'Đã thanh toán';
-      case 'PAID_PARTIAL': return 'TT 1 phần';
-      case 'UNPAID': return 'Chưa TT';
-      case 'CANCELLED': return 'Đã hủy';
-      default: return status;
+      case 'CONFIRMED': return 'ĐÃ XÁC NHẬN';
+      case 'PAID': return 'ĐÃ THANH TOÁN';
+      case 'PAID_PARTIAL': return 'THANH TOÁN 1 PHẦN';
+      case 'UNPAID': return 'CHƯA THANH TOÁN';
+      case 'CANCELLED': return 'ĐÃ HỦY';
+      default: return status.toUpperCase();
     }
   }
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'PAID': return Colors.green;
-      case 'CONFIRMED': return Colors.blue;
-      case 'CANCELLED': return Colors.red;
-      case 'UNPAID': return Colors.orange;
-      default: return Colors.grey;
+      case 'PAID': return const Color(0xFF10B981); // Emerald
+      case 'CONFIRMED': return const Color(0xFF3B82F6); // Blue
+      case 'CANCELLED': return const Color(0xFFEF4444); // Red
+      case 'UNPAID': return const Color(0xFFF59E0B); // Amber
+      default: return const Color(0xFF64748B); // Slate
     }
   }
 
   Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
-    return ElevatedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 16, color: Colors.white),
-      label: Text(label, style: const TextStyle(fontSize: 11, color: Colors.white)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.1)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 22, color: color),
+            const SizedBox(height: 8),
+            Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: color)),
+          ],
+        ),
       ),
     );
   }

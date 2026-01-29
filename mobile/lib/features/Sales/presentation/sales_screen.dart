@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:mobile/data/repositories/order_repository.dart';
 
@@ -58,7 +59,7 @@ class _SalesScreenState extends State<SalesScreen> {
         _cart.add({
           ...product,
           'quantity': 1,
-          'productId': product['id'], // Map ID cho API createOrder
+          'productId': product['id'],
           'productName': product['name'],
         });
       }
@@ -79,7 +80,6 @@ class _SalesScreenState extends State<SalesScreen> {
 
   Future<void> _createOrder() async {
     if (_cart.isEmpty) return;
-
     if (_selectedCustomer == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng chọn khách hàng"), backgroundColor: Colors.orange));
       return;
@@ -96,16 +96,13 @@ class _SalesScreenState extends State<SalesScreen> {
         }).toList(),
         "paymentMethod": "CASH",
         "totalAmount": _totalAmount,
-        "status": "COMPLETED" // POS thường là bán xong luôn
+        "status": "COMPLETED"
       };
 
       await _orderRepository.createOrder(orderData);
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Tạo đơn hàng thành công!"), backgroundColor: Colors.green),
-        );
-        Navigator.pop(context, true); // Trả về true để reload list ở màn hình cha
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Thanh toán thành công!"), backgroundColor: Colors.green));
+        Navigator.pop(context, true);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Lỗi: $e"), backgroundColor: Colors.red));
@@ -121,146 +118,200 @@ class _SalesScreenState extends State<SalesScreen> {
     ).toList();
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text("Bán hàng (POS)"),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0.5,
+        actions: [
+          IconButton(onPressed: () => setState(() => _cart = []), icon: const Icon(Icons.refresh_rounded, size: 20)),
+        ],
       ),
       body: Column(
         children: [
-          // Customer Selector
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: DropdownButtonFormField<Map<String, dynamic>>(
-              value: _selectedCustomer,
-              decoration: const InputDecoration(
-                labelText: "Khách hàng",
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              items: _customers.map((c) => DropdownMenuItem(
-                value: c,
-                child: Text(c['fullName'] ?? 'Khách hàng'),
-              )).toList(),
-              onChanged: (val) => setState(() => _selectedCustomer = val),
-              hint: const Text("Chọn khách hàng"),
-            ),
-          ),
-
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: const InputDecoration(
-                hintText: "Tìm sản phẩm...",
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12),
-              ),
-              onChanged: (val) => setState(() => _searchQuery = val),
-            ),
-          ),
-
-          // Product List
+          _buildTopPanel(),
           Expanded(
             child: _isLoading 
               ? const Center(child: CircularProgressIndicator())
-              : GridView.builder(
-                  padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.8,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                  ),
-                  itemCount: filteredProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = filteredProducts[index];
-                    return GestureDetector(
-                      onTap: () => _addToCart(product),
-                      child: Card(
-                        elevation: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Container(
-                                color: Colors.grey[100],
-                                child: const Center(child: Icon(Icons.image, size: 40, color: Colors.grey)),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(product['name'], maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  Text("${NumberFormat('#,###').format(product['price'])} đ", style: const TextStyle(color: Color(0xff289ca7), fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              : _buildProductGrid(filteredProducts),
           ),
+          _buildCartSummary(),
+        ],
+      ),
+    );
+  }
 
-          // Cart Summary (Bottom Sheet style)
-          Container(
+  Widget _buildTopPanel() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Column(
+        children: [
+          DropdownButtonFormField<Map<String, dynamic>>(
+            value: _selectedCustomer,
+            style: const TextStyle(fontSize: 14, color: Colors.black87),
+            decoration: const InputDecoration(
+              hintText: "Chọn khách hàng",
+              prefixIcon: Icon(Icons.person_outline_rounded, size: 20),
+            ),
+            items: _customers.map((c) => DropdownMenuItem(
+              value: c,
+              child: Text(c['fullName'] ?? 'Khách hàng'),
+            )).toList(),
+            onChanged: (val) => setState(() => _selectedCustomer = val),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            onChanged: (val) => setState(() => _searchQuery = val),
+            decoration: const InputDecoration(
+              hintText: "Tìm sản phẩm...",
+              prefixIcon: Icon(Icons.search_rounded, size: 20),
+              contentPadding: EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductGrid(List<Map<String, dynamic>> products) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: products.length,
+      itemBuilder: (context, index) {
+        final product = products[index];
+        return InkWell(
+          onTap: () => _addToCart(product),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
             ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_cart.isNotEmpty)
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(8),
-                      itemCount: _cart.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final item = _cart[index];
-                        return ListTile(
-                          dense: true,
-                          title: Text(item['name']),
-                          subtitle: Text("${item['quantity']} x ${NumberFormat('#,###').format(item['price'])}"),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(icon: const Icon(Icons.remove_circle_outline), onPressed: () => _removeFromCart(index)),
-                              Text("${item['quantity']}"),
-                              IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: () => _addToCart(item)),
-                            ],
-                          ),
-                        );
-                      },
+                Expanded(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    child: Center(
+                      child: _buildProductImage(product['imageUrl'], size: 48),
                     ),
                   ),
+                ),
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text("Tổng: ${NumberFormat('#,###').format(_totalAmount)} đ", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      ),
-                      ElevatedButton(
-                        onPressed: _isLoading || _cart.isEmpty ? null : _createOrder,
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xff289ca7), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12)),
-                        child: const Text("Thanh toán", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
+                      Text(product['name'], maxLines: 2, overflow: TextOverflow.ellipsis, 
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      const SizedBox(height: 4),
+                      Text("${NumberFormat('#,###').format(product['price'])} đ", 
+                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 14)),
                     ],
                   ),
                 ),
               ],
             ),
-          )
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildProductImage(String? imageUrl, {double size = 40}) {
+    if (imageUrl == null || imageUrl.isEmpty) return Icon(Icons.image_outlined, size: size, color: Colors.grey);
+    try {
+      if (imageUrl.startsWith('http')) return Image.network(imageUrl, width: size, height: size, fit: BoxFit.cover);
+      return Image.memory(const Base64Decoder().convert(imageUrl.split(',').last), width: size, height: size, fit: BoxFit.cover);
+    } catch (_) {
+      return Icon(Icons.broken_image_outlined, size: size, color: Colors.grey);
+    }
+  }
+
+  Widget _buildCartSummary() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_cart.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Giỏ hàng (${_cart.length})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                TextButton(onPressed: () => setState(() => _cart = []), child: const Text("Xóa hết")),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 120),
+              child: ListView.separated(
+                itemCount: _cart.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (ctx, idx) {
+                  final item = _cart[idx];
+                  return Row(
+                    children: [
+                      Expanded(child: Text(item['name'], style: const TextStyle(fontSize: 13))),
+                      Text("${item['quantity']} x ", style: const TextStyle(color: Colors.grey)),
+                      Text(NumberFormat('#,###').format(item['price'])),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _removeFromCart(idx),
+                        icon: const Icon(Icons.remove_circle_outline_rounded, color: Colors.red, size: 20),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            const Divider(height: 32),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Tổng cộng", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    Text("${NumberFormat('#,###').format(_totalAmount)} đ", 
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF1E293B))),
+                  ],
+                ),
+              ),
+              ElevatedButton(
+                onPressed: _isLoading || _cart.isEmpty ? null : _createOrder,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                ),
+                child: _isLoading 
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text("Thanh toán"),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
         ],
       ),
     );
