@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, Store, ShoppingBag, Download, Calendar as CalendarIcon, Wallet, TrendingUp } from "lucide-react";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
@@ -10,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { formatVND } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
+import { adminDashboardService, RecentTenant, RevenueChartData } from "@/services/admin-dashboard.service";
 
 export default function AdminDashboardPage() {
   const [period, setPeriod] = useState("this-month");
   const [isExporting, setIsExporting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // States cho dữ liệu thực tế (khởi tạo trống)
   const [stats, setStats] = useState({
@@ -22,8 +24,39 @@ export default function AdminDashboardPage() {
     activeTenants: 0,
     totalOrders: 0,
   });
-  const [revenueData, setRevenueData] = useState([]);
-  const [recentTenants, setRecentTenants] = useState([]);
+  const [revenueData, setRevenueData] = useState<RevenueChartData[]>([]);
+  const [recentTenants, setRecentTenants] = useState<RecentTenant[]>([]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const res = await adminDashboardService.getStats(period);
+        if (res.result) {
+          setStats({
+            revenue: res.result.revenue,
+            newStores: res.result.newStores,
+            activeTenants: res.result.activeTenants,
+            totalOrders: res.result.totalOrders,
+          });
+          setRevenueData(res.result.revenueData);
+          // @ts-ignore
+          setRecentTenants(res.result.recentTenants.map(t => ({
+            ...t,
+            initials: t.name ? t.name.substring(0, 2).toUpperCase() : '??',
+            amount: 0 // Backend currently doesn't return amount per tenant in this view yet
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error);
+        toast.error("Không thể tải dữ liệu thống kê.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [period]);
 
   const handleExport = () => {
     try {

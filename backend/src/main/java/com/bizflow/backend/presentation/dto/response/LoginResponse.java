@@ -12,13 +12,19 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 public class LoginResponse {
-    private Long userId;
-    private String username;
-    private String fullName;
-    private String email;
-    private String role;
     private String token;
     private String refreshToken;
+    private String username;
+    private String role;
     private Long expiresIn;
     private LocalDateTime issuedAt;
+
+    // THÊM: Đối tượng chứa chi tiết thông tin người dùng (fullName, email, phone...)
+    private UserDTO user;
+
+    // Giữ lại các trường phẳng nếu Frontend của bạn đang gọi trực tiếp từ cấp ngoài
+    private Long userId;
+    private String fullName;
+    private String email;
+    private String phone; // Bổ sung thêm phone ở đây cho đồng bộ
 }
