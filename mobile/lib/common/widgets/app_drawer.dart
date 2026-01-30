@@ -7,6 +7,8 @@ import 'package:mobile/features/profile/presentation/help_support_screen.dart';
 import 'package:mobile/features/profile/presentation/subscription_plan_screen.dart';
 import 'package:mobile/features/profile/presentation/store_settings_screen.dart';
 import 'package:mobile/features/home/presentation/main_screen.dart';
+import 'package:mobile/features/finance/presentation/finance_screen.dart';
+import 'package:mobile/features/product/presentation/stock_adjustment_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({super.key});
@@ -128,6 +130,28 @@ class _AppDrawerState extends State<AppDrawer> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const ReportScreen()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  icon: Icons.account_balance_wallet,
+                  title: "Sổ quỹ (Thu tiền)",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const FinanceScreen()),
+                    );
+                  },
+                ),
+                _drawerItem(
+                  icon: Icons.inventory,
+                  title: "Kiểm kê kho",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const StockAdjustmentScreen()),
                     );
                   },
                 ),

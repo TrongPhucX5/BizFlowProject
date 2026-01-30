@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:mobile/data/repositories/ai_repository.dart';
 import 'package:mobile/data/repositories/order_repository.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 
 class AiOrderScreen extends StatefulWidget {
   const AiOrderScreen({super.key});
@@ -23,6 +25,9 @@ class _AiOrderScreenState extends State<AiOrderScreen> {
   bool _isCreatingOrder = false;
   List<Map<String, dynamic>> _draftItems = [];
   double _totalAmount = 0;
+
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListening = false;
 
   @override
   void initState() {
@@ -112,6 +117,39 @@ class _AiOrderScreenState extends State<AiOrderScreen> {
     }
   }
 
+  Future<void> _toggleListening() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) {
+          if (val == 'done' || val == 'notListening') {
+             if (mounted) setState(() => _isListening = false);
+          }
+        },
+        onError: (val) {
+          if (mounted) {
+             setState(() => _isListening = false);
+             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi giọng nói: $val')));
+          }
+        },
+      );
+
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _inputController.text = val.recognizedWords;
+          }),
+          localeId: 'vi_VN', // Try Vietnamese
+        );
+      } else {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể khởi động tìm kiếm giọng nói')));
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,13 +181,23 @@ class _AiOrderScreenState extends State<AiOrderScreen> {
                 Expanded(
                   child: TextField(
                     controller: _inputController,
-                    decoration: const InputDecoration(
-                      hintText: "VD: Bán 5 bao xi măng, 2 khối cát...",
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: InputDecoration(
+                      hintText: _isListening ? "Đang lắng nghe..." : "VD: Bán 5 bao xi măng, 2 khối cát...",
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      suffixIcon: _inputController.text.isNotEmpty 
+                          ? IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () => _inputController.clear()) 
+                          : null,
                     ),
                     onSubmitted: (_) => _analyzeText(),
                   ),
+                ),
+                const SizedBox(width: 8),
+                // Voice Button
+                IconButton.filledTonal(
+                  onPressed: _toggleListening,
+                  style: IconButton.styleFrom(backgroundColor: _isListening ? Colors.red.shade100 : null),
+                  icon: Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.red : Colors.blue),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(

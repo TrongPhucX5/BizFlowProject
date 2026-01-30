@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/features/auth/presentation/login_screen.dart';
+import 'package:mobile/features/profile/presentation/change_password_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'personal_info_screen.dart';
 import 'business_info_screen.dart';
@@ -90,6 +91,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   items: [
                     _MenuItem(Icons.person_outline_rounded, 'Thông tin cá nhân', 'Quản lý thông tin cơ bản', 
                       () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PersonalInfoScreen()))),
+                    _MenuItem(Icons.lock_outline, 'Đổi mật khẩu', 'Cập nhật mật khẩu tài khoản', 
+                      () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()))),
                     _MenuItem(Icons.storefront_rounded, 'Hộ kinh doanh', 'Cài đặt thông tin cửa hàng', 
                       () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BusinessInfoScreen()))),
                     _MenuItem(Icons.verified_user_outlined, 'Xác thực KYC', 'Tăng hạn mức giao dịch', 

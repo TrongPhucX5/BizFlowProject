@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:mobile/features/customer/presentation/group_create_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile/features/customer/presentation/customer_detail_screen.dart';
 
 class CustomerScreen extends StatefulWidget {
   const CustomerScreen({super.key});
@@ -211,7 +212,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
           final isFemale = gender.contains('NỮ') || gender.contains('NU');
 
           return InkWell(
-            onTap: () => _showCustomerForm(existingCustomer: item),
+            onTap: () => Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (_) => CustomerDetailScreen(customer: item))
+            ).then((_) => _fetchData()),
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.all(16),

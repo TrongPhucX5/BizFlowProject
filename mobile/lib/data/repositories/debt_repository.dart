@@ -6,9 +6,12 @@ class DebtRepository {
   final Dio _dio = DioClient.instance;
 
   /// Lấy danh sách công nợ khách hàng
-  Future<List<Map<String, dynamic>>> getDebts() async {
+  Future<List<Map<String, dynamic>>> getDebts({int? customerId}) async {
     try {
-      final response = await _dio.get(ApiConstants.debtsEndpoint);
+      final Map<String, dynamic> query = {};
+      if (customerId != null) query['customerId'] = customerId;
+
+      final response = await _dio.get(ApiConstants.debtsEndpoint, queryParameters: query);
       
       if (response.statusCode == 200) {
         final data = response.data;

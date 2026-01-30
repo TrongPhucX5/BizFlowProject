@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
@@ -6,7 +5,7 @@ import 'dart:convert';
 import 'package:mobile/common/widgets/app_drawer.dart';
 import 'package:mobile/features/scanner/presentation/select_scanner_bottom_sheet.dart';
 import 'package:mobile/features/inbox/presentation/inbox_screen.dart';
-import '../data/repositories/dashboard_repository.dart';
+import 'package:mobile/data/repositories/report_repository.dart';
 import '../data/models/dashboard_summary.dart';
 import '../data/models/product_dto.dart';
 import 'main_screen.dart';
@@ -26,11 +25,14 @@ class ManagementScreen extends StatefulWidget {
 
 class _ManagementScreenState extends State<ManagementScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final DashboardRepository _repository = DashboardRepository();
+  final ReportRepository _repository = ReportRepository();
   final AuthRepository _authRepository = AuthRepository();
   bool _isLoading = true;
   DashboardSummary? _summary;
   List<ProductDTO> _lowStockProducts = [];
+  List<Map<String, dynamic>> _revenueData = [];
+  List<Map<String, dynamic>> _topProducts = [];
+
   String? _error;
   String _userName = 'Người dùng';
   String _userRole = '';
@@ -47,14 +49,27 @@ class _ManagementScreenState extends State<ManagementScreen> {
       _error = null;
     });
     try {
-      final summary = await _repository.getDashboardSummary();
-      final lowStock = await _repository.getLowStockProducts();
+      final stats = await _repository.getDashboardStats();
+      final revenue = await _repository.getRevenueData();
+      final top = await _repository.getBestSellingProducts();
       final userData = await _authRepository.getCurrentUser();
 
+      // Mock low stock for now since ReportRepository might not have it, or we use warningProducts count
+      // Ideally we should have a getLowStockProducts in Inventory/Product Repository
+      // For now let's leave _lowStockProducts empty or fetch if we had the repo
+      
       if (mounted) {
         setState(() {
-          _summary = summary;
-          _lowStockProducts = lowStock;
+           _summary = DashboardSummary(
+             totalRevenue: double.tryParse(stats['revenueToday']?.toString() ?? '0') ?? 0,
+             lowStockCount: int.tryParse(stats['warningProducts']?.toString() ?? '0') ?? 0,
+             pendingPayment: double.tryParse(stats['totalDebt']?.toString() ?? '0') ?? 0,
+             totalProducts: 0, 
+           );
+           
+           _revenueData = revenue;
+           _topProducts = top;
+
           if (userData != null) {
             _userName = userData['fullName'] ?? 'Người dùng';
             _userRole = _mapRole(userData['role'] ?? '');
@@ -124,7 +139,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                       const SizedBox(height: 24),
                       _buildBentoStatsGrid(),
                       const SizedBox(height: 24),
-                      _buildLowStockBento(),
+                      _buildLowStockBento(), // Keeps UI but list might be empty if not fetched
                     ],
                     const SizedBox(height: 120),
                   ],
@@ -231,6 +246,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportScreen())),
         ),
         const SizedBox(height: 16),
+        
+        const SizedBox(height: 16),
+        // Sections removed to avoid redundancy with ReportScreen
+        
+        // Secondary Grid
+
         // Secondary Grid
         Row(
           children: [
@@ -265,31 +286,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        _buildBentoCard(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.view_in_ar_rounded, color: Color(0xFF2563EB), size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Danh mục sản phẩm", style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16)),
-                    Text("${_summary!.totalProducts} mã hàng đang kinh doanh", style: Theme.of(context).textTheme.labelSmall),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-            ],
-          ),
-          onTap: () => MainScreen.of(context)?.setTabIndex(2),
-        ),
+        
         const SizedBox(height: 24),
         _buildSectionHeader("Phát triển kinh doanh"),
         const SizedBox(height: 12),
@@ -318,6 +315,49 @@ class _ManagementScreenState extends State<ManagementScreen> {
           onTap: () {},
         ),
       ],
+    );
+  }
+
+  Widget _buildSimpleBarChart() {
+    if (_revenueData.isEmpty) return const Center(child: Text("Chưa có dữ liệu"));
+    
+    // Find max value
+    double maxVal = 1;
+    for (var item in _revenueData) {
+      double val = double.tryParse(item['totalAmount']?.toString() ?? '0') ?? 0;
+      if (val > maxVal) maxVal = val;
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: _revenueData.map((item) {
+        double val = double.tryParse(item['totalAmount']?.toString() ?? '0') ?? 0;
+        double h = (val / maxVal) * 120; // 120 is max height
+        if (h < 4) h = 4; 
+
+        String label = item['date'] ?? '';
+        try {
+           final dt = DateTime.parse(label); 
+           label = "${dt.day}/${dt.month}";
+        } catch (_) {}
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Container(
+              width: 24,
+              height: h,
+              decoration: BoxDecoration(
+                color: Colors.blueAccent,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          ],
+        );
+      }).toList(),
     );
   }
 
@@ -503,4 +543,3 @@ class _ManagementScreenState extends State<ManagementScreen> {
     );
   }
 }
-

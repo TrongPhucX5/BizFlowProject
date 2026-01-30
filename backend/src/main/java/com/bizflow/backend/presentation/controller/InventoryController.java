@@ -39,4 +39,19 @@ public class InventoryController {
                 .map(inv -> ResponseEntity.ok(ApiResponse.success(inv, "Lấy thông tin tồn kho thành công")))
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    /**
+     * Kiểm kê kho (Điều chỉnh số lượng)
+     * POST /v1/inventory/adjust
+     */
+    @PostMapping("/adjust")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<ApiResponse<Inventory>> adjustStock(@RequestBody java.util.Map<String, Object> request) {
+        Long productId = Long.valueOf(request.get("productId").toString());
+        Integer newQuantity = Integer.valueOf(request.get("newQuantity").toString());
+        String reason = (String) request.get("reason");
+
+        Inventory inventory = inventoryService.adjustStock(productId, newQuantity, reason);
+        return ResponseEntity.ok(ApiResponse.success(inventory, "Điều chỉnh tồn kho thành công"));
+    }
 }

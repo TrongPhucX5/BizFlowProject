@@ -13,7 +13,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Product findByStoreIdAndSku(Long storeId, String sku);
 
     Page<Product> findByStoreId(Long storeId, Pageable pageable);
-    
+
     Page<Product> findByStoreIdAndStatus(Long storeId, Product.ProductStatus status, Pageable pageable);
 
     List<Product> findByCategoryId(Long categoryId);
@@ -22,5 +22,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     long countByStoreIdAndStockQuantityLessThanEqual(Long storeId, Integer quantity);
 
+    long countByStoreIdAndStatus(Long storeId, Product.ProductStatus status);
+
     List<Product> findByStoreIdAndStockQuantityLessThanEqual(Long storeId, Integer quantity, Pageable pageable);
+
+    List<Product> findByStoreIdAndNameContainingIgnoreCase(Long storeId, String name);
 }

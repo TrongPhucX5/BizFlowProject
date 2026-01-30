@@ -153,7 +153,37 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public Inventory adjustStock(Long productId, Integer newQuantity, String reason) {
-        // TODO: Implement adjustment logic
-        return null;
+        Long storeId = UserContext.getCurrentStoreId();
+        String username = UserContext.getCurrentUsername();
+
+        Inventory inventory = inventoryRepository.findByStoreIdAndProductId(storeId, productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inventory not found for product: " + productId));
+
+        int oldQuantity = inventory.getQuantity() != null ? inventory.getQuantity() : 0;
+        int diff = newQuantity - oldQuantity;
+
+        if (diff == 0)
+            return inventory;
+
+        inventory.setQuantity(newQuantity);
+        inventory.setAvailableQuantity(
+                (inventory.getAvailableQuantity() != null ? inventory.getAvailableQuantity() : 0) + diff);
+
+        Inventory saved = inventoryRepository.save(inventory);
+
+        // Create Movement
+        StockMovement movement = StockMovement.builder()
+                .storeId(storeId)
+                .productId(productId)
+                .type(StockMovement.MovementType.STOCK_ADJUST)
+                .quantity(diff) // Signed difference
+                .notes(reason)
+                .createdBy(username)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        stockMovementRepository.save(movement);
+
+        return saved;
     }
 }

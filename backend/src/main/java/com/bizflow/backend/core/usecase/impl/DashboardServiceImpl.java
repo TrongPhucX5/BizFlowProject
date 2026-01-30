@@ -74,7 +74,8 @@ public class DashboardServiceImpl {
 
         // 5. Product Stats
         long lowStockCount = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
-        long totalProducts = productRepository.countByStoreId(storeId);
+        long totalProducts = productRepository.countByStoreIdAndStatus(storeId,
+                com.bizflow.backend.core.domain.Product.ProductStatus.ACTIVE);
 
         return DashboardSummaryDto.builder()
                 .totalOrders(totalOrders != null ? totalOrders : 0)

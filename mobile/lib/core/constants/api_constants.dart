@@ -23,6 +23,7 @@ class ApiConstants {
   // Product
   static const String productsEndpoint = "/v1/products";
   static const String productsBatchEndpoint = "/v1/products/batch";
+  static const String categoriesEndpoint = "/v1/categories";
 
   // Inventory
   static const String inventoryAdjustEndpoint = "/v1/inventory/adjust";

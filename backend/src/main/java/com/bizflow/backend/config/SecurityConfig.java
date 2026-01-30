@@ -46,10 +46,6 @@ public class SecurityConfig {
                                                                 "/api/v1/auth/**",
                                                                 "/v1/auth/**",
 
-                                                                // AI APIs
-                                                                "/api/v1/ai/**",
-                                                                "/v1/ai/**",
-
                                                                 // System & docs
                                                                 "/v1/health",
                                                                 "/swagger-ui/**",

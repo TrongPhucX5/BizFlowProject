@@ -7,6 +7,10 @@ import org.springframework.data.domain.Pageable;
 
 public interface StoreService {
     Page<StoreDTO> getAllStores(String search, Pageable pageable);
+
     StoreDTO updateStoreStatus(Long id, Store.StoreStatus status);
+
     StoreDTO getStoreById(Long id);
+
+    StoreDTO updateStoreInfo(Long id, java.util.Map<String, Object> request);
 }

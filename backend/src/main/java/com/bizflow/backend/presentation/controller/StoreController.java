@@ -47,4 +47,21 @@ public class StoreController {
         StoreDTO updatedStore = storeService.updateStoreStatus(id, status);
         return ResponseEntity.ok(ApiResponse.success(updatedStore, "Cập nhật trạng thái thành công"));
     }
+
+    @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<ApiResponse<StoreDTO>> getMyStore() {
+        Long storeId = com.bizflow.backend.core.common.UserContext.getCurrentStoreId();
+        StoreDTO store = storeService.getStoreById(storeId);
+        return ResponseEntity.ok(ApiResponse.success(store, "Thông tin cửa hàng của bạn"));
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("hasAnyRole('OWNER')")
+    public ResponseEntity<ApiResponse<StoreDTO>> updateMyStore(
+            @RequestBody Map<String, Object> request) {
+        Long storeId = com.bizflow.backend.core.common.UserContext.getCurrentStoreId();
+        StoreDTO updatedStore = storeService.updateStoreInfo(storeId, request);
+        return ResponseEntity.ok(ApiResponse.success(updatedStore, "Cập nhật thông tin cửa hàng thành công"));
+    }
 }

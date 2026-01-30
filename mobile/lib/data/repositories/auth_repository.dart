@@ -271,12 +271,26 @@ class AuthRepository {
   }
 
   // ================== CHANGE PASSWORD ==================
+  // ================== CHANGE PASSWORD ==================
   Future<void> changePassword(String oldPassword, String newPassword) async {
     try {
-      await _dio.put('/users/change-password', data: {
+      await _dio.put('/v1/users/change-password', data: {
         'oldPassword': oldPassword,
         'newPassword': newPassword,
       });
+    } on DioException catch (e) {
+      _handleDioError(e);
+    }
+  }
+
+  // ================== UPDATE PROFILE ==================
+  Future<void> updateProfile(Map<String, dynamic> data) async {
+    try {
+      final response = await _dio.put('/v1/users/profile', data: data);
+      final apiResponse = ApiResponse.fromJson(response.data);
+      if (!apiResponse.isSuccess) {
+        throw Exception(apiResponse.message);
+      }
     } on DioException catch (e) {
       _handleDioError(e);
     }

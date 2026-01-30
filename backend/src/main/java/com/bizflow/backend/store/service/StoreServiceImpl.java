@@ -39,7 +39,27 @@ public class StoreServiceImpl implements StoreService {
     @Override
     public StoreDTO getStoreById(Long id) {
         Store store = storeRepository.findById(id)
-                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+        return mapToDTO(store);
+    }
+
+    @Override
+    public StoreDTO updateStoreInfo(Long id, java.util.Map<String, Object> request) {
+        Store store = storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+
+        if (request.containsKey("name"))
+            store.setName((String) request.get("name"));
+        if (request.containsKey("address"))
+            store.setAddress((String) request.get("address"));
+        if (request.containsKey("phone"))
+            store.setPhone((String) request.get("phone"));
+        if (request.containsKey("email"))
+            store.setEmail((String) request.get("email"));
+        if (request.containsKey("taxCode"))
+            store.setTaxCode((String) request.get("taxCode"));
+
+        store = storeRepository.save(store);
         return mapToDTO(store);
     }
 

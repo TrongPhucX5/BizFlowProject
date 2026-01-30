@@ -75,8 +75,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         @Param("endDate") LocalDateTime endDate);
 
         // Tính tổng tiền nợ khách hàng đang nợ store
+        // Tính tổng tiền nợ khách hàng đang nợ store (bao gồm UNPAID, PARTIAL, OVERDUE)
         @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d " +
-                        "WHERE d.storeId = :storeId AND d.status = 'UNPAID'")
+                        "WHERE d.storeId = :storeId AND d.unpaidAmount > 0 AND d.status <> 'CANCELLED'")
         BigDecimal sumPendingPayment(@Param("storeId") Long storeId);
 
         // --- 4. DỮ LIỆU BIỂU ĐỒ (CHARTS DATA) ---
@@ -93,7 +94,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
         // Gom nhóm doanh thu theo ngày để vẽ biểu đồ đường
         @Query("SELECT new com.bizflow.backend.presentation.dto.response.RevenueChartDto( " +
-                        "   FUNCTION('DATE', o.createdAt), " +
+                        "   CAST(o.createdAt AS DATE), " +
                         "   SUM(oi.totalAmount), " +
                         "   COUNT(DISTINCT o), " +
                         "   SUM((oi.unitPrice - p.costPrice) * oi.quantity) " +
@@ -103,8 +104,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         "JOIN Product p ON oi.productId = p.id " +
                         "WHERE o.storeId = :storeId AND o.createdAt BETWEEN :startDate AND :endDate " +
                         "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED " +
-                        "GROUP BY FUNCTION('DATE', o.createdAt) " +
-                        "ORDER BY FUNCTION('DATE', o.createdAt) ASC")
+                        "GROUP BY CAST(o.createdAt AS DATE) " +
+                        "ORDER BY CAST(o.createdAt AS DATE) ASC")
         List<RevenueChartDto> getRevenueChartData(
                         @Param("storeId") Long storeId,
                         @Param("startDate") LocalDateTime startDate,
@@ -133,7 +134,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
         // 7. GLOBAL REVENUE CHART (Phần này thêm mới cho SuperAdmin)
         @Query("SELECT new com.bizflow.backend.presentation.dto.response.RevenueChartDto( " +
-                        "   FUNCTION('DATE', o.createdAt), " +
+                        "   CAST(o.createdAt AS DATE), " +
                         "   SUM(o.totalAmount), " +
                         "   COUNT(o), " +
                         "   SUM(o.totalAmount) " + // Placeholder for profit
@@ -141,14 +142,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                         "FROM Order o " +
                         "WHERE o.createdAt BETWEEN :startDate AND :endDate " +
                         "AND o.status <> com.bizflow.backend.core.domain.Order.OrderStatus.CANCELLED " +
-                        "GROUP BY FUNCTION('DATE', o.createdAt) " +
-                        "ORDER BY FUNCTION('DATE', o.createdAt) ASC")
+                        "GROUP BY CAST(o.createdAt AS DATE) " +
+                        "ORDER BY CAST(o.createdAt AS DATE) ASC")
         List<RevenueChartDto> getGlobalRevenueChartData(
                         @Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate);
 
         @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE (:startDate IS NULL OR o.createdAt >= :startDate) AND (:endDate IS NULL OR o.createdAt <= :endDate)")
-        BigDecimal calculateTotalRevenue(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+        BigDecimal calculateTotalRevenue(@Param("startDate") LocalDateTime startDate,
+                        @Param("endDate") LocalDateTime endDate);
 
         @Query("SELECT COUNT(o) FROM Order o WHERE (:startDate IS NULL OR o.createdAt >= :startDate) AND (:endDate IS NULL OR o.createdAt <= :endDate)")
         long countOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);

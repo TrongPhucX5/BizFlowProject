@@ -20,11 +20,21 @@ class OrderRepository {
   }
 
   /// Lấy danh sách đơn hàng
-  Future<List<Map<String, dynamic>>> getOrders({int size = 100}) async {
+  Future<List<Map<String, dynamic>>> getOrders({
+    int size = 100,
+    DateTime? startDate,
+    DateTime? endDate,
+    int? customerId,
+  }) async {
     try {
+      final Map<String, dynamic> queryParams = {'size': size};
+      if (startDate != null) queryParams['startDate'] = startDate.toIso8601String().split('T')[0];
+      if (endDate != null) queryParams['endDate'] = endDate.toIso8601String().split('T')[0];
+      if (customerId != null) queryParams['customerId'] = customerId;
+
       final response = await _dio.get(
         ApiConstants.ordersEndpoint,
-        queryParameters: {'size': size},
+        queryParameters: queryParams,
       );
       
       final apiResponse = ApiResponse.fromJson(response.data);
@@ -46,6 +56,21 @@ class OrderRepository {
       throw Exception(apiResponse.message);
     } catch (e) {
       throw Exception('Lỗi tải đơn hàng: $e');
+    }
+  }
+
+  /// Lấy chi tiết đơn hàng
+  Future<Map<String, dynamic>> getOrderById(int orderId) async {
+    try {
+      final response = await _dio.get('${ApiConstants.ordersEndpoint}/$orderId');
+      final apiResponse = ApiResponse.fromJson(response.data);
+      
+      if (apiResponse.isSuccess && apiResponse.result != null) {
+        return Map<String, dynamic>.from(apiResponse.result);
+      }
+      throw Exception(apiResponse.message);
+    } catch (e) {
+      throw Exception('Lỗi tải chi tiết đơn hàng: $e');
     }
   }
 

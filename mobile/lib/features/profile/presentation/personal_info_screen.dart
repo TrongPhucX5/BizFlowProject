@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:mobile/features/profile/presentation/edit_profile_screen.dart';
 import 'package:mobile/data/repositories/auth_repository.dart';
 
 class PersonalInfoScreen extends StatefulWidget {
@@ -21,6 +23,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   String _status = '';
   String _createdAt = '';
 
+  Map<String, dynamic>? _userDataMap; // Store full data
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +36,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       final userData = await _authRepository.getCurrentUser();
       if (userData != null && mounted) {
         setState(() {
+          _userDataMap = userData;
           _fullName = userData['fullName'] ?? '';
           _username = userData['username'] ?? '';
           _email = userData['email'] ?? '';
@@ -139,28 +144,27 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Notice card
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, color: Colors.orange.shade700),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Thông tin tài khoản không thể chỉnh sửa. Vui lòng liên hệ quản trị viên nếu cần thay đổi.',
-                            style: TextStyle(
-                              color: Colors.orange.shade800,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ],
+                  // Edit button
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        if (_userDataMap != null) {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => EditProfileScreen(user: _userDataMap!)),
+                            );
+                            if (result == true) _loadUserInfo();
+                        }
+                      },
+                      icon: const Icon(Icons.edit, color: Colors.white),
+                      label: const Text("CHỈNH SỬA THÔNG TIN", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
