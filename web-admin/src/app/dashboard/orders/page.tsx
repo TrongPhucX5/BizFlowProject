@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orderService } from "@/services/orders.service";
@@ -76,7 +76,7 @@ import { vi } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { Order, ApiResponse, PageResponse, Product } from "@/types/api";
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -776,8 +776,8 @@ export default function OrdersPage() {
                     max={
                       selectedProduct
                         ? products.find(
-                            (p: any) => p.id.toString() === selectedProduct,
-                          )?.stock || 1
+                          (p: any) => p.id.toString() === selectedProduct,
+                        )?.stock || 1
                         : 1
                     }
                     value={quantity}
@@ -1260,5 +1260,13 @@ function OrderStatusBadge({ status }: { status: string }) {
     <Badge className={cn("px-2 py-1 text-xs font-medium", config.className)}>
       {config.label}
     </Badge>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="animate-spin h-8 w-8 text-indigo-600" /></div>}>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

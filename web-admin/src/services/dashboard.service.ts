@@ -13,10 +13,15 @@ export const dashboardService = {
     return response.data;
   },
 
+  // --- UNITS (/v1/units) ---
+  getUnits: async () => {
+    const response = await axiosClient.get("/v1/units");
+    return response.data;
+  },
+
   // --- PRODUCTS (/v1/products) ---
-  getProducts: async () => {
-    // Thêm /v1 vào trước
-    const response = await axiosClient.get("/v1/products?size=100");
+  getProducts: async (params: any = {}) => {
+    const response = await axiosClient.get("/v1/products", { params });
     return response.data;
   },
 

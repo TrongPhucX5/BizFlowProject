@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
     totalOrders: 0,
   });
   const [revenueData, setRevenueData] = useState<RevenueChartData[]>([]);
-  const [recentTenants, setRecentTenants] = useState<RecentTenant[]>([]);
+  const [recentTenants, setRecentTenants] = useState<(RecentTenant & { initials: string; amount: number })[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -40,7 +40,6 @@ export default function AdminDashboardPage() {
             totalOrders: res.result.totalOrders,
           });
           setRevenueData(res.result.revenueData);
-          // @ts-ignore
           setRecentTenants(res.result.recentTenants.map(t => ({
             ...t,
             initials: t.name ? t.name.substring(0, 2).toUpperCase() : '??',
@@ -75,7 +74,7 @@ export default function AdminDashboardPage() {
         { "Hạng mục": "DANH SÁCH TENANT MỚI", "Giá trị": "" },
         ...recentTenants.map(t => ({
           "Hạng mục": t.name,
-          "Giá trị": formatVND(t.amount),
+          "Giá trị": formatVND(t.amount || 0),
           "Email": t.email,
           "Trạng thái": t.status
         }))
@@ -105,28 +104,28 @@ export default function AdminDashboardPage() {
           <p className="text-slate-500">Chào mừng trở lại! Đây là tổng quan hệ thống BizFlow Master hôm nay.</p>
         </div>
         <div className="flex items-center gap-2">
-           <Select value={period} onValueChange={setPeriod}>
-             <SelectTrigger className="w-[180px] bg-white">
-               <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
-               <SelectValue placeholder="Chọn thời gian" />
-             </SelectTrigger>
-             <SelectContent>
-               <SelectItem value="today">Hôm nay</SelectItem>
-               <SelectItem value="this-week">Tuần này</SelectItem>
-               <SelectItem value="this-month">Tháng này</SelectItem>
-               <SelectItem value="this-quarter">Quý này</SelectItem>
-               <SelectItem value="this-year">Năm nay</SelectItem>
-             </SelectContent>
-           </Select>
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px] bg-white">
+              <CalendarIcon className="mr-2 h-4 w-4 text-slate-500" />
+              <SelectValue placeholder="Chọn thời gian" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Hôm nay</SelectItem>
+              <SelectItem value="this-week">Tuần này</SelectItem>
+              <SelectItem value="this-month">Tháng này</SelectItem>
+              <SelectItem value="this-quarter">Quý này</SelectItem>
+              <SelectItem value="this-year">Năm nay</SelectItem>
+            </SelectContent>
+          </Select>
 
-           <Button
-             onClick={handleExport}
-             disabled={isExporting}
-             className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all active:scale-95"
-           >
-             <Download className={`mr-2 h-4 w-4 ${isExporting ? 'animate-bounce' : ''}`} />
-             {isExporting ? "Đang xuất..." : "Xuất báo cáo"}
-           </Button>
+          <Button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all active:scale-95"
+          >
+            <Download className={`mr-2 h-4 w-4 ${isExporting ? 'animate-bounce' : ''}`} />
+            {isExporting ? "Đang xuất..." : "Xuất báo cáo"}
+          </Button>
         </div>
       </div>
 

@@ -374,7 +374,7 @@ export default function ReportsPage() {
   const handleExport = () => {
     try {
       // lấy dữ liệu đang có trên dashboard (ví dụ: revenue)
-      const data = realRevenueData.map((r) => ({
+      const data = realRevenueData.map((r: any) => ({
         Ngày: r.date,
         "Doanh thu": r.revenue,
         "Lợi nhuận": r.profit,
@@ -447,11 +447,10 @@ export default function ReportsPage() {
           <button
             key={p.id}
             onClick={() => setPeriod(p.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              period === p.id
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p.id
                 ? "bg-indigo-600 text-white shadow-sm"
                 : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
-            }`}
+              }`}
           >
             {p.label}
           </button>
@@ -903,15 +902,14 @@ export default function ReportsPage() {
                           <div
                             className={`
                             w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                            ${
-                              index === 0
+                            ${index === 0
                                 ? "bg-yellow-100 text-yellow-700 ring-2 ring-yellow-200"
                                 : index === 1
                                   ? "bg-slate-200 text-slate-700"
                                   : index === 2
                                     ? "bg-orange-100 text-orange-800"
                                     : "bg-slate-100 text-slate-600"
-                            }
+                              }
                           `}
                           >
                             {index + 1}

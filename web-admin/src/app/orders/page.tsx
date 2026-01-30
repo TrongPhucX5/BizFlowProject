@@ -85,7 +85,7 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function OrderPage() {
   const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
-  
+
   // --- TT88 EXPORT STATES ---
   const [exportFrom, setExportFrom] = useState("");
   const [exportTo, setExportTo] = useState("");
@@ -263,7 +263,7 @@ export default function OrderPage() {
 
       // Sử dụng reportsService để đảm bảo auth headers và base URL
       const blob = await reportsService.exportTT88Revenue(exportFrom, exportTo);
-      
+
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
       link.href = url;
@@ -271,7 +271,7 @@ export default function OrderPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
+
       toast.success("Đã xuất sổ doanh thu TT88!");
     } catch (error) {
       console.error(error);
@@ -309,7 +309,7 @@ export default function OrderPage() {
             </p>
           </div>
         </div>
-        
+
         {/* ACTION BUTTONS */}
         <div className="flex flex-wrap items-center gap-3">
           {/* FROM */}
@@ -476,9 +476,9 @@ export default function OrderPage() {
                               <Clock className="h-3 w-3 mr-1.5" />{" "}
                               {order.createdAt
                                 ? format(
-                                    new Date(order.createdAt),
-                                    "dd/MM/yyyy",
-                                  )
+                                  new Date(order.createdAt),
+                                  "dd/MM/yyyy",
+                                )
                                 : "---"}
                             </span>
                           </div>
@@ -668,9 +668,9 @@ export default function OrderPage() {
                       <p className="font-black text-blue-900">
                         {viewingOrder.createdAt
                           ? format(
-                              new Date(viewingOrder.createdAt),
-                              "dd/MM/yyyy",
-                            )
+                            new Date(viewingOrder.createdAt),
+                            "dd/MM/yyyy",
+                          )
                           : "---"}
                       </p>
                     </div>
@@ -927,7 +927,7 @@ export default function OrderPage() {
                   }
 
                   const payload = {
-                    customerId: customerId === "0" ? null : Number(customerId),
+                    customerId: Number(customerId),
                     discountAmount: Number(discountAmount),
                     paymentType,
                     status: orderStatus,
@@ -942,9 +942,9 @@ export default function OrderPage() {
 
                   editingOrderId
                     ? updateMutation.mutate({
-                        id: editingOrderId,
-                        data: payload,
-                      })
+                      id: editingOrderId,
+                      data: payload,
+                    })
                     : createMutation.mutate(payload);
                 }}
                 disabled={createMutation.isPending || updateMutation.isPending}

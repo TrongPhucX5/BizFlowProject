@@ -218,7 +218,7 @@ export default function CustomersPage() {
   const stats = {
     totalCustomers: customers.length,
     totalDebt: customers.reduce(
-      (sum, customer) => sum + customer.debtAmount,
+      (sum, customer) => sum + customer.totalDebt,
       0
     ),
     vipCustomers: customers.filter((c) => c.customerType === "VIP").length,
@@ -437,7 +437,7 @@ export default function CustomersPage() {
                       <div
                         className={cn(
                           "font-bold",
-                          customer.debtAmount > 0
+                          customer.totalDebt > 0
                             ? "text-amber-600"
                             : "text-emerald-600"
                         )}
@@ -713,12 +713,12 @@ export default function CustomersPage() {
                   <p
                     className={cn(
                       "text-2xl font-bold",
-                      currentCustomer.debtAmount > 0
+                      currentCustomer.totalDebt > 0
                         ? "text-amber-600"
                         : "text-emerald-600"
                     )}
                   >
-                    {currentCustomer.debtAmount.toLocaleString()}đ
+                    {currentCustomer.totalDebt.toLocaleString()}đ
                   </p>
                 </div>
               </div>

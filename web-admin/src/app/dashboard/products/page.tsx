@@ -55,10 +55,17 @@ import {
   ClipboardCheck,
   UploadCloud,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product, ApiResponse, PageResponse } from "@/types/api";
-import { toast } from "sonner";
+import { toast } from "sonner"; // Ensure correct import
+
+interface Unit {
+  id: number;
+  name: string;
+}
 
 // --- BỔ SUNG TYPE ĐỂ TRÁNH LỖI ĐỎ ---
 interface ExtendedProduct extends Product {
@@ -73,6 +80,8 @@ export default function ProductsPage() {
   // --- STATE ---
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(50);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
@@ -93,15 +102,31 @@ export default function ProductsPage() {
   });
 
   // --- DATA FETCHING ---
+  // --- DATA FETCHING ---
+  const { data: unitsData, error: unitsError } = useQuery({
+    queryKey: ["units-list"],
+    queryFn: dashboardService.getUnits,
+  });
+
+  if (unitsError) {
+    console.error("Units Error:", unitsError);
+  }
+
+  const units = (unitsData as any)?.result || [];
+  console.log("Loaded Units:", units);
+
   const { data, isLoading, isError, refetch } = useQuery<
     ApiResponse<PageResponse<ExtendedProduct>>
   >({
-    queryKey: ["products-list"],
+    queryKey: ["products-list", page, size, searchTerm, statusFilter],
     queryFn: async () => {
-      const res = await dashboardService.getProducts();
+      const params: any = { page, size };
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter !== "ALL") params.status = statusFilter;
+      const res = await dashboardService.getProducts(params);
       return res as unknown as ApiResponse<PageResponse<ExtendedProduct>>;
     },
-    retry: 1,
+    // keepPreviousData: true, // Use placeholderData in v5 if needed, but simple refetch is fine
   });
 
   // --- MUTATIONS ---
@@ -114,15 +139,15 @@ export default function ProductsPage() {
 
   //     if (imageUrl) {
   //       setCurrentProduct((prev) => ({ ...prev, imageUrl }));
-  //       alert("Tải ảnh lên thành công!");
+  //       toast.success("Tải ảnh lên thành công!");
   //     } else {
   //       console.error("imageUrl is missing in the response", data);
-  //       alert("Lỗi: Không nhận được URL ảnh từ server.");
+  //       toast.error("Lỗi: Không nhận được URL ảnh từ server.");
   //     }
   //   },
   //   onError: (error) => {
   //     console.error("Upload API Error:", error);
-  //     alert("Có lỗi xảy ra khi tải ảnh lên.");
+  //     toast.error("Có lỗi xảy ra khi tải ảnh lên.");
   //   },
   // });
 
@@ -132,11 +157,11 @@ export default function ProductsPage() {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
       await refetch();
       setIsDialogOpen(false);
-      alert("Thêm mới thành công!");
+      toast.success("Thêm mới thành công!");
     },
     onError: (error) => {
       console.error(error);
-      alert("Có lỗi xảy ra khi thêm mới.");
+      toast.error("Có lỗi xảy ra khi thêm mới.");
     },
   });
 
@@ -147,11 +172,11 @@ export default function ProductsPage() {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
       await refetch();
       setIsDialogOpen(false);
-      alert("Cập nhật thành công!");
+      toast.success("Cập nhật thành công!");
     },
     onError: (error) => {
       console.error(error);
-      alert("Có lỗi xảy ra khi cập nhật.");
+      toast.error("Có lỗi xảy ra khi cập nhật.");
     },
   });
 
@@ -160,13 +185,13 @@ export default function ProductsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
       await refetch();
-      alert("Xóa sản phẩm thành công!");
+      toast.success("Xóa sản phẩm thành công!");
     },
     onError: (error: any) => {
       if (error?.response?.status === 403) {
-        alert("Bạn không có quyền thực hiện hành động này.");
+        toast.error("Bạn không có quyền thực hiện hành động này.");
       } else {
-        alert("Không thể xóa sản phẩm này (có thể do ràng buộc dữ liệu hoặc lỗi server).");
+        toast.error("Không thể xóa sản phẩm này (có thể do ràng buộc dữ liệu hoặc lỗi server).");
       }
     },
   });
@@ -177,11 +202,11 @@ export default function ProductsPage() {
       await queryClient.invalidateQueries({ queryKey: ["products-list"] });
       await refetch();
       setIsImportDialogOpen(false);
-      alert("Nhập kho thành công!");
+      toast.success("Nhập kho thành công!");
     },
     onError: (error) => {
       console.error(error);
-      alert("Có lỗi xảy ra khi nhập kho.");
+      toast.error("Có lỗi xảy ra khi nhập kho.");
     },
   });
 
@@ -261,7 +286,7 @@ export default function ProductsPage() {
   const handleExportExcel = () => {
     const productsToExport = data?.result?.content || [];
     if (productsToExport.length === 0) {
-      alert("Không có dữ liệu để xuất!");
+      toast.warning("Không có dữ liệu để xuất!");
       return;
     }
 
@@ -310,7 +335,7 @@ export default function ProductsPage() {
     try {
       setExporting(true);
       const blob = await reportsService.exportTT88Stock(exportFrom, exportTo);
-      
+
       const url = window.URL.createObjectURL(new Blob([blob]));
       const link = document.createElement('a');
       link.href = url;
@@ -318,7 +343,7 @@ export default function ProductsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
+
       toast.success("Đã xuất sổ tồn kho TT88!");
     } catch (error) {
       console.error(error);
@@ -328,17 +353,10 @@ export default function ProductsPage() {
     }
   };
 
-  // --- LOGIC LỌC ---
+  // --- LOGIC LỌC Client-side removed in favor of Server-side ---
   const products = data?.result?.content || [];
-  const filteredProducts = products.filter((item) => {
-    const sTerm = searchTerm.toLowerCase();
-    const matchesSearch =
-      (item.name?.toLowerCase() || "").includes(sTerm) ||
-      (item.sku?.toLowerCase() || "").includes(sTerm);
-    const matchesStatus =
-      statusFilter === "ALL" || item.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const totalPages = data?.result?.totalPages || 0;
+  // const filteredProducts = products; // Handled by server params
 
   return (
     <div className="p-8 space-y-8 bg-slate-50/50 min-h-screen">
@@ -375,8 +393,8 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Từ ngày</span>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={exportFrom}
                     onChange={(e) => setExportFrom(e.target.value)}
                     className="h-9 rounded-lg font-bold text-xs"
@@ -384,8 +402,8 @@ export default function ProductsPage() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Đến ngày</span>
-                  <Input 
-                    type="date" 
+                  <Input
+                    type="date"
                     value={exportTo}
                     onChange={(e) => setExportTo(e.target.value)}
                     className="h-9 rounded-lg font-bold text-xs"
@@ -393,7 +411,7 @@ export default function ProductsPage() {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 onClick={handleExportTT88Stock}
                 className="p-2 rounded-lg font-bold cursor-pointer hover:bg-emerald-50 hover:text-emerald-600"
               >
@@ -426,7 +444,10 @@ export default function ProductsPage() {
             placeholder="Tìm kiếm theo tên, mã SKU..."
             className="pl-9 bg-slate-50 border-slate-200 focus-visible:ring-indigo-500"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(0); // Reset page on search
+            }}
           />
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -436,7 +457,13 @@ export default function ProductsPage() {
               Lọc:
             </span>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setPage(0); // Reset page
+            }}
+          >
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Trạng thái" />
             </SelectTrigger>
@@ -491,8 +518,8 @@ export default function ProductsPage() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ) : filteredProducts.length > 0 ? (
-                filteredProducts.map((item) => (
+              ) : products.length > 0 ? (
+                products.map((item) => (
                   <TableRow
                     key={item.id}
                     className="group hover:bg-slate-50/50 transition-colors"
@@ -611,6 +638,37 @@ export default function ProductsPage() {
         </CardContent>
       </Card>
 
+      {/* PAGINATION */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-slate-500 font-medium">
+          Hiển thị {(page * size) + 1} - {Math.min((page + 1) * size, data?.result?.totalElements || 0)} trên tổng {data?.result?.totalElements || 0} sản phẩm
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((old) => Math.max(0, old - 1))}
+            disabled={page === 0}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (!data?.result?.totalPages) return;
+              if (page >= data.result.totalPages - 1) return;
+              setPage((old) => old + 1);
+            }}
+            disabled={page >= (totalPages || 1) - 1}
+            className="h-8 w-8 p-0"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       {/* DIALOG FORM */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -642,19 +700,37 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Đơn vị tính (ID)</Label>
-                <Input
-                  id="unit"
-                  type="number"
-                  value={currentProduct?.unitId || ""}
-                  onChange={(e) =>
+                <Label htmlFor="unit">Đơn vị tính</Label>
+                <Select
+                  value={currentProduct?.unitId ? currentProduct.unitId.toString() : ""}
+                  onValueChange={(val) =>
                     setCurrentProduct({
                       ...currentProduct,
-                      unitId: Number(e.target.value),
+                      unitId: Number(val),
                     })
                   }
-                  placeholder="VD: 1"
-                />
+                >
+                  <SelectTrigger id="unit">
+                    <SelectValue placeholder="Chọn đơn vị" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units.length > 0 ? (
+                      units.map((u: Unit) => (
+                        <SelectItem key={u.id} value={u.id.toString()}>
+                          {u.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      // Fallback if no units loaded or empty
+                      <>
+                        <SelectItem value="1">Cái</SelectItem>
+                        <SelectItem value="2">Hộp</SelectItem>
+                        <SelectItem value="3">Thùng</SelectItem>
+                        <SelectItem value="4">Bao</SelectItem>
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
