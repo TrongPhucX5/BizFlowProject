@@ -17,7 +17,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   bool _isLoading = false;
 
   List<Map<String, dynamic>> customers = [];
-  List<Map<String, dynamic>> groups = [];
+
 
   @override
   void initState() {
@@ -28,13 +28,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
     try {
-      final results = await Future.wait([
-        _authRepository.getCustomers(),
-        _authRepository.getCustomerGroups(),
-      ]);
+      final results = await _authRepository.getCustomers();
       setState(() {
-        customers = results[0];
-        groups = results[1];
+        customers = results;
       });
     } catch (e) {
       print("Lỗi tải dữ liệu: $e");
@@ -161,39 +157,25 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.background,
-        appBar: AppBar(
-          title: const Text('Khách hàng'),
-          bottom: const TabBar(
-            indicatorWeight: 3,
-            tabs: [Tab(text: "Danh sách"), Tab(text: "Nhóm khách")],
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppBar(
+        title: const Text('Khách hàng'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _fetchData,
           ),
-        ),
-        body: TabBarView(
-          children: [
-            _buildCustomerList(),
-            _buildGroupList(),
-          ],
-        ),
-        floatingActionButton: Builder(builder: (context) {
-          return FloatingActionButton(
-            onPressed: () {
-              final index = DefaultTabController.of(context).index;
-              if (index == 0) {
-                _showCustomerForm();
-              } else {
-                _navigateToCreateGroup();
-              }
-            },
-            child: const Icon(Icons.add_rounded, size: 28),
-          );
-        }),
+        ],
+      ),
+      body: _buildCustomerList(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showCustomerForm,
+        child: const Icon(Icons.add_rounded, size: 28),
       ),
     );
   }
+
 
   Widget _buildCustomerList() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
@@ -293,43 +275,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
     );
   }
 
-  Widget _buildGroupList() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (groups.isEmpty) return _buildEmptyState(Icons.group_work_outlined, "Chưa có nhóm", "Phân loại khách hàng vào các nhóm để dễ quản lý ưu đãi");
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: groups.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (ctx, index) {
-        final group = groups[index];
-        return ListTile(
-          onTap: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => GroupCreateScreen(
-                  existingCustomers: customers,
-                  existingGroup: group,
-                ),
-              ),
-            );
-            if (result == true) _fetchData();
-          },
-          tileColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
-          leading: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.groups_rounded, color: Color(0xFF64748B)),
-          ),
-          title: Text(group['name'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-          subtitle: Text("${group['customerCount'] ?? group['count'] ?? 0} thành viên", style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-          trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
-        );
-      },
-    );
-  }
 
   Widget _buildEmptyState(IconData icon, String title, String sub) {
     return Center(
@@ -354,8 +300,5 @@ class _CustomerScreenState extends State<CustomerScreen> {
     return NumberFormat.simpleCurrency(locale: 'vi_VN', decimalDigits: 0).format(val);
   }
 
-  void _navigateToCreateGroup() async {
-    final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => GroupCreateScreen(existingCustomers: customers)));
-    if (result == true) _fetchData();
-  }
+
 }

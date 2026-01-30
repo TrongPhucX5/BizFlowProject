@@ -28,7 +28,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
   final ReportRepository _repository = ReportRepository();
   final AuthRepository _authRepository = AuthRepository();
   bool _isLoading = true;
-  DashboardSummary? _summary;
+  DashboardSummary _summary = DashboardSummary.zero();
+
   List<ProductDTO> _lowStockProducts = [];
   List<Map<String, dynamic>> _revenueData = [];
   List<Map<String, dynamic>> _topProducts = [];
@@ -50,6 +51,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
     });
     try {
       final stats = await _repository.getDashboardStats();
+      print("DEBUG: Dashboard stats received: $stats");
+
       final revenue = await _repository.getRevenueData();
       final top = await _repository.getBestSellingProducts();
       final userData = await _authRepository.getCurrentUser();
@@ -58,25 +61,36 @@ class _ManagementScreenState extends State<ManagementScreen> {
       // Ideally we should have a getLowStockProducts in Inventory/Product Repository
       // For now let's leave _lowStockProducts empty or fetch if we had the repo
       
-      if (mounted) {
-        setState(() {
-           _summary = DashboardSummary(
-             totalRevenue: double.tryParse(stats['revenueToday']?.toString() ?? '0') ?? 0,
-             lowStockCount: int.tryParse(stats['warningProducts']?.toString() ?? '0') ?? 0,
-             pendingPayment: double.tryParse(stats['totalDebt']?.toString() ?? '0') ?? 0,
-             totalProducts: 0, 
-           );
-           
-           _revenueData = revenue;
-           _topProducts = top;
+        if (mounted) {
+          setState(() {
+            // Lấy dữ liệu thô từ map
+            final dynamic rawRevenueToday = stats['revenueToday'];
+            final dynamic rawWarningProducts = stats['warningProducts'] ?? stats['lowStockCount'];
+            final dynamic rawTotalDebt = stats['totalDebt'] ?? stats['pendingPayment'];
+            final dynamic rawTotalProducts = stats['totalProducts'];
+            final dynamic rawTotalStock = stats['totalStock'];
 
-          if (userData != null) {
-            _userName = userData['fullName'] ?? 'Người dùng';
-            _userRole = _mapRole(userData['role'] ?? '');
-          }
-          _isLoading = false;
-        });
-      }
+            // Ép kiểu an toàn tuyệt đối
+            _summary = DashboardSummary(
+              totalRevenue: double.tryParse((rawRevenueToday ?? 0).toString()) ?? 0.0,
+              lowStockCount: int.tryParse((rawWarningProducts ?? 0).toString()) ?? 0,
+              pendingPayment: double.tryParse((rawTotalDebt ?? 0).toString()) ?? 0.0,
+              totalProducts: int.tryParse((rawTotalProducts ?? 0).toString()) ?? 0,
+              totalStock: int.tryParse((rawTotalStock ?? 0).toString()) ?? 0,
+            );
+
+
+            _revenueData = revenue;
+            _topProducts = top;
+
+            if (userData != null) {
+              _userName = userData['fullName'] ?? 'Người dùng';
+              _userRole = _mapRole(userData['role'] ?? '');
+            }
+            _isLoading = false;
+          });
+        }
+
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -221,7 +235,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   Widget _buildBentoStatsGrid() {
-    if (_summary == null) return const SizedBox.shrink();
+
 
     return Column(
       children: [
@@ -238,7 +252,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(_formatCurrency(_summary!.totalRevenue), style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: const Color(0xFF2563EB))),
+              Text(_formatCurrency(_summary?.totalRevenue ?? 0.0), style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: const Color(0xFF2563EB))),
+
               const SizedBox(height: 4),
               const Text("Dựa trên tất cả đơn hàng đã chốt", style: TextStyle(fontSize: 12, color: Colors.grey)),
             ],
@@ -262,11 +277,12 @@ class _ManagementScreenState extends State<ManagementScreen> {
                   children: [
                     const Icon(Icons.inventory_2_outlined, color: Colors.orange, size: 24),
                     const SizedBox(height: 12),
-                    Text("${_summary!.lowStockCount}", style: Theme.of(context).textTheme.titleLarge),
+                    Text("${_summary?.lowStockCount ?? 0}", style: Theme.of(context).textTheme.titleLarge),
+
                     const Text("Sắp hết hàng", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StockInScreen())),
+                onTap: () => MainScreen.of(context)?.navigateToLowStock(), // Chuyển sang tab Kho và lọc hàng sắp hết
               ),
             ),
             const SizedBox(width: 16),
@@ -275,17 +291,39 @@ class _ManagementScreenState extends State<ManagementScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.account_balance_wallet_outlined, color: Colors.red, size: 24),
+                    const Icon(Icons.warehouse_outlined, color: Colors.purple, size: 24),
                     const SizedBox(height: 12),
-                    Text(_formatCurrency(_summary!.pendingPayment), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16)),
-                    const Text("Công nợ", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text("${_summary?.totalStock ?? 0}", style: Theme.of(context).textTheme.titleLarge),
+
+                    const Text("Tổng tồn kho", style: TextStyle(fontSize: 12, color: Colors.grey)),
                   ],
                 ),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DebtScreen())),
+                onTap: () => MainScreen.of(context)?.navigateToInventory(), // Chuyển sang tab Kho và chọn Tab Tồn kho
               ),
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        _buildBentoCard(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.account_balance_wallet_outlined, color: Colors.red, size: 24),
+                  const SizedBox(height: 12),
+                  Text(_formatCurrency(_summary?.pendingPayment ?? 0.0), style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 16)),
+
+                  const Text("Tổng công nợ cần thu", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+            ],
+          ),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DebtScreen())),
+        ),
+
         
         const SizedBox(height: 24),
         _buildSectionHeader("Phát triển kinh doanh"),
@@ -397,7 +435,8 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   Widget _buildLowStockBento() {
-    if (_lowStockProducts.isEmpty) return const SizedBox.shrink();
+    if (_summary == null || _lowStockProducts.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

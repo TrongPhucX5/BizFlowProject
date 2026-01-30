@@ -22,7 +22,8 @@ class DashboardRepository {
         }
       }
       // If result is null, return default 0s instead of throwing
-      return DashboardSummary(totalRevenue: 0, lowStockCount: 0, pendingPayment: 0, totalProducts: 0);
+      return DashboardSummary(totalRevenue: 0, lowStockCount: 0, pendingPayment: 0, totalProducts: 0, totalStock: 0);
+
     } catch (e) {
       throw Exception("Lỗi tải tổng quan: $e");
     }

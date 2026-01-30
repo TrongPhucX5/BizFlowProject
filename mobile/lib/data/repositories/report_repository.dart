@@ -12,22 +12,41 @@ class ReportRepository {
     try {
       final response = await _dio.get(ApiConstants.reportDashboardStatsEndpoint);
       
-      // Backend trả về trực tiếp Map (không wrap trong ApiResponse)
-      if (response.data is Map<String, dynamic>) {
-        return Map<String, dynamic>.from(response.data);
-      }
+      // Gia cố dữ liệu: Đảm bảo không có giá trị Null trả về cho các trường số
+
+      final Map<String, dynamic> rawData = (response.data is Map<String, dynamic>) 
+          ? Map<String, dynamic>.from(response.data)
+          : {};
       
-      // Fallback nếu có wrapper
-      final apiResponse = ApiResponse.fromJson(response.data);
-      if (apiResponse.isSuccess && apiResponse.result != null) {
-        return Map<String, dynamic>.from(apiResponse.result);
+      // Fallback cho ApiResponse wrapper
+      Map<String, dynamic> finalData = rawData;
+      if (rawData.isEmpty || !rawData.containsKey('revenueToday')) {
+        final apiResponse = ApiResponse.fromJson(response.data);
+        if (apiResponse.isSuccess && apiResponse.result is Map) {
+          finalData = Map<String, dynamic>.from(apiResponse.result);
+        }
       }
-      
-      return {};
+
+      return {
+        'revenueToday': double.tryParse((finalData['revenueToday'] ?? 0).toString()) ?? 0.0,
+        'ordersToday': int.tryParse((finalData['ordersToday'] ?? finalData['orders'] ?? 0).toString()) ?? 0,
+        'totalDebt': double.tryParse((finalData['totalDebt'] ?? 0).toString()) ?? 0.0,
+        'warningProducts': int.tryParse((finalData['warningProducts'] ?? finalData['lowStockCount'] ?? 0).toString()) ?? 0,
+        'totalProducts': int.tryParse((finalData['totalProducts'] ?? 0).toString()) ?? 0,
+        'totalStock': int.tryParse((finalData['totalStock'] ?? 0).toString()) ?? 0,
+      };
     } catch (e) {
       print("Lỗi lấy dashboard stats: $e");
-      return {};
+      return {
+        'revenueToday': 0.0,
+        'ordersToday': 0,
+        'totalDebt': 0.0,
+        'warningProducts': 0,
+        'totalProducts': 0,
+        'totalStock': 0,
+      };
     }
+
   }
 
   /// Lấy dữ liệu biểu đồ doanh thu

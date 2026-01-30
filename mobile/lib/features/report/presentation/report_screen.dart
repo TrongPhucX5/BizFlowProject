@@ -50,16 +50,17 @@ class _ReportScreenState extends State<ReportScreen> {
       
       if (mounted) {
         setState(() {
-          _revenueToday = (stats['revenueToday'] ?? 0).toDouble();
-          _ordersToday = (stats['ordersToday'] ?? 0).toInt();
-          _totalDebt = (stats['totalDebt'] ?? 0).toDouble();
-          _warningProducts = (stats['warningProducts'] ?? 0).toInt();
+          _revenueToday = double.tryParse((stats['revenueToday'] ?? 0).toString()) ?? 0.0;
+          _ordersToday = int.tryParse((stats['ordersToday'] ?? 0).toString()) ?? 0;
+          _totalDebt = double.tryParse((stats['totalDebt'] ?? 0).toString()) ?? 0.0;
+          _warningProducts = int.tryParse((stats['warningProducts'] ?? 0).toString()) ?? 0;
           
           _revenueData = revenue;
           _bestSelling = bestSelling;
           _isLoading = false;
         });
       }
+
     } catch (e) {
       print('Lỗi load report: $e');
       if (mounted) setState(() => _isLoading = false);

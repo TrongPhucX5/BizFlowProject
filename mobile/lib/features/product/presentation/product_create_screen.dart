@@ -515,28 +515,117 @@ class _ProductCreateScreenState extends State<ProductCreateScreen> {
 
   // Image Section Helper 
   Widget _buildImageSection() {
-     if (_imageUrl != null && _imageUrl!.isNotEmpty) {
-       return SizedBox(
-         height: 200, 
-         child: Stack(
-           fit: StackFit.loose,
-           children: [
-             Image.network(_imageUrl!.startsWith('http') ? _imageUrl! : 'https://via.placeholder.com/150', fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.error)),
-             Positioned(right: 0, top: 0, child: IconButton(icon: const Icon(Icons.close, color: Colors.red), onPressed: () => setState(() => _imageUrl = null)))
-           ]
-         )
-       );
-     }
-     return InkWell(
-       onTap: () => _showImageSourcePicker(),
-       child: Container(height: 150, color: Colors.grey[100], child: const Center(child: Icon(Icons.add_a_photo, color: Colors.grey))),
-     );
+    return Center(
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.grey[100],
+              border: Border.all(color: Colors.grey[300]!, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipOval(
+              child: _imageUrl != null && _imageUrl!.isNotEmpty
+                  ? _buildProductImage(_imageUrl!)
+                  : Icon(Icons.inventory_2_outlined, size: 60, color: Colors.grey[400]),
+            ),
+          ),
+          // Nút đổi ảnh (Edit Button)
+          GestureDetector(
+            onTap: _showImageSourcePicker,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: kPrimaryGreen,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+            ),
+          ),
+          // Nút xóa ảnh (nếu có ảnh)
+          if (_imageUrl != null && _imageUrl!.isNotEmpty)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: () => setState(() => _imageUrl = null),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.white, 
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                  ),
+                  child: const Icon(Icons.close, color: Colors.red, size: 16),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductImage(String imageUrl) {
+    try {
+      if (imageUrl.startsWith('http')) {
+        return Image.network(
+          imageUrl, 
+          width: 140, 
+          height: 140, 
+          fit: BoxFit.cover,
+          errorBuilder: (_,__,___) => const Icon(Icons.broken_image_outlined, size: 40),
+        );
+      }
+      // Xử lý Base64
+      final base64String = imageUrl.contains(',') ? imageUrl.split(',').last : imageUrl;
+      return Image.memory(
+        const Base64Decoder().convert(base64String),
+        width: 140, 
+        height: 140, 
+        fit: BoxFit.cover,
+        errorBuilder: (_,__,___) => const Icon(Icons.broken_image_outlined, size: 40),
+      );
+    } catch (_) {
+      return const Icon(Icons.broken_image_outlined, size: 40, color: Colors.grey);
+    }
   }
 
   void _showImageSourcePicker() {
-      showModalBottomSheet(context: context, builder: (_) => Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(leading: const Icon(Icons.photo_library), title: const Text("Thư viện"), onTap: () { Navigator.pop(context); _pickAndUploadImage(ImageSource.gallery); }),
-        ListTile(leading: const Icon(Icons.camera_alt), title: const Text("Máy ảnh"), onTap: () { Navigator.pop(context); _pickAndUploadImage(ImageSource.camera); }),
-      ]));
+      showModalBottomSheet(
+        context: context, 
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => Column(
+          mainAxisSize: MainAxisSize.min, 
+          children: [
+            const SizedBox(height: 8),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text("Chọn nguồn ảnh", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.photo_library), 
+              title: const Text("Thư viện ảnh"), 
+              onTap: () { Navigator.pop(context); _pickAndUploadImage(ImageSource.gallery); }
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt), 
+              title: const Text("Chụp ảnh mới"), 
+              onTap: () { Navigator.pop(context); _pickAndUploadImage(ImageSource.camera); }
+            ),
+            const SizedBox(height: 20),
+          ]
+        )
+      );
   }
 }

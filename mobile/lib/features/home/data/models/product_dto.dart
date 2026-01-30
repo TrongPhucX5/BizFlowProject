@@ -22,10 +22,11 @@ class ProductDTO {
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
       sku: json['sku'] ?? '',
-      stock: int.tryParse(json['stock'].toString()) ?? 0,
+      stock: int.tryParse((json['stock'] ?? 0).toString()) ?? 0,
       unitName: json['unitName'],
       imageUrl: json['imageUrl'],
-      price: double.tryParse(json['price'].toString()) ?? 0.0,
+      price: double.tryParse((json['price'] ?? 0).toString()) ?? 0.0,
     );
+
   }
 }

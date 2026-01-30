@@ -2,20 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/product/presentation/product_create_screen.dart';
 import 'package:mobile/features/product/presentation/hourly_service_screen.dart';
 import 'package:mobile/features/product/presentation/batch_product_create_screen.dart';
+import 'package:mobile/features/product/presentation/stock_in_screen.dart';
 import 'package:mobile/features/product/data/repositories/product_repository.dart';
 import 'package:mobile/data/repositories/inventory_repository.dart';
 import 'package:intl/intl.dart';
 import '../data/models/product_model.dart';
 import 'dart:convert';
 
+
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key});
 
   @override
-  State<ProductScreen> createState() => _ProductScreenState();
+  State<ProductScreen> createState() => ProductScreenState();
 }
 
-class _ProductScreenState extends State<ProductScreen> with SingleTickerProviderStateMixin {
+class ProductScreenState extends State<ProductScreen> with SingleTickerProviderStateMixin {
+
   late TabController _tabController;
   final ProductRepository _productRepository = ProductRepository();
   final InventoryRepository _inventoryRepository = InventoryRepository();
@@ -25,6 +28,8 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
   String _selectedSort = 'Mới nhất';
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  bool _showOnlyLowStock = false;
+
 
   List<Product> _products = [];
 
@@ -44,23 +49,36 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     return list;
   }
 
-  List<Product> get _inventoryProducts =>
-      _products.where((p) {
-        // Mock reorder level logic for now, or update model to include it
-        final bool isLow = p.stock <= 10; 
-        final name = p.name.toLowerCase();
-        final sku = p.sku.toLowerCase();
-        final query = _searchQuery.toLowerCase();
-        return isLow && (name.contains(query) || sku.contains(query));
-      }).toList();
+  List<Product> get _inventoryProducts {
+    var list = _products.where((p) {
+      final name = p.name.toLowerCase();
+      final sku = p.sku.toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) || sku.contains(query);
+    }).toList();
+
+    if (_showOnlyLowStock) {
+      list = list.where((p) => p.stock <= 10).toList();
+    }
+    return list;
+  }
+
+
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) setState(() {});
+      if (!_tabController.indexIsChanging) {
+        // Reset filter if we switch away from inventory tab
+        if (_tabController.index != 1 && _showOnlyLowStock) {
+          setState(() => _showOnlyLowStock = false);
+        }
+        setState(() {});
+      }
     });
+
     _searchController.addListener(() {
       setState(() => _searchQuery = _searchController.text);
     });
@@ -79,12 +97,28 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
     }
   }
 
+  void switchToInventoryTab() {
+    if (mounted) {
+      if (_showOnlyLowStock) setState(() => _showOnlyLowStock = false);
+      _tabController.animateTo(1);
+    }
+  }
+
+  void switchToLowStock() {
+    if (mounted) {
+      setState(() => _showOnlyLowStock = true);
+      _tabController.animateTo(1);
+    }
+  }
+
+
   @override
   void dispose() {
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
+
 
   void _showProductCreateOptions() {
     showModalBottomSheet(
@@ -264,28 +298,72 @@ class _ProductScreenState extends State<ProductScreen> with SingleTickerProvider
   }
 
   Widget _buildInventoryTab() {
-    if (_inventoryProducts.isEmpty) return _buildEmptyState(Icons.warehouse_outlined, "Kho đã đầy đủ", "Mọi sản phẩm đều đủ tồn kho an toàn", () {});
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _inventoryProducts.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final item = _inventoryProducts[index];
-        return ListTile(
-          tileColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-          leading: SizedBox(width: 50, height: 50, child: ClipRRect(borderRadius: BorderRadius.circular(8), child: _buildProductImage(item.imageUrl))),
-          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text("SKU: ${item.sku}"),
-          trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Text("${item.stock}", style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16)),
-            const Text("Sắp hết", style: TextStyle(color: Colors.red, fontSize: 10)),
-          ]),
-          onTap: () => _showAdjustmentDialog(item),
-        );
-      }
+    if (_inventoryProducts.isEmpty) {
+       return Column(
+         children: [
+           if (_showOnlyLowStock) _buildLowStockFilterHeader(),
+           Expanded(child: _buildEmptyState(Icons.warehouse_outlined, _showOnlyLowStock ? "Không có hàng sắp hết" : "Chưa có dữ liệu kho", _showOnlyLowStock ? "Mọi thứ đều đang ổn định" : "Thêm sản phẩm để theo dõi tồn kho", _showOnlyLowStock ? () => setState(() => _showOnlyLowStock = false) : _showProductCreateOptions)),
+         ],
+       );
+    }
+
+    return Column(
+      children: [
+        if (_showOnlyLowStock) _buildLowStockFilterHeader(),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: _inventoryProducts.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final item = _inventoryProducts[index];
+              return ListTile(
+                tileColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                leading: SizedBox(width: 50, height: 50, child: ClipRRect(borderRadius: BorderRadius.circular(8), child: _buildProductImage(item.imageUrl))),
+                title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text("SKU: ${item.sku}"),
+                trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text("${item.stock}", style: TextStyle(color: item.stock <= 10 ? Colors.red : Colors.green, fontWeight: FontWeight.bold, fontSize: 16)),
+                  if (item.stock <= 10)
+                    const Text("Sắp hết", style: TextStyle(color: Colors.red, fontSize: 10)),
+                ]),
+                onTap: () async {
+                  // Navigate to StockInScreen with this product selected
+                  final result = await Navigator.push(
+                    context, 
+                    MaterialPageRoute(builder: (context) => StockInScreen(initialProductId: item.id))
+                  );
+                  if (result == true) _fetchProducts();
+                },
+              );
+            }
+          ),
+        ),
+      ],
     );
   }
+
+  Widget _buildLowStockFilterHeader() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Colors.orange.shade50,
+      child: Row(
+        children: [
+          const Icon(Icons.filter_list_alt, color: Colors.orange, size: 20),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text("Đang lọc: Hàng sắp hết (Tồn ≤ 10)", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+          TextButton(
+            onPressed: () => setState(() => _showOnlyLowStock = false),
+            child: const Text("Xóa lọc", style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   Widget _buildEmptyState(IconData icon, String title, String sub, VoidCallback? onTap) {
     return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [

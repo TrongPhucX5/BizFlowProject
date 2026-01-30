@@ -47,7 +47,7 @@ public class ProductServiceImpl implements ProductService {
     @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_PRODUCT", entityType = "PRODUCT")
     public ProductDTO createProduct(CreateProductRequest request) {
         Long storeId = UserContext.getCurrentStoreId(); // Lấy storeId từ context
-        
+
         Product product = new Product();
         product.setStoreId(storeId != null ? storeId : 1L); // Fallback về 1 nếu null (đề phòng)
         product.setName(request.getName());
@@ -73,7 +73,7 @@ public class ProductServiceImpl implements ProductService {
 
         // --- XỬ LÝ TỒN KHO BAN ĐẦU ---
         int initialStock = request.getInitialStock() != null ? request.getInitialStock() : 0;
-        
+
         Inventory inventory = Inventory.builder()
                 .storeId(product.getStoreId())
                 .productId(savedProduct.getId())
@@ -150,11 +150,12 @@ public class ProductServiceImpl implements ProductService {
 
     // --- HÀM MAP DỮ LIỆU (ĐÃ CHỈNH SỬA KHỚP VỚI ENTITY CỦA BẠN) ---
     private ProductDTO mapToDTO(Product product) {
-        // Fetch stock từ bảng Inventory
+        // Fetch stock từ bảng Inventory, fallback về field stockQuantity trong Product
+        // nếu không có record Inventory
         Integer stock = inventoryRepository
                 .findByStoreIdAndProductId(product.getStoreId(), product.getId())
                 .map(inventory -> inventory.getQuantity())
-                .orElse(0);
+                .orElse(product.getStockQuantity() != null ? product.getStockQuantity() : 0);
 
         return ProductDTO.builder()
                 .id(product.getId())

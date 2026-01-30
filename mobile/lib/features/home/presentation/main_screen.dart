@@ -17,6 +17,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final GlobalKey<ProductScreenState> _productScreenKey = GlobalKey<ProductScreenState>();
 
   void setTabIndex(int index) {
     setState(() {
@@ -24,13 +25,42 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
-  final List<Widget> _widgetOptions = <Widget>[
-    const ManagementScreen(), // Index 0
-    const OrderScreen(),      // Index 1 (Was 2)
-    const ProductScreen(),    // Index 2 (Was 3)
-    const CustomerScreen(),   // Index 3 (Was 4)
-    const ProfileScreen(),    // Index 4 (Was 5)
-  ];
+  void navigateToInventory() {
+    setState(() {
+      _selectedIndex = 2; // Chọn tab Sản phẩm
+    });
+    // Đợi UI render xong rồi mới gọi chuyển Tab con
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _productScreenKey.currentState?.switchToInventoryTab();
+    });
+  }
+
+  void navigateToLowStock() {
+    setState(() {
+      _selectedIndex = 2; // Chọn tab Sản phẩm
+    });
+    // Đợi UI render xong rồi mới gọi chuyển sang chế độ lọc hàng sắp hết
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _productScreenKey.currentState?.switchToLowStock();
+    });
+  }
+
+
+
+  late final List<Widget> _widgetOptions;
+
+  @override
+  void initState() {
+    super.initState();
+    _widgetOptions = <Widget>[
+      const ManagementScreen(), // Index 0
+      const OrderScreen(),      // Index 1
+      ProductScreen(key: _productScreenKey), // Index 2
+      const CustomerScreen(),   // Index 3
+      const ProfileScreen(),    // Index 4
+    ];
+  }
+
 
   @override
   Widget build(BuildContext context) {

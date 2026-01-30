@@ -4,6 +4,7 @@ import com.bizflow.backend.infrastructure.persistence.repository.OrderRepository
 import com.bizflow.backend.infrastructure.persistence.repository.OrderItemRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.DebtRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.ProductRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.InventoryRepository;
 import com.bizflow.backend.presentation.dto.response.RevenueChartDto;
 import com.bizflow.backend.presentation.dto.response.TT88DebtRow;
 import com.bizflow.backend.presentation.dto.response.TT88RevenueRow;
@@ -29,17 +30,20 @@ public class ReportController {
     private final OrderItemRepository orderItemRepository;
     private final DebtRepository debtRepository;
     private final ProductRepository productRepository;
+    private final InventoryRepository inventoryRepository;
     private final ReportService reportService;
 
     public ReportController(OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
             DebtRepository debtRepository,
             ProductRepository productRepository,
+            InventoryRepository inventoryRepository,
             ReportService reportService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.debtRepository = debtRepository;
         this.productRepository = productRepository;
+        this.inventoryRepository = inventoryRepository;
         this.reportService = reportService;
     }
 
@@ -69,7 +73,15 @@ public class ReportController {
     @GetMapping("/dashboard-stats")
     public ResponseEntity<?> getDashboardStats() {
         try {
-            Long storeId = UserContext.getCurrentStoreId();
+            Long storeId;
+            try {
+                storeId = UserContext.getCurrentStoreId();
+            } catch (Exception e) {
+                // Nếu không có StoreId (ví dụ ADMIN hệ thống), mặc định lấy Store 1 để hiển thị
+                // demo
+                storeId = 1L;
+                System.out.println("DEBUG: User has no storeId, defaulting to Store 1 for stats.");
+            }
             System.out.println("DEBUG: getDashboardStats called. StoreId=" + storeId);
 
             LocalDateTime now = LocalDateTime.now();
@@ -81,30 +93,71 @@ public class ReportController {
 
             System.out.println("DEBUG: revenueToday=" + revenueToday + ", ordersToday=" + ordersToday);
 
-            // Lấy tổng công nợ thật từ DebtRepository (UNPAID + PAID_PARTIAL)
+            // Lấy tổng nợ
             BigDecimal totalDebt = debtRepository.sumByStoreIdAndStatusIn(storeId,
                     Arrays.asList(com.bizflow.backend.core.domain.Debt.DebtStatus.UNPAID,
                             com.bizflow.backend.core.domain.Debt.DebtStatus.PAID_PARTIAL));
+            System.out.println("DEBUG: totalDebt=" + totalDebt);
 
-            // Đếm số sản phẩm có số lượng tồn kho <= mức tối thiểu (reorderLevel)
-            long warningProducts = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
+            // Đếm số sản phẩm sắp hết hàng (<= 10)
+            // Lấy từ Inventory trước
+            long warningFromInventory = inventoryRepository.countByStoreIdAndQuantityLessThanEqual(storeId, 10);
+
+            // Lấy từ Product (fallback nếu dữ liệu cũ chưa migrate)
+            long warningFromProduct = productRepository.countByStoreIdAndStockQuantityLessThanEqual(storeId, 10);
+
+            // Lấy giá trị lớn hơn để đảm bảo không sót
+            long warningProducts = Math.max(warningFromInventory, warningFromProduct);
+
+            System.out.println("DEBUG: warningProducts (Inv=" + warningFromInventory + ", Prod=" + warningFromProduct
+                    + ") -> Result=" + warningProducts);
+
+            // Đếm tổng số sản phẩm ĐANG BÁN (ACTIVE)
+            long totalProducts = productRepository.countByStoreIdAndStatus(storeId,
+                    com.bizflow.backend.core.domain.Product.ProductStatus.ACTIVE);
+
+            // Nếu ACTIVE = 0, thử đếm tất cả để xem có phải do trạng thái không
+            if (totalProducts == 0) {
+                totalProducts = productRepository.countByStoreId(storeId);
+                System.out.println("DEBUG: totalProducts (ACTIVE) was 0, totalProducts (ALL)=" + totalProducts);
+            } else {
+                System.out.println("DEBUG: totalProducts (ACTIVE)=" + totalProducts);
+            }
+
+            // Tính tổng tồn kho (Sum of all stock)
+            // Lấy từ Inventory
+            Integer totalStockInv = inventoryRepository.sumQuantityByStoreId(storeId);
+            if (totalStockInv == null)
+                totalStockInv = 0;
+
+            // Lấy từ Product (fallback)
+            // Cần thêm method sumStockQuantityByStoreId vào ProductRepository hoặc dùng
+            // query ở đây
+            // Tạm thời dùng 0 nếu không có Inventory record
+            long totalStock = totalStockInv;
+            System.out.println("DEBUG: totalStock=" + totalStock);
 
             Map<String, Object> stats = new HashMap<>();
             stats.put("revenueToday", revenueToday != null ? revenueToday.doubleValue() : 0.0);
             stats.put("ordersToday", ordersToday != null ? ordersToday : 0L);
             stats.put("totalDebt", totalDebt != null ? totalDebt.doubleValue() : 0.0);
             stats.put("warningProducts", warningProducts);
+            stats.put("totalProducts", totalProducts);
+            stats.put("totalStock", totalStock);
 
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             e.printStackTrace();
             // Return empty stats instead of error to avoid crashing frontend
             Map<String, Object> emptyStats = new HashMap<>();
-            emptyStats.put("revenueToday", 0);
-            emptyStats.put("ordersToday", 0);
-            emptyStats.put("totalDebt", 0);
-            emptyStats.put("warningProducts", 0);
+            emptyStats.put("revenueToday", 0.0);
+            emptyStats.put("ordersToday", 0L);
+            emptyStats.put("totalDebt", 0.0);
+            emptyStats.put("warningProducts", 0L);
+            emptyStats.put("totalProducts", 0L);
+            emptyStats.put("totalStock", 0L);
             return ResponseEntity.ok(emptyStats);
+
         }
     }
 
