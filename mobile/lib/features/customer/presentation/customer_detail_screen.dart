@@ -94,7 +94,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Single
         children: [
           _buildInfoCard("Thông tin cơ bản", [
             _buildInfoRow(Icons.person, "Họ tên", c['name']),
-            _buildInfoRow(Icons.phone, "Số điện thoại", c['phone']),
+            _buildInfoRow(Icons.phone, "Số điện thoại", c['phone'] ?? "Chưa có"),
             _buildInfoRow(Icons.email, "Email", c['email'] ?? "Chưa có"),
             _buildInfoRow(Icons.location_on, "Địa chỉ", c['address'] ?? "Chưa có"),
           ]),
@@ -221,7 +221,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Single
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, {Color? valueColor}) {
+  Widget _buildInfoRow(IconData icon, String label, dynamic value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -233,7 +233,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Single
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                Text(value.toString(), style: TextStyle(fontWeight: FontWeight.w500, color: valueColor ?? Colors.black87)),
+                Text((value ?? "Chưa có").toString(), style: TextStyle(fontWeight: FontWeight.w500, color: valueColor ?? Colors.black87)),
               ],
             ),
           ),

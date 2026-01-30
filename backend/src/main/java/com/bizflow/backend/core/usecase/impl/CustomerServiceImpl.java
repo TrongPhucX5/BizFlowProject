@@ -3,6 +3,7 @@ package com.bizflow.backend.core.usecase.impl;
 import com.bizflow.backend.core.domain.Customer;
 import com.bizflow.backend.core.usecase.CustomerService;
 import com.bizflow.backend.infrastructure.persistence.repository.CustomerRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.DebtRepository;
 import com.bizflow.backend.presentation.dto.request.CreateCustomerRequest;
 import com.bizflow.backend.presentation.dto.response.CustomerDTO;
 import com.bizflow.backend.presentation.exception.BusinessException;
@@ -25,6 +26,7 @@ import java.util.Optional;
 public class CustomerServiceImpl implements CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final DebtRepository debtRepository;
 
     @Override
     public Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable) {
@@ -171,7 +173,8 @@ public class CustomerServiceImpl implements CustomerService {
     private CustomerDTO mapToDTO(Customer customer) {
         return CustomerDTO.builder()
                 .id(customer.getId())
-                .fullName(customer.getName()) // Ánh xạ name sang fullName cho Frontend
+                .name(customer.getName()) // Ánh xạ name cho frontend cũ
+                .fullName(customer.getName()) // Ánh xạ name sang fullName cho Frontend mới
                 .phone(customer.getPhone())
                 .email(customer.getEmail())
                 .address(customer.getAddress())
@@ -180,7 +183,8 @@ public class CustomerServiceImpl implements CustomerService {
                 .notes(customer.getNotes())
                 .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
                 .type(customer.getType() != null ? customer.getType().toString() : "RETAIL")
-                .totalDebt(customer.getTotalDebt() != null ? customer.getTotalDebt() : BigDecimal.ZERO)
+                // Tính công nợ thực tế từ bảng debts thay vì dùng số tĩnh
+                .totalDebt(debtRepository.sumUnpaidByCustomerId(customer.getId()))
                 .totalPurchaseAmount(
                         customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
                 .totalOrders(customer.getTotalOrders() != null ? customer.getTotalOrders() : 0)

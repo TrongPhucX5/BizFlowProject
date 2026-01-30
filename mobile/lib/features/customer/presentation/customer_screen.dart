@@ -279,7 +279,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text("${item['phone']} • ID: ${item['id']}", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
+                            Text("${item['phone'] ?? 'Chưa có SĐT'} • ID: ${item['id']}", style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12)),
                           ],
                         ),
                       ),

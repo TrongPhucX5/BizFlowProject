@@ -33,7 +33,8 @@ public class CustomerController {
             @RequestParam(required = false) String search,
             Pageable pageable) {
 
-        // Lấy storeId từ context (nhưng Service của chúng ta hiện tại đang ưu tiên đếm ACTIVE)
+        // Lấy storeId từ context (nhưng Service của chúng ta hiện tại đang ưu tiên đếm
+        // ACTIVE)
         Long storeId = UserContext.getCurrentStoreId();
 
         // Trả về Page để Frontend đọc được totalElements = 19
@@ -52,6 +53,7 @@ public class CustomerController {
                 .map(customer -> {
                     CustomerDTO dto = CustomerDTO.builder()
                             .id(customer.getId())
+                            .name(customer.getName()) // Map sang name
                             .fullName(customer.getName()) // Đồng bộ c.name -> fullName
                             .phone(customer.getPhone())
                             .email(customer.getEmail())
@@ -62,10 +64,10 @@ public class CustomerController {
                             .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
                             .notes(customer.getNotes())
                             .totalDebt(customer.getTotalDebt() != null ? customer.getTotalDebt() : BigDecimal.ZERO)
-                            .totalPurchaseAmount(customer.getTotalPurchaseAmount() != null ?
-                                    customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
-                            .totalOrders(customer.getTotalOrders() != null ?
-                                    customer.getTotalOrders() : 0)
+                            .totalPurchaseAmount(
+                                    customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount()
+                                            : BigDecimal.ZERO)
+                            .totalOrders(customer.getTotalOrders() != null ? customer.getTotalOrders() : 0)
                             .storeId(customer.getStoreId())
                             .createdAt(customer.getCreatedAt())
                             .updatedAt(customer.getUpdatedAt())

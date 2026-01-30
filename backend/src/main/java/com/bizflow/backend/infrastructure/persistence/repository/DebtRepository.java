@@ -14,29 +14,36 @@ import java.util.Optional;
 
 @Repository
 public interface DebtRepository extends JpaRepository<Debt, Long> {
-    // Tìm theo khách hàng
-    Page<Debt> findByCustomerId(Long customerId, Pageable pageable);
+        // Tìm theo khách hàng
+        Page<Debt> findByCustomerId(Long customerId, Pageable pageable);
 
-    // Tìm theo order
-    Optional<Debt> findByOrderId(Long orderId);
+        // Tìm theo order
+        Optional<Debt> findByOrderId(Long orderId);
 
-    // Lấy danh sách nợ chưa trả hết (UNPAID + PAID_PARTIAL)
-    Page<Debt> findByStoreIdAndStatusIn(Long storeId, java.util.Collection<Debt.DebtStatus> statuses,
-            Pageable pageable);
+        // Lấy danh sách nợ chưa trả hết (UNPAID + PAID_PARTIAL)
+        Page<Debt> findByStoreIdAndStatusIn(Long storeId, java.util.Collection<Debt.DebtStatus> statuses,
+                        Pageable pageable);
 
-    // Tính tổng công nợ theo danh sách trạng thái
-    @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.status IN :statuses")
-    BigDecimal sumByStoreIdAndStatusIn(@Param("storeId") Long storeId,
-            @Param("statuses") java.util.Collection<Debt.DebtStatus> statuses);
+        // Tính tổng công nợ theo danh sách trạng thái
+        @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.status IN :statuses")
+        BigDecimal sumByStoreIdAndStatusIn(@Param("storeId") Long storeId,
+                        @Param("statuses") java.util.Collection<Debt.DebtStatus> statuses);
 
-    // Tìm debt chưa thanh toán của khách hàng
-    java.util.List<Debt> findByCustomerIdAndStoreIdAndStatusNot(Long customerId, Long storeId, Debt.DebtStatus status);
+        // Tìm debt chưa thanh toán của khách hàng
+        java.util.List<Debt> findByCustomerIdAndStoreIdAndStatusNot(Long customerId, Long storeId,
+                        Debt.DebtStatus status);
 
-    // TT88: Tổng nợ gốc phát sinh TRƯỚC ngày from
-    @Query("SELECT COALESCE(SUM(d.originalAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.customerId = :customerId AND d.createdAt < :date")
-    BigDecimal sumOriginalAmountBefore(@Param("storeId") Long storeId, @Param("customerId") Long customerId, @Param("date") LocalDateTime date);
+        // Tính tổng công nợ còn lại của một khách hàng (SUM unpaidAmount)
+        @Query("SELECT COALESCE(SUM(d.unpaidAmount), 0) FROM Debt d WHERE d.customerId = :customerId AND d.status IN ('UNPAID', 'PAID_PARTIAL', 'OVERDUE')")
+        BigDecimal sumUnpaidByCustomerId(@Param("customerId") Long customerId);
 
-    // TT88: Tổng nợ gốc phát sinh TRONG KHOẢNG from - to
-    @Query("SELECT COALESCE(SUM(d.originalAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.customerId = :customerId AND d.createdAt BETWEEN :from AND :to")
-    BigDecimal sumOriginalAmountBetween(@Param("storeId") Long storeId, @Param("customerId") Long customerId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+        // TT88: Tổng nợ gốc phát sinh TRƯỚC ngày from
+        @Query("SELECT COALESCE(SUM(d.originalAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.customerId = :customerId AND d.createdAt < :date")
+        BigDecimal sumOriginalAmountBefore(@Param("storeId") Long storeId, @Param("customerId") Long customerId,
+                        @Param("date") LocalDateTime date);
+
+        // TT88: Tổng nợ gốc phát sinh TRONG KHOẢNG from - to
+        @Query("SELECT COALESCE(SUM(d.originalAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.customerId = :customerId AND d.createdAt BETWEEN :from AND :to")
+        BigDecimal sumOriginalAmountBetween(@Param("storeId") Long storeId, @Param("customerId") Long customerId,
+                        @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

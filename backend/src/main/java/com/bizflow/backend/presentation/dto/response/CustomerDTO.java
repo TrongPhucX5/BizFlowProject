@@ -14,7 +14,8 @@ import java.time.LocalDateTime;
 @Builder
 public class CustomerDTO {
     private Long id;
-    private String fullName; // Frontend hiển thị tên
+    private String name; // Tương thích với Mobile cũ
+    private String fullName; // Dùng cho web và mobile mới
     private String phone;
     private String email;
     private String address;
