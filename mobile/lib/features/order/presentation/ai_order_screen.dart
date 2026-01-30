@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mobile/data/repositories/ai_repository.dart';
-import 'package:mobile/data/repositories/order_repository.dart';
-import 'package:mobile/data/repositories/auth_repository.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:mobile/data/repositories/ai_repository.dart';
+import 'package:mobile/data/repositories/auth_repository.dart';
+import 'package:intl/intl.dart';
 
 class AiOrderScreen extends StatefulWidget {
   const AiOrderScreen({super.key});
@@ -14,20 +14,20 @@ class AiOrderScreen extends StatefulWidget {
 
 class _AiOrderScreenState extends State<AiOrderScreen> {
   final AiRepository _aiRepository = AiRepository();
-  final OrderRepository _orderRepository = OrderRepository();
   final AuthRepository _authRepository = AuthRepository();
   
   final TextEditingController _inputController = TextEditingController();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  
   List<Map<String, dynamic>> _customers = [];
   Map<String, dynamic>? _selectedCustomer;
   
   bool _isAnalyzing = false;
-  bool _isCreatingOrder = false;
+  bool _isListening = false;
+  String _botReply = "Chào bạn! Tôi là trợ lý BizFlow AI. Bạn muốn lên đơn hàng gì cho hôm nay?";
   List<Map<String, dynamic>> _draftItems = [];
   double _totalAmount = 0;
-
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _isListening = false;
+  String? _lastOrderNum;
 
   @override
   void initState() {
@@ -36,113 +36,41 @@ class _AiOrderScreenState extends State<AiOrderScreen> {
   }
 
   Future<void> _fetchCustomers() async {
-    final data = await _authRepository.getCustomers();
-    setState(() => _customers = data);
-  }
-
-  // 1. Gửi Text lên AI
-  Future<void> _analyzeText() async {
-    final text = _inputController.text.trim();
-    if (text.isEmpty) return;
-
-    setState(() {
-      _isAnalyzing = true;
-      _draftItems = [];
-    });
-
     try {
-      final items = await _aiRepository.generateDraftOrder(text);
-      
-      // Tính tổng tiền tạm tính
-      double total = 0;
-      for (var item in items) {
-        total += (item['price'] ?? 0) * (item['quantity'] ?? 1);
-      }
-
-      setState(() {
-        _draftItems = items;
-        _totalAmount = total;
-      });
-      
-      if (items.isEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("AI không tìm thấy sản phẩm nào trong câu nói.")),
-        );
-      }
+      final data = await _authRepository.getCustomers();
+      setState(() => _customers = data);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi AI: ${e.toString().replaceAll("Exception: ", "")}")),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isAnalyzing = false);
+      debugPrint("Lỗi tải khách hàng: $e");
     }
   }
 
-  // 2. Xác nhận tạo đơn (Gọi OrderRepository đã có)
-  Future<void> _confirmOrder() async {
-    if (_draftItems.isEmpty) return;
-    if (_selectedCustomer == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng chọn khách hàng")));
-      return;
-    }
-
-    setState(() => _isCreatingOrder = true);
-    try {
-      final orderData = {
-        "customerId": _selectedCustomer!['id'],
-        "items": _draftItems,
-        "paymentMethod": "CASH",
-        "totalAmount": _totalAmount,
-        "status": "PENDING"
-      };
-
-      await _orderRepository.createOrder(orderData);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Tạo đơn hàng thành công!"), backgroundColor: Colors.green),
-        );
-        Navigator.pop(context); // Quay về màn hình trước
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Lỗi tạo đơn: $e"), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isCreatingOrder = false);
-    }
-  }
-
-  Future<void> _toggleListening() async {
+  void _listen() async {
     if (!_isListening) {
-      bool available = await _speech.initialize(
-        onStatus: (val) {
-          if (val == 'done' || val == 'notListening') {
-             if (mounted) setState(() => _isListening = false);
-          }
-        },
-        onError: (val) {
-          if (mounted) {
-             setState(() => _isListening = false);
-             ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi giọng nói: $val')));
-          }
-        },
-      );
+      var status = await Permission.microphone.status;
+      if (status.isDenied) {
+        status = await Permission.microphone.request();
+        if (!status.isGranted) return;
+      }
 
+      bool available = await _speech.initialize(
+        onError: (val) => debugPrint('Error: $val'),
+        onStatus: (val) => debugPrint('Status: $val'),
+      );
+      
       if (available) {
         setState(() => _isListening = true);
         _speech.listen(
-          onResult: (val) => setState(() {
-            _inputController.text = val.recognizedWords;
-          }),
-          localeId: 'vi_VN', // Try Vietnamese
+          onResult: (val) {
+            setState(() {
+              _inputController.text = val.recognizedWords;
+              if (val.finalResult) {
+                _isListening = false;
+                _analyzeText();
+              }
+            });
+          },
+          localeId: 'vi_VN',
         );
-      } else {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể khởi động tìm kiếm giọng nói')));
       }
     } else {
       setState(() => _isListening = false);
@@ -150,110 +78,286 @@ class _AiOrderScreenState extends State<AiOrderScreen> {
     }
   }
 
+  Future<void> _analyzeText() async {
+    final text = _inputController.text.trim();
+    if (text.isEmpty) return;
+
+    setState(() {
+      _isAnalyzing = true;
+      _lastOrderNum = null;
+    });
+
+    try {
+      final result = await _aiRepository.chatWithAI(text);
+      
+      final String reply = result['reply'] ?? "Tôi không rõ ý bạn lắm.";
+      final bool isOrder = result['is_order'] ?? false;
+      final Map<String, dynamic>? data = result['data'];
+      
+      List<Map<String, dynamic>> items = [];
+      double total = 0;
+      Map<String, dynamic>? matchedCustomer;
+
+      if (isOrder && data != null) {
+        final aiCustomerName = data['customerName']?.toString().toLowerCase();
+        if (aiCustomerName != null) {
+          matchedCustomer = _customers.firstWhere(
+            (c) => c['fullName'].toString().toLowerCase().contains(aiCustomerName),
+            orElse: () => _customers.isNotEmpty ? _customers.first : {},
+          );
+        }
+
+        final List aiItems = data['items'] ?? [];
+        items = List<Map<String, dynamic>>.from(aiItems);
+        
+        for (var item in items) {
+          total += (item['price'] ?? 0) * (item['quantity'] ?? 1);
+        }
+      }
+
+      setState(() {
+        _botReply = reply;
+        _draftItems = items;
+        _totalAmount = total;
+        if (matchedCustomer != null && matchedCustomer.isNotEmpty) _selectedCustomer = matchedCustomer;
+        
+        final orderMatch = RegExp(r'ORD-\d+-\d+').firstMatch(reply);
+        if (orderMatch != null) {
+          _lastOrderNum = orderMatch.group(0);
+        }
+      });
+
+      _inputController.clear();
+      
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: ${e.toString().replaceAll("Exception: ", "")}")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isAnalyzing = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat('#,###', 'vi_VN');
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text("Tạo đơn bằng AI"),
+        title: const Text("Trợ lý AI BizFlow", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0.5,
+        foregroundColor: const Color(0xFF1E293B),
+        elevation: 0,
+        centerTitle: true,
+        actions: [
+          if (_lastOrderNum != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton.icon(
+                onPressed: () => Navigator.pop(context, true),
+                icon: const Icon(Icons.check_circle, color: Colors.green),
+                label: const Text("Xong", style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+              ),
+            )
+        ],
       ),
       body: Column(
         children: [
-          // Customer Select
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-            child: DropdownButtonFormField<Map<String, dynamic>>(
-              value: _selectedCustomer,
-              decoration: const InputDecoration(labelText: "Khách hàng", border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
-              items: _customers.map((c) => DropdownMenuItem(value: c, child: Text(c['fullName']))).toList(),
-              onChanged: (val) => setState(() => _selectedCustomer = val),
-              hint: const Text("Chọn khách hàng"),
-            ),
-          ),
-
-          // Khu vực nhập liệu
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _inputController,
-                    decoration: InputDecoration(
-                      hintText: _isListening ? "Đang lắng nghe..." : "VD: Bán 5 bao xi măng, 2 khối cát...",
-                      border: const OutlineInputBorder(),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      suffixIcon: _inputController.text.isNotEmpty 
-                          ? IconButton(icon: const Icon(Icons.clear, size: 20), onPressed: () => _inputController.clear()) 
-                          : null,
-                    ),
-                    onSubmitted: (_) => _analyzeText(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Voice Button
-                IconButton.filledTonal(
-                  onPressed: _toggleListening,
-                  style: IconButton.styleFrom(backgroundColor: _isListening ? Colors.red.shade100 : null),
-                  icon: Icon(_isListening ? Icons.mic : Icons.mic_none, color: _isListening ? Colors.red : Colors.blue),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _isAnalyzing ? null : _analyzeText,
-                  icon: _isAnalyzing 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.send),
-                )
+                _buildBotMessage(),
+                if (_draftItems.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  _buildOrderPreview(currencyFormat),
+                ],
               ],
             ),
           ),
+          _buildInputArea(),
+        ],
+      ),
+    );
+  }
 
-          const Divider(height: 1),
-
-          // Danh sách đơn nháp
-          Expanded(
-            child: _draftItems.isEmpty
-                ? Center(
-                    child: Text(
-                      _isAnalyzing ? "Đang phân tích..." : "Nhập nội dung để AI soạn đơn",
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _draftItems.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final item = _draftItems[index];
-                      return ListTile(
-                        leading: const Icon(Icons.shopping_bag_outlined, color: Colors.blue),
-                        title: Text(item['productName'] ?? 'Sản phẩm'),
-                        subtitle: Text("${item['quantity']} x ${item['price']} đ"),
-                        trailing: Text(
-                          "${((item['quantity'] ?? 0) * (item['price'] ?? 0)).toStringAsFixed(0)} đ",
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      );
-                    },
-                  ),
+  Widget _buildBotMessage() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6366F1),
+            borderRadius: BorderRadius.circular(10),
           ),
+          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                ),
+                child: Text(
+                  _botReply,
+                  style: const TextStyle(fontSize: 15, color: Color(0xFF334155), height: 1.4),
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text("Vừa xong", style: TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-          // Footer xác nhận
-          if (_draftItems.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
+  Widget _buildOrderPreview(NumberFormat currencyFormat) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                const Icon(Icons.receipt_long_rounded, color: Color(0xFF6366F1)),
+                const SizedBox(width: 8),
+                const Text("Chi tiết đơn đã lên", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Spacer(),
+                if (_lastOrderNum != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                    child: Text("ĐÃ LƯU", style: TextStyle(color: Colors.green[700], fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _draftItems.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, indent: 50),
+            itemBuilder: (context, index) {
+              final item = _draftItems[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFF1F5F9),
+                  child: Text("${index + 1}", style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                ),
+                title: Text(item['productName'] ?? 'Sản phẩm', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: Text("Số lượng: ${item['quantity'] ?? 0}"),
+                trailing: Text("${currencyFormat.format((item['price'] ?? 0) * (item['quantity'] ?? 0))} đ", style: const TextStyle(fontWeight: FontWeight.bold)),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("TỔNG TIỀN:", style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
+                Text("${currencyFormat.format(_totalAmount)} đ", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: Color(0xFF1E293B))),
+              ],
+            ),
+          ),
+          if (_lastOrderNum != null)
+             Padding(
+               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+               child: Text(
+                 "Mã đơn hàng: $_lastOrderNum",
+                 style: const TextStyle(fontSize: 12, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+               ),
+             )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -2))],
+      ),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: _listen,
+            child: Container(
+              height: 48,
+              width: 48,
               decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))],
+                color: _isListening ? Colors.red.withOpacity(0.1) : const Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
               ),
-              child: ElevatedButton(
-                onPressed: _isCreatingOrder ? null : _confirmOrder,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xff289ca7), minimumSize: const Size(double.infinity, 50)),
-                child: Text(_isCreatingOrder ? "Đang xử lý..." : "Xác nhận tạo đơn (${_totalAmount.toStringAsFixed(0)} đ)", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Icon(
+                _isListening ? Icons.mic : Icons.mic_none_rounded,
+                color: _isListening ? Colors.red : const Color(0xFF64748B),
               ),
-            )
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _inputController,
+                      decoration: const InputDecoration(
+                        hintText: "Nhập hoặc nói yêu cầu...",
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+                      ),
+                      onSubmitted: (_) => _analyzeText(),
+                    ),
+                  ),
+                  if (_isAnalyzing)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.send_rounded, color: Color(0xFF6366F1)),
+                      onPressed: _analyzeText,
+                    ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

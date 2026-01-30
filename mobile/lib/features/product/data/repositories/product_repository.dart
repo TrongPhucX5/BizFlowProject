@@ -4,7 +4,6 @@ import 'package:mobile/core/network/api_response.dart';
 import 'package:mobile/core/network/dio_client.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
-import 'package:mobile/core/network/dio_client.dart';
 
 class ProductRepository {
   final Dio _dio = DioClient.instance;
@@ -18,14 +17,16 @@ class ProductRepository {
       final apiResponse = ApiResponse.fromJson(response.data);
 
       if (apiResponse.isSuccess) {
-        var listData = apiResponse.result;
+        final listData = apiResponse.result;
+        List<dynamic> items = [];
+        
         if (listData is Map) {
-          listData = listData['content'] ?? listData['items'] ?? [];
+          items = listData['content'] ?? listData['items'] ?? [];
+        } else if (listData is List) {
+          items = listData;
         }
-        if (listData is List) {
-          return listData.map((e) => Product.fromJson(e)).toList();
-        }
-        return <Product>[];
+        
+        return items.map<Product>((e) => Product.fromJson(Map<String, dynamic>.from(e))).toList();
       }
       throw Exception(apiResponse.message);
     } catch (e) {
@@ -39,14 +40,16 @@ class ProductRepository {
       final apiResponse = ApiResponse.fromJson(response.data);
 
       if (apiResponse.isSuccess) {
-        var listData = apiResponse.result;
-         if (listData is Map) {
-          listData = listData['content'] ?? listData['items'] ?? [];
+        final listData = apiResponse.result;
+        List<dynamic> items = [];
+        
+        if (listData is Map) {
+          items = listData['content'] ?? listData['items'] ?? [];
+        } else if (listData is List) {
+          items = listData;
         }
-        if (listData is List) {
-          return listData.map((e) => Category.fromJson(e)).toList();
-        }
-        return <Category>[];
+        
+        return items.map<Category>((e) => Category.fromJson(Map<String, dynamic>.from(e))).toList();
       }
       return <Category>[];
     } catch (e) {

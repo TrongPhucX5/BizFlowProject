@@ -58,13 +58,15 @@ public class AIController {
             Object history = payload.get("history");
 
             // 1. LẤY MENU SẢN PHẨM GỬI CHO AI (Chỉ lấy hàng của store hiện tại và đang bán)
-            // Sử dụng Pageable.unpaged() để lấy list thay vì Page nếu repository hỗ trợ, hoặc dùng findAll và filter
+            // Sử dụng Pageable.unpaged() để lấy list thay vì Page nếu repository hỗ trợ,
+            // hoặc dùng findAll và filter
             // Tuy nhiên ProductRepository.findByStoreId trả về Page.
             // Để đơn giản và hiệu quả, ta nên dùng findByStoreId trả về List hoặc Page lớn.
-            // Ở đây tôi dùng findByStoreId với Pageable lớn để lấy hết (hoặc cần thêm method trả về List trong Repo)
+            // Ở đây tôi dùng findByStoreId với Pageable lớn để lấy hết (hoặc cần thêm
+            // method trả về List trong Repo)
             // Giả sử dùng PageRequest.of(0, 1000)
             List<Product> products = productRepository.findByStoreId(storeId, PageRequest.of(0, 1000)).getContent();
-            
+
             List<String> productContext = products.stream()
                     .filter(p -> p.getStatus() == Product.ProductStatus.ACTIVE)
                     .map(p -> String.format("- %s (Giá: %s, ĐVT: %s)", p.getName(), p.getPrice(), p.getUnitName()))
@@ -132,33 +134,38 @@ public class AIController {
 
         // 1. TÌM KHÁCH HÀNG (Trong store hiện tại)
         // Cần sửa CustomerRepository để tìm theo storeId và tên
-        // Hiện tại dùng tạm findFirstByNameContainingIgnoreCase nhưng cần lọc storeId sau
-        // Hoặc tốt nhất là thêm method findByStoreIdAndNameContainingIgnoreCase vào Repo
-        // Ở đây tôi sẽ dùng logic tìm trong list hoặc giả định repo hỗ trợ, 
-        // nhưng để an toàn tôi sẽ tìm customer theo phone hoặc tạo mới gán storeId đúng.
-        
+        // Hiện tại dùng tạm findFirstByNameContainingIgnoreCase nhưng cần lọc storeId
+        // sau
+        // Hoặc tốt nhất là thêm method findByStoreIdAndNameContainingIgnoreCase vào
+        // Repo
+        // Ở đây tôi sẽ dùng logic tìm trong list hoặc giả định repo hỗ trợ,
+        // nhưng để an toàn tôi sẽ tìm customer theo phone hoặc tạo mới gán storeId
+        // đúng.
+
         // Tạm thời tìm theo tên và check storeId, nếu không khớp thì tạo mới
-        // Lưu ý: findFirstByNameContainingIgnoreCase có thể trả về customer của store khác nếu không filter
+        // Lưu ý: findFirstByNameContainingIgnoreCase có thể trả về customer của store
+        // khác nếu không filter
         // Nên dùng: customerRepository.findByStoreIdAndPhone(...) hoặc tương tự.
         // Vì AI trả về tên, ta sẽ tìm khách hàng có tên đó trong store.
-        
+
         // Cách fix nhanh: Lấy list customer của store, filter theo tên
-        // (Tuy nhiên hiệu năng thấp nếu nhiều khách). 
-        // Tốt nhất: CustomerRepository.findByStoreIdAndNameContainingIgnoreCase(storeId, name)
-        
+        // (Tuy nhiên hiệu năng thấp nếu nhiều khách).
+        // Tốt nhất:
+        // CustomerRepository.findByStoreIdAndNameContainingIgnoreCase(storeId, name)
+
         // Giả sử chưa có method đó, ta tạo mới luôn cho an toàn hoặc tìm chính xác
         Customer customer = null;
         // Logic tìm kiếm đơn giản:
         // customer = customerRepository.findByStoreIdAndName(storeId, customerName);
-        
+
         // Fallback: Tạo mới
         if (customer == null) {
-             Customer newCus = new Customer();
-             newCus.setName(customerName);
-             newCus.setPhone("Unknown");
-             newCus.setStoreId(storeId); // Gán đúng storeId
-             newCus.setAddress("Khách vãng lai");
-             customer = customerRepository.save(newCus);
+            Customer newCus = new Customer();
+            newCus.setName(customerName);
+            newCus.setPhone("Unknown");
+            newCus.setStoreId(storeId); // Gán đúng storeId
+            newCus.setAddress("Khách vãng lai");
+            customer = customerRepository.save(newCus);
         }
 
         // 2. KHỞI TẠO ĐƠN HÀNG
@@ -184,7 +191,8 @@ public class AIController {
         // 3. XỬ LÝ TỪNG SẢN PHẨM
         for (Map<String, Object> itemData : items) {
             String aiProductName = (String) itemData.get("productName");
-            if (aiProductName == null) continue;
+            if (aiProductName == null)
+                continue;
 
             Integer quantity = 1;
             if (itemData.get("quantity") instanceof Number) {
@@ -206,25 +214,31 @@ public class AIController {
 
                 // Check tồn kho (nếu cần thiết, hoặc bỏ qua nếu muốn cho phép bán âm)
                 // Ở đây giữ logic check
-                // Lưu ý: Cần check Inventory entity thay vì Product.stockQuantity nếu đã tách bảng
-                // Nhưng ProductServiceImpl mapToDTO lấy từ Inventory, còn Product entity có field stockQuantity không?
-                // Trong code cũ Product entity có stockQuantity không? 
+                // Lưu ý: Cần check Inventory entity thay vì Product.stockQuantity nếu đã tách
+                // bảng
+                // Nhưng ProductServiceImpl mapToDTO lấy từ Inventory, còn Product entity có
+                // field stockQuantity không?
+                // Trong code cũ Product entity có stockQuantity không?
                 // Kiểm tra lại Product entity:
-                // Nếu Product không có stockQuantity (mà dùng Inventory), thì đoạn này sẽ lỗi biên dịch hoặc logic sai.
+                // Nếu Product không có stockQuantity (mà dùng Inventory), thì đoạn này sẽ lỗi
+                // biên dịch hoặc logic sai.
                 // Tuy nhiên, trong đoạn code gốc của bạn: product.getStockQuantity()
                 // Giả sử Product entity có field này hoặc được sync.
                 // Nếu không, cần inject InventoryRepository để check.
-                
+
                 // Giả định Product có field stockQuantity (như code gốc)
                 // Nếu không, ta cần sửa lại.
-                
+
                 // Logic trừ kho:
                 // product.setStockQuantity(product.getStockQuantity() - quantity);
                 // productRepository.save(product);
-                
-                // LƯU Ý: Hệ thống đã có InventoryRepository. Việc trừ kho nên thực hiện qua InventoryService hoặc cập nhật Inventory.
-                // Code gốc đang update trực tiếp Product. Nếu Product entity không dùng cho tồn kho nữa thì sai.
-                // Tuy nhiên để fix nhanh theo yêu cầu "lấy theo storeId", tôi giữ nguyên logic trừ kho này 
+
+                // LƯU Ý: Hệ thống đã có InventoryRepository. Việc trừ kho nên thực hiện qua
+                // InventoryService hoặc cập nhật Inventory.
+                // Code gốc đang update trực tiếp Product. Nếu Product entity không dùng cho tồn
+                // kho nữa thì sai.
+                // Tuy nhiên để fix nhanh theo yêu cầu "lấy theo storeId", tôi giữ nguyên logic
+                // trừ kho này
                 // nhưng đảm bảo product thuộc storeId (đã lọc ở list allProducts).
 
                 OrderItem orderItem = new OrderItem();
@@ -232,6 +246,8 @@ public class AIController {
                 orderItem.setProductId(product.getId());
                 orderItem.setQuantity(quantity);
                 orderItem.setUnitPrice(product.getPrice());
+
+                itemData.put("price", product.getPrice()); // Trả ngược giá về cho Mobile hiển thị
 
                 BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(quantity));
                 orderItem.setTotalAmount(lineTotal);
