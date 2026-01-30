@@ -26,15 +26,16 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         long countByStatus(Customer.CustomerStatus status);
 
         /**
-         * TÌM KIẾM THEO TRẠNG THÁI ACTIVE
+         * TÌM KIẾM THEO TRẠNG THÁI ACTIVE VÀ STORE ID
          */
-        @Query(value = "SELECT c FROM Customer c WHERE c.status = 'ACTIVE' AND (" +
+        @Query(value = "SELECT c FROM Customer c WHERE c.storeId = :storeId AND c.status = 'ACTIVE' AND (" +
                         "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-                        "c.phone LIKE CONCAT('%', :search, '%'))", countQuery = "SELECT count(c) FROM Customer c WHERE c.status = 'ACTIVE' AND ("
-                                        +
-                                        "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-                                        "c.phone LIKE CONCAT('%', :search, '%'))")
+                        "c.phone LIKE CONCAT('%', :search, '%'))", 
+               countQuery = "SELECT count(c) FROM Customer c WHERE c.storeId = :storeId AND c.status = 'ACTIVE' AND (" +
+                            "LOWER(c.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+                            "c.phone LIKE CONCAT('%', :search, '%'))")
         Page<Customer> findAllActiveWithSearch(
+                        @Param("storeId") Long storeId,
                         @Param("search") String search,
                         Pageable pageable);
 

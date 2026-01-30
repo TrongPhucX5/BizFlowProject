@@ -43,4 +43,16 @@ public class CreateProductRequest {
     private String imageUrl;
 
     private Boolean trackStock;
+
+    // Thêm trường tồn kho ban đầu (hỗ trợ nhiều tên trường khác nhau từ frontend)
+    private Integer initialStock;
+    private Integer stock;
+    private Integer quantity;
+
+    public Integer getInitialStock() {
+        if (initialStock != null) return initialStock;
+        if (stock != null) return stock;
+        if (quantity != null) return quantity;
+        return 0;
+    }
 }

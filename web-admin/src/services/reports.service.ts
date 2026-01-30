@@ -49,6 +49,31 @@ export const reportsService = {
     return response.data;
   },
 
+  // --- TT88 EXPORTS ---
+  exportTT88Revenue: async (from: string, to: string) => {
+    const response = await axiosClient.get("/v1/reports/tt88/revenue", {
+      params: { from, to },
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  exportTT88Debt: async (from: string, to: string) => {
+    const response = await axiosClient.get("/v1/reports/tt88/debt", {
+      params: { from, to },
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  exportTT88Stock: async (from: string, to: string) => {
+    const response = await axiosClient.get("/v1/reports/tt88/stock", {
+      params: { from, to },
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
   // Gọi AI Phân tích (tự động theo kỳ)
   getAiInsight: async (period: string) => {
     return reportsService.chatWithAi(

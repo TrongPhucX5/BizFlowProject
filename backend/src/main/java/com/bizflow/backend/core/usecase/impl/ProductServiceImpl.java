@@ -1,9 +1,13 @@
 package com.bizflow.backend.core.usecase.impl;
 
+import com.bizflow.backend.core.common.UserContext;
+import com.bizflow.backend.core.domain.Inventory;
 import com.bizflow.backend.core.domain.Product;
+import com.bizflow.backend.core.domain.StockMovement;
 import com.bizflow.backend.core.usecase.ProductService;
 import com.bizflow.backend.infrastructure.persistence.repository.InventoryRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.ProductRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.StockMovementRepository;
 import com.bizflow.backend.presentation.dto.request.CreateProductRequest;
 import com.bizflow.backend.presentation.dto.response.ProductDTO;
 import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
@@ -25,6 +29,7 @@ public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
+    private final StockMovementRepository stockMovementRepository;
 
     @Override
     @Cacheable(value = "products_page", key = "#storeId + '_' + #pageable.pageNumber + '_' + #pageable.pageSize")
@@ -41,8 +46,10 @@ public class ProductServiceImpl implements ProductService {
     @CacheEvict(value = "products_page", allEntries = true)
     @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_PRODUCT", entityType = "PRODUCT")
     public ProductDTO createProduct(CreateProductRequest request) {
+        Long storeId = UserContext.getCurrentStoreId(); // Lấy storeId từ context
+        
         Product product = new Product();
-        product.setStoreId(1L); // Hard-code tạm store 1
+        product.setStoreId(storeId != null ? storeId : 1L); // Fallback về 1 nếu null (đề phòng)
         product.setName(request.getName());
         product.setSku(request.getSku());
         product.setPrice(request.getPrice());
@@ -62,7 +69,37 @@ public class ProductServiceImpl implements ProductService {
         product.setCreatedAt(LocalDateTime.now());
         product.setReorderLevel(10);
 
-        return mapToDTO(productRepository.save(product));
+        Product savedProduct = productRepository.save(product);
+
+        // --- XỬ LÝ TỒN KHO BAN ĐẦU ---
+        int initialStock = request.getInitialStock() != null ? request.getInitialStock() : 0;
+        
+        Inventory inventory = Inventory.builder()
+                .storeId(product.getStoreId())
+                .productId(savedProduct.getId())
+                .quantity(initialStock)
+                .availableQuantity(initialStock)
+                .reservedQuantity(0)
+                .build();
+        inventoryRepository.save(inventory);
+
+        // Nếu có tồn kho ban đầu, tạo lịch sử nhập kho
+        if (initialStock > 0) {
+            StockMovement movement = StockMovement.builder()
+                    .storeId(product.getStoreId())
+                    .productId(savedProduct.getId())
+                    .type(StockMovement.MovementType.STOCK_IN)
+                    .quantity(initialStock)
+                    .referenceType("INITIAL_STOCK")
+                    .referenceId(savedProduct.getId())
+                    .notes("Tồn kho ban đầu khi tạo sản phẩm")
+                    .createdAt(LocalDateTime.now())
+                    .createdBy(UserContext.getCurrentUsername())
+                    .build();
+            stockMovementRepository.save(movement);
+        }
+
+        return mapToDTO(savedProduct);
     }
 
     @Override

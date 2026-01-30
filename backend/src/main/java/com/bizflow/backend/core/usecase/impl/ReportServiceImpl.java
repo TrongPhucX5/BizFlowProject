@@ -1,24 +1,27 @@
 package com.bizflow.backend.core.usecase.impl;
 
+import com.bizflow.backend.core.common.UserContext;
+import com.bizflow.backend.core.domain.Customer;
+import com.bizflow.backend.core.domain.Order;
 import com.bizflow.backend.core.domain.Product;
-import com.bizflow.backend.core.domain.Customer; // Đảm bảo import này
 import com.bizflow.backend.core.usecase.ReportService;
-import com.bizflow.backend.infrastructure.persistence.repository.CustomerRepository;
-import com.bizflow.backend.infrastructure.persistence.repository.OrderItemRepository;
-import com.bizflow.backend.infrastructure.persistence.repository.OrderRepository;
-import com.bizflow.backend.infrastructure.persistence.repository.ProductRepository;
+import com.bizflow.backend.infrastructure.persistence.repository.*;
+import com.bizflow.backend.presentation.dto.response.TT88DebtRow;
+import com.bizflow.backend.presentation.dto.response.TT88RevenueRow;
+import com.bizflow.backend.presentation.dto.response.TT88StockRow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,9 @@ public class ReportServiceImpl implements ReportService {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final OrderItemRepository orderItemRepository;
+    private final DebtRepository debtRepository;
+    private final PaymentRepository paymentRepository;
+    private final StockMovementRepository stockMovementRepository;
 
     @Override
     public Map<String, Object> getDashboardMetrics(Long storeId) {
@@ -143,5 +149,108 @@ public class ReportServiceImpl implements ReportService {
     @Override
     public Integer getBusinessHealthScore(Long storeId) {
         return 100;
+    }
+
+    @Override
+    public List<TT88RevenueRow> getTT88Revenue(LocalDate from, LocalDate to) {
+        Long storeId = UserContext.getCurrentStoreId();
+        // Sử dụng hàm có sẵn để lọc theo storeId
+        List<Order> orders = orderRepository.findByStoreIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+                storeId, 
+                from.atStartOfDay(), 
+                to.plusDays(1).atStartOfDay()
+        );
+        
+        // Fetch customers để lấy tên
+        Set<Long> customerIds = orders.stream().map(Order::getCustomerId).collect(Collectors.toSet());
+        Map<Long, Customer> customerMap = customerRepository.findAllById(customerIds).stream()
+                .collect(Collectors.toMap(Customer::getId, Function.identity()));
+
+        AtomicInteger index = new AtomicInteger(1);
+
+        return orders.stream().map(o -> {
+            Customer customer = customerMap.get(o.getCustomerId());
+            String customerName = customer != null ? customer.getName() : "Khách lẻ";
+            
+            return new TT88RevenueRow(
+                index.getAndIncrement(),
+                o.getCreatedAt().toLocalDate(),
+                o.getOrderNumber(),
+                customerName,
+                o.getTotalAmount(),
+                o.getNotes() != null ? o.getNotes() : ""
+            );
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TT88DebtRow> getTT88Debt(LocalDate from, LocalDate to) {
+        Long storeId = UserContext.getCurrentStoreId();
+        List<Customer> customers = customerRepository.findByStoreId(storeId, Pageable.unpaged()).getContent();
+
+        AtomicInteger index = new AtomicInteger(1);
+        List<TT88DebtRow> result = new ArrayList<>();
+
+        for (Customer c : customers) {
+            // 1. Nợ đầu kỳ: Tổng nợ phát sinh trước ngày from - Tổng đã trả trước ngày from
+            BigDecimal debtBefore = debtRepository.sumOriginalAmountBefore(storeId, c.getId(), from.atStartOfDay());
+            BigDecimal paidBefore = paymentRepository.sumAmountBefore(storeId, c.getId(), from.atStartOfDay());
+            BigDecimal opening = debtBefore.subtract(paidBefore);
+
+            // 2. Phát sinh trong kỳ: Tổng nợ phát sinh từ from đến to
+            BigDecimal newDebt = debtRepository.sumOriginalAmountBetween(storeId, c.getId(), from.atStartOfDay(), to.plusDays(1).atStartOfDay());
+
+            // 3. Đã trả trong kỳ: Tổng đã trả từ from đến to
+            BigDecimal paid = paymentRepository.sumAmountBetween(storeId, c.getId(), from.atStartOfDay(), to.plusDays(1).atStartOfDay());
+
+            // 4. Nợ cuối kỳ: Đầu kỳ + Phát sinh - Đã trả
+            BigDecimal closing = opening.add(newDebt).subtract(paid);
+
+            // Chỉ hiển thị nếu có biến động hoặc còn nợ
+            if (closing.compareTo(BigDecimal.ZERO) != 0 || opening.compareTo(BigDecimal.ZERO) != 0 || newDebt.compareTo(BigDecimal.ZERO) != 0) {
+                 result.add(new TT88DebtRow(
+                    index.getAndIncrement(),
+                    c.getName(),
+                    c.getPhone(),
+                    opening,
+                    newDebt,
+                    paid,
+                    closing
+                ));
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<TT88StockRow> getTT88Stock(LocalDate from, LocalDate to) {
+        Long storeId = UserContext.getCurrentStoreId();
+        List<Product> products = productRepository.findByStoreId(storeId, Pageable.unpaged()).getContent();
+
+        AtomicInteger index = new AtomicInteger(1);
+        List<TT88StockRow> result = new ArrayList<>();
+
+        for (Product p : products) {
+            Integer opening = stockMovementRepository.sumQuantityBefore(storeId, p.getId(), from.atStartOfDay());
+            Integer imported = stockMovementRepository.sumImportBetween(storeId, p.getId(), from.atStartOfDay(), to.plusDays(1).atStartOfDay());
+            Integer exported = stockMovementRepository.sumExportBetween(storeId, p.getId(), from.atStartOfDay(), to.plusDays(1).atStartOfDay());
+            int closing = opening + imported - exported;
+
+            // Chỉ hiển thị nếu có biến động hoặc còn tồn kho
+            if (opening != 0 || imported != 0 || exported != 0 || closing != 0) {
+                result.add(new TT88StockRow(
+                    index.getAndIncrement(),
+                    p.getSku(),
+                    p.getName(),
+                    opening,
+                    imported,
+                    exported,
+                    closing
+                ));
+            }
+        }
+
+        return result;
     }
 }

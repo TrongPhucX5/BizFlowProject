@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dashboardService } from "@/services/dashboard.service";
+import { reportsService } from "@/services/reports.service";
 import {
   Table,
   TableBody,
@@ -53,9 +54,11 @@ import {
   ArrowDownToLine,
   ClipboardCheck,
   UploadCloud,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Product, ApiResponse, PageResponse } from "@/types/api";
+import { toast } from "sonner";
 
 // --- BỔ SUNG TYPE ĐỂ TRÁNH LỖI ĐỎ ---
 interface ExtendedProduct extends Product {
@@ -72,8 +75,11 @@ export default function ProductsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [isCheckInventoryOpen, setIsCheckInventoryOpen] = useState(false);
-  const [inventoryCheckResult, setInventoryCheckResult] = useState<any>(null);
+
+  // --- TT88 EXPORT STATES ---
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   const [currentProduct, setCurrentProduct] =
     useState<Partial<ExtendedProduct> | null>(null);
@@ -179,17 +185,6 @@ export default function ProductsPage() {
     },
   });
 
-  const checkInventoryMutation = useMutation({
-    mutationFn: dashboardService.getInventory,
-    onSuccess: (data) => {
-      setInventoryCheckResult(data);
-      setIsCheckInventoryOpen(true);
-    },
-    onError: () => {
-      alert("Không thể kiểm tra tồn kho. Vui lòng thử lại.");
-    },
-  });
-
   // --- ACTIONS ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -198,7 +193,10 @@ export default function ProductsPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         // reader.result sẽ là chuỗi Base64 (data:image/jpeg;base64,...)
-        setCurrentProduct((prev) => ({ ...prev, imageUrl: reader.result as string }));
+        setCurrentProduct((prev) => ({
+          ...prev,
+          imageUrl: reader.result as string,
+        }));
       };
       reader.readAsDataURL(file);
     }
@@ -230,11 +228,6 @@ export default function ProductsPage() {
       note: "Nhập hàng",
     });
     setIsImportDialogOpen(true);
-  };
-
-  const handleCheckInventory = (product: ExtendedProduct) => {
-    setCurrentProduct(product);
-    checkInventoryMutation.mutate(product.id);
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -301,11 +294,38 @@ export default function ProductsPage() {
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `danh_sach_san_pham_${new Date().toISOString().slice(0, 10)}.csv`
+      `danh_sach_san_pham_${new Date().toISOString().slice(0, 10)}.csv`,
     );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportTT88Stock = async () => {
+    if (!exportFrom || !exportTo) {
+      toast.error("Vui lòng chọn khoảng thời gian xuất sổ!");
+      return;
+    }
+
+    try {
+      setExporting(true);
+      const blob = await reportsService.exportTT88Stock(exportFrom, exportTo);
+      
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `so-ton-kho-TT88-${exportFrom}-${exportTo}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success("Đã xuất sổ tồn kho TT88!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Xuất sổ thất bại!");
+    } finally {
+      setExporting(false);
+    }
   };
 
   // --- LOGIC LỌC ---
@@ -333,12 +353,61 @@ export default function ProductsPage() {
           </p>
         </div>
         <div className="flex gap-3">
+          {/* EXPORT TT88 STOCK */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="bg-white"
+              >
+                {exporting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                Xuất sổ TT88
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-80 p-4 rounded-xl shadow-xl border-none">
+              <DropdownMenuLabel className="font-bold uppercase text-xs text-slate-400 mb-2">
+                Chọn khoảng thời gian
+              </DropdownMenuLabel>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Từ ngày</span>
+                  <Input 
+                    type="date" 
+                    value={exportFrom}
+                    onChange={(e) => setExportFrom(e.target.value)}
+                    className="h-9 rounded-lg font-bold text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Đến ngày</span>
+                  <Input 
+                    type="date" 
+                    value={exportTo}
+                    onChange={(e) => setExportTo(e.target.value)}
+                    className="h-9 rounded-lg font-bold text-xs"
+                  />
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleExportTT88Stock}
+                className="p-2 rounded-lg font-bold cursor-pointer hover:bg-emerald-50 hover:text-emerald-600"
+              >
+                <FileText className="mr-2 h-4 w-4" /> Xuất Sổ Tồn Kho
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             variant="outline"
             className="bg-white"
             onClick={handleExportExcel}
           >
-            <Download className="mr-2 h-4 w-4" /> Xuất Excel
+            <Download className="mr-2 h-4 w-4" /> Xuất Excel (Thường)
           </Button>
           <Button
             onClick={handleAddNew}
@@ -483,7 +552,7 @@ export default function ProductsPage() {
                             "flex items-center gap-2 font-medium",
                             item.stock <= (item.reorderLevel || 10)
                               ? "text-red-600"
-                              : "text-emerald-600"
+                              : "text-emerald-600",
                           )}
                         >
                           {item.stock}
@@ -510,12 +579,6 @@ export default function ProductsPage() {
                           <DropdownMenuItem onClick={() => handleImport(item)}>
                             <ArrowDownToLine className="mr-2 h-4 w-4 text-green-600" />{" "}
                             Nhập kho
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleCheckInventory(item)}
-                          >
-                            <ClipboardCheck className="mr-2 h-4 w-4 text-amber-600" />{" "}
-                            Kiểm tra tồn kho
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEdit(item)}>
                             <FileEdit className="mr-2 h-4 w-4 text-blue-500" />{" "}
@@ -550,7 +613,7 @@ export default function ProductsPage() {
 
       {/* DIALOG FORM */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {currentProduct?.id ? "Cập nhật thông tin" : "Thêm sản phẩm mới"}
@@ -711,7 +774,11 @@ export default function ProductsPage() {
               )} */}
               {currentProduct?.imageUrl && (
                 <div className="mt-2">
-                  <img src={currentProduct.imageUrl} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                  <img
+                    src={currentProduct.imageUrl}
+                    alt="Preview"
+                    className="h-20 w-20 object-cover rounded-lg border"
+                  />
                 </div>
               )}
             </div>
@@ -834,49 +901,6 @@ export default function ProductsPage() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* CHECK INVENTORY DIALOG */}
-      <Dialog
-        open={isCheckInventoryOpen}
-        onOpenChange={setIsCheckInventoryOpen}
-      >
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Kiểm tra tồn kho</DialogTitle>
-            <DialogDescription>
-              Thông tin tồn kho thực tế từ hệ thống.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 text-center">
-            {checkInventoryMutation.isPending ? (
-              <div className="flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-              </div>
-            ) : inventoryCheckResult ? (
-              <div className="space-y-2">
-                <p className="text-slate-500">Sản phẩm</p>
-                <p className="font-bold text-lg">{currentProduct?.name}</p>
-                <div className="my-4 p-4 bg-slate-50 rounded-lg">
-                  <p className="text-slate-500 text-sm mb-1">
-                    Số lượng tồn kho
-                  </p>
-                  <p className="text-4xl font-bold text-indigo-600">
-                    {inventoryCheckResult.quantity}
-                  </p>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Dữ liệu được cập nhật mới nhất
-                </p>
-              </div>
-            ) : (
-              <p>Không có dữ liệu</p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsCheckInventoryOpen(false)}>Đóng</Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,6 +1,12 @@
 package com.bizflow.backend.core.usecase;
 
+import com.bizflow.backend.presentation.dto.response.TT88DebtRow;
+import com.bizflow.backend.presentation.dto.response.TT88RevenueRow;
+import com.bizflow.backend.presentation.dto.response.TT88StockRow;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -139,4 +145,31 @@ public interface ReportService {
      * @return Score 0-100 (higher is better)
      */
     Integer getBusinessHealthScore(Long storeId);
+
+    /**
+     * Get TT88 Revenue Report Data
+     * 
+     * @param from From Date
+     * @param to To Date
+     * @return List of TT88RevenueRow
+     */
+    List<TT88RevenueRow> getTT88Revenue(LocalDate from, LocalDate to);
+
+    /**
+     * Get TT88 Debt Report Data
+     * 
+     * @param from From Date
+     * @param to To Date
+     * @return List of TT88DebtRow
+     */
+    List<TT88DebtRow> getTT88Debt(LocalDate from, LocalDate to);
+
+    /**
+     * Get TT88 Stock Report Data
+     * 
+     * @param from From Date
+     * @param to To Date
+     * @return List of TT88StockRow
+     */
+    List<TT88StockRow> getTT88Stock(LocalDate from, LocalDate to);
 }

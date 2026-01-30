@@ -1,9 +1,9 @@
 package com.bizflow.backend.user.service;
 
+import com.bizflow.backend.core.domain.Store;
 import com.bizflow.backend.core.domain.User;
-import com.bizflow.backend.core.domain.AuditLog; // Added
 import com.bizflow.backend.core.usecase.UserService;
-import com.bizflow.backend.core.usecase.AuditLogService; // Added
+import com.bizflow.backend.infrastructure.persistence.repository.StoreRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.UserRepository;
 import com.bizflow.backend.infrastructure.security.CustomUserDetails;
 import com.bizflow.backend.infrastructure.security.JwtUtil;
@@ -34,9 +34,9 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final AuditLogService auditLogService; // Injected service
 
     // --- ĐỔI MẬT KHẨU (MỚI) ---
     @Override
@@ -94,26 +94,16 @@ public class UserServiceImpl implements UserService {
         }
 
         CustomUserDetails userDetails = new CustomUserDetails(
-                user.getId(), user.getStoreId(), user.getUsername(), user.getFullName(), user.getPassword(),
-                user.getRole().toString(), true
+                user.getId(),
+                user.getStoreId(),
+                user.getUsername(),
+                user.getFullName(), // Thêm fullName vào đây
+                user.getPassword(),
+                user.getRole().toString(),
+                true
         );
 
         String token = jwtUtil.generateAccessToken(userDetails);
-
-        // --- GHI LOG ĐĂNG NHẬP ---
-        try {
-            auditLogService.createLog(AuditLog.builder()
-                    .userId(user.getId())
-                    .userName(user.getUsername())
-                    .userFullName(user.getFullName())
-                    .action("LOGIN")
-                    .entityType("USER")
-                    .entityId(user.getId())
-                    .createdAt(LocalDateTime.now())
-                    .build());
-        } catch (Exception e) {
-            log.error("Failed to save login log", e);
-        }
 
         return LoginResponse.builder()
                 .token(token)
@@ -137,9 +127,25 @@ public class UserServiceImpl implements UserService {
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
-        user.setStoreId(request.getStoreId() != null ? request.getStoreId() : 1L);
+        
+        // Logic mới cho Store
+        if (request.getStoreId() == null) {
+            Store newStore = Store.builder()
+                    .name("Cửa hàng của " + request.getFullName())
+                    .status(Store.StoreStatus.ACTIVE)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            Store savedStore = storeRepository.save(newStore);
+            user.setStoreId(savedStore.getId());
+            user.setRole(User.UserRole.OWNER);
+        } else {
+            if (!storeRepository.existsById(request.getStoreId())) {
+                throw new RuntimeException("Cửa hàng không tồn tại");
+            }
+            user.setStoreId(request.getStoreId());
+            user.setRole(User.UserRole.EMPLOYEE);
+        }
 
-        user.setRole(User.UserRole.EMPLOYEE);
         user.setStatus(User.UserStatus.ACTIVE);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());

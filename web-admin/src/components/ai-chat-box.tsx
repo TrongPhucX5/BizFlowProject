@@ -74,7 +74,8 @@ export function AiChatBox() {
 
     try {
       // 2. Gửi xuống Backend
-      const response = await axiosClient.post("/api/v1/ai/chat", {
+      // Đã sửa đường dẫn API từ /api/v1/ai/chat thành /v1/ai/chat
+      const response = await axiosClient.post("/v1/ai/chat", {
         message: userText,
         history: [],
       });

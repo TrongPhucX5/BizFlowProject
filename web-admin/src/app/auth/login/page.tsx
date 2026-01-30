@@ -6,9 +6,16 @@ import Link from "next/link";
 import axiosClient from "@/lib/axios-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Lock, Mail, ArrowRight, Store, CheckCircle2, Eye, EyeOff, Building2 } from "lucide-react";
-
-
+import {
+  Lock,
+  Mail,
+  ArrowRight,
+  Store,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Building2,
+} from "lucide-react";
 
 interface LoginRequest {
   username: string;
@@ -40,6 +47,7 @@ export default function LoginPage() {
       const response = await axiosClient.post("/v1/auth/login", formData);
       // Kết cấu response: response.data.result (chứa token, user...)
       const result = response.data?.result;
+      console.log("LOGIN RESULT =", result);
 
       if (result?.token) {
         // 0. Xóa dữ liệu cũ
@@ -52,14 +60,20 @@ export default function LoginPage() {
         }
 
         // 2. XỬ LÝ DỮ LIỆU NGƯỜI DÙNG (Lấy từ object 'user' lồng bên trong LoginResponse)
-        const userData = result.user || {}; 
-        
+        const userData = result.user || {};
+
         // Cập nhật đầy đủ các trường để trang Account hiển thị
-        const fullName = userData.fullName || result.fullName || formData.username;
+        const fullName =
+          userData.fullName || result.fullName || formData.username;
         const email = userData.email || result.email || "";
         const phone = userData.phone || result.phone || "";
-        const storeName = userData.storeName || result.storeName || "BizFlow Store";
-        const userRole = (userData.role || result.role || "EMPLOYEE").toUpperCase();
+        const storeName =
+          userData.storeName || result.storeName || "BizFlow Store";
+        const userRole = (
+          userData.role ||
+          result.role ||
+          "EMPLOYEE"
+        ).toUpperCase();
         const userId = userData.id || result.userId;
 
         localStorage.setItem("userFullName", fullName);
@@ -79,8 +93,8 @@ export default function LoginPage() {
         } else {
           router.push("/dashboard");
         }
-        
-        router.refresh(); 
+
+        router.refresh();
       } else {
         setError("Đăng nhập thất bại. Không nhận được phản hồi hợp lệ.");
       }
@@ -111,18 +125,21 @@ export default function LoginPage() {
             <span className="text-3xl font-bold tracking-tight">BizFlow</span>
           </div>
           <h1 className="text-5xl xl:text-6xl font-extrabold mb-8 leading-tight tracking-tight">
-            Quản lý cửa hàng <br/>
+            Quản lý cửa hàng <br />
             <span className="text-blue-200">Hiệu quả hơn.</span>
           </h1>
           <p className="text-blue-100 text-xl max-w-lg mb-10 leading-relaxed font-light">
-            Giải pháp chuyển đổi số toàn diện từ quản lý kho đến chăm sóc khách hàng.
+            Giải pháp chuyển đổi số toàn diện từ quản lý kho đến chăm sóc khách
+            hàng.
           </p>
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="p-2 bg-blue-600/80 rounded-full ring-2 ring-blue-500/50">
                 <CheckCircle2 className="w-6 h-6 text-white" />
               </div>
-              <span className="text-lg font-medium text-blue-50">Báo cáo doanh thu thời gian thực</span>
+              <span className="text-lg font-medium text-blue-50">
+                Báo cáo doanh thu thời gian thực
+              </span>
             </div>
           </div>
         </div>
@@ -135,7 +152,9 @@ export default function LoginPage() {
             <h2 className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-indigo-600 pb-1">
               Đăng nhập
             </h2>
-            <p className="text-slate-500 mt-3 text-base">Chào mừng bạn quay trở lại!</p>
+            <p className="text-slate-500 mt-3 text-base">
+              Chào mừng bạn quay trở lại!
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -146,7 +165,9 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Tên đăng nhập / Email</label>
+              <label className="text-sm font-semibold text-slate-700 ml-1">
+                Tên đăng nhập / Email
+              </label>
               <div className="relative group">
                 <Mail className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                 <Input
@@ -161,7 +182,9 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700 ml-1">Mật khẩu</label>
+              <label className="text-sm font-semibold text-slate-700 ml-1">
+                Mật khẩu
+              </label>
               <div className="relative group">
                 <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                 <Input
@@ -193,12 +216,13 @@ export default function LoginPage() {
             </Button>
           </form>
 
-      
-
           <div className="mt-10 text-center">
             <p className="text-slate-500 text-sm">
               Bạn chưa có tài khoản?{" "}
-              <Link href="/auth/register" className="text-blue-700 font-bold hover:underline underline-offset-4">
+              <Link
+                href="/auth/register"
+                className="text-blue-700 font-bold hover:underline underline-offset-4"
+              >
                 Đăng ký ngay
               </Link>
             </p>

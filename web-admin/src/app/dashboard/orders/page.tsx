@@ -95,11 +95,17 @@ export default function OrdersPage() {
   // State cho form tạo đơn hàng
   const [newOrder, setNewOrder] = useState({
     customerId: 1,
-    items: [] as { productId: number; quantity: number; price: number; name: string }[],
+    items: [] as {
+      productId: number;
+      quantity: number;
+      unitPrice: number;
+      name: string;
+    }[],
+
     paymentType: "CASH",
     notes: "",
-    status: "PENDING",    // Added to satisfy interface
-    discountAmount: 0,    // Added to satisfy interface
+    status: "PENDING", // Added to satisfy interface
+    discountAmount: 0, // Added to satisfy interface
   });
   const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
@@ -158,7 +164,7 @@ export default function OrdersPage() {
         try {
           const res = await orderService.getOrderById(Number(viewId));
           if (res?.result) {
-            // Need to cast to match existing state type if there are mismatches, 
+            // Need to cast to match existing state type if there are mismatches,
             // but assuming close enough or strictly mapped
             setCurrentOrder(res.result as unknown as Order);
             setIsViewDialogOpen(true);
@@ -232,17 +238,27 @@ export default function OrdersPage() {
 
   const handleAddItem = () => {
     if (!selectedProduct) return;
-    const product = products.find((p: any) => p.id.toString() === selectedProduct);
+    const product = products.find(
+      (p: any) => p.id.toString() === selectedProduct,
+    );
     if (!product) return;
 
-    const existingItem = newOrder.items.find((item) => item.productId === product.id);
+    if (quantity > product.stock) {
+      alert("Số lượng vượt quá tồn kho!");
+      return;
+    }
+
+
+    const existingItem = newOrder.items.find(
+      (item) => item.productId === product.id,
+    );
     if (existingItem) {
       setNewOrder({
         ...newOrder,
         items: newOrder.items.map((item) =>
           item.productId === product.id
             ? { ...item, quantity: item.quantity + quantity }
-            : item
+            : item,
         ),
       });
     } else {
@@ -253,7 +269,7 @@ export default function OrdersPage() {
           {
             productId: product.id,
             quantity: quantity,
-            price: product.price,
+            unitPrice: product.price,
             name: product.name,
           },
         ],
@@ -280,13 +296,12 @@ export default function OrdersPage() {
     // Convert state to API request format
     const payload: any = {
       ...newOrder,
-      items: newOrder.items.map(item => ({
+      items: newOrder.items.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: item.price
       })),
       status: newOrder.status as any,
-      paymentType: newOrder.paymentType as any
+      paymentType: newOrder.paymentType as any,
     };
 
     createMutation.mutate(payload);
@@ -757,7 +772,14 @@ export default function OrdersPage() {
                   <Label>Số lượng</Label>
                   <Input
                     type="number"
-                    min="1"
+                    min={1}
+                    max={
+                      selectedProduct
+                        ? products.find(
+                            (p: any) => p.id.toString() === selectedProduct,
+                          )?.stock || 1
+                        : 1
+                    }
                     value={quantity}
                     onChange={(e) => setQuantity(Number(e.target.value))}
                   />
@@ -785,13 +807,13 @@ export default function OrdersPage() {
                         <TableRow key={idx}>
                           <TableCell>{item.name}</TableCell>
                           <TableCell className="text-right">
-                            {item.price.toLocaleString()}đ
+                            {item.unitPrice.toLocaleString()}đ
                           </TableCell>
                           <TableCell className="text-right">
                             {item.quantity}
                           </TableCell>
                           <TableCell className="text-right font-bold">
-                            {(item.price * item.quantity).toLocaleString()}đ
+                            {(item.unitPrice * item.quantity).toLocaleString()}đ
                           </TableCell>
                           <TableCell>
                             <Button
@@ -823,7 +845,10 @@ export default function OrdersPage() {
                 <span className="font-bold text-lg">Tổng cộng:</span>
                 <span className="font-bold text-xl text-indigo-600">
                   {newOrder.items
-                    .reduce((sum, item) => sum + item.price * item.quantity, 0)
+                    .reduce(
+                      (sum, item) => sum + item.unitPrice * item.quantity,
+                      0,
+                    )
                     .toLocaleString()}
                   đ
                 </span>
@@ -909,7 +934,7 @@ export default function OrdersPage() {
                       "dd/MM/yyyy HH:mm",
                       {
                         locale: vi,
-                      }
+                      },
                     )}
                   </p>
                 </div>
@@ -1046,7 +1071,7 @@ export default function OrdersPage() {
                       >
                         {amount.toLocaleString()}đ
                       </Button>
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -1111,7 +1136,11 @@ const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
 const ResponsiveBarChart = ({ data }: { data: any[] }) => {
   if (!data || data.length === 0)
-    return <div className="flex h-full items-center justify-center text-slate-400">Chưa có dữ liệu</div>;
+    return (
+      <div className="flex h-full items-center justify-center text-slate-400">
+        Chưa có dữ liệu
+      </div>
+    );
 
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -1130,7 +1159,10 @@ const ResponsiveBarChart = ({ data }: { data: any[] }) => {
           tickFormatter={(value) => `${value / 1000}k`}
         />
         <Tooltip
-          formatter={(value: any) => [`${value.toLocaleString()}đ`, "Doanh thu"]}
+          formatter={(value: any) => [
+            `${value.toLocaleString()}đ`,
+            "Doanh thu",
+          ]}
           labelFormatter={(label) => format(new Date(label), "dd/MM/yyyy")}
         />
         <Bar dataKey="revenue" fill="#4f46e5" radius={[4, 4, 0, 0]} />
@@ -1141,7 +1173,11 @@ const ResponsiveBarChart = ({ data }: { data: any[] }) => {
 
 const ResponsivePieChart = ({ data }: { data: any[] }) => {
   if (!data || data.length === 0)
-    return <div className="flex h-full items-center justify-center text-slate-400">Chưa có dữ liệu</div>;
+    return (
+      <div className="flex h-full items-center justify-center text-slate-400">
+        Chưa có dữ liệu
+      </div>
+    );
 
   return (
     <ResponsiveContainer width="100%" height="100%">

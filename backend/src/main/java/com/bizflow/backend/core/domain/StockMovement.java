@@ -24,7 +24,9 @@ public class StockMovement {
     private Long productId;
 
     @Enumerated(EnumType.STRING)
-    @Column(columnDefinition = "ENUM('SALE', 'STOCK_IN', 'STOCK_ADJUST', 'RETURN')")
+    // Removed columnDefinition to avoid mismatch with DB or Hibernate validation issues
+    // @Column(columnDefinition = "ENUM('SALE', 'STOCK_IN', 'STOCK_ADJUST', 'RETURN')")
+    @Column(length = 20)
     private MovementType type;
 
     @Column(nullable = false)

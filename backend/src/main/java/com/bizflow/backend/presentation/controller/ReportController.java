@@ -5,6 +5,11 @@ import com.bizflow.backend.infrastructure.persistence.repository.OrderItemReposi
 import com.bizflow.backend.infrastructure.persistence.repository.DebtRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.ProductRepository;
 import com.bizflow.backend.presentation.dto.response.RevenueChartDto;
+import com.bizflow.backend.presentation.dto.response.TT88DebtRow;
+import com.bizflow.backend.presentation.dto.response.TT88RevenueRow;
+import com.bizflow.backend.presentation.dto.response.TT88StockRow;
+import com.bizflow.backend.core.common.TT88ExcelExporter;
+import com.bizflow.backend.core.usecase.ReportService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,15 +29,18 @@ public class ReportController {
     private final OrderItemRepository orderItemRepository;
     private final DebtRepository debtRepository;
     private final ProductRepository productRepository;
+    private final ReportService reportService;
 
     public ReportController(OrderRepository orderRepository,
             OrderItemRepository orderItemRepository,
             DebtRepository debtRepository,
-            ProductRepository productRepository) {
+            ProductRepository productRepository,
+            ReportService reportService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.debtRepository = debtRepository;
         this.productRepository = productRepository;
+        this.reportService = reportService;
     }
 
     // 1. API DOANH THU (BIỂU ĐỒ)
@@ -179,6 +187,60 @@ public class ReportController {
                         "attachment; filename=bao-cao-tong-quan.csv")
                 .contentType(org.springframework.http.MediaType.parseMediaType("text/csv; charset=UTF-8"))
                 .body(bytes);
+    }
+
+    // 5. API XUẤT SỔ DOANH THU TT88 (EXCEL)
+    @GetMapping("/tt88/revenue")
+    public void exportTT88Revenue(
+            @RequestParam String from,
+            @RequestParam String to,
+            jakarta.servlet.http.HttpServletResponse response) throws Exception {
+
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+
+        List<TT88RevenueRow> data = reportService.getTT88Revenue(fromDate, toDate);
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=so-doanh-thu-TT88.xlsx");
+
+        TT88ExcelExporter.exportRevenue(data, response.getOutputStream());
+    }
+
+    // 6. API XUẤT SỔ CÔNG NỢ TT88 (EXCEL)
+    @GetMapping("/tt88/debt")
+    public void exportTT88Debt(
+            @RequestParam String from,
+            @RequestParam String to,
+            jakarta.servlet.http.HttpServletResponse response) throws Exception {
+
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+
+        List<TT88DebtRow> data = reportService.getTT88Debt(fromDate, toDate);
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=so-cong-no-TT88.xlsx");
+
+        TT88ExcelExporter.exportDebt(data, response.getOutputStream());
+    }
+
+    // 7. API XUẤT SỔ TỒN KHO TT88 (EXCEL)
+    @GetMapping("/tt88/stock")
+    public void exportTT88Stock(
+            @RequestParam String from,
+            @RequestParam String to,
+            jakarta.servlet.http.HttpServletResponse response) throws Exception {
+
+        LocalDate fromDate = LocalDate.parse(from);
+        LocalDate toDate = LocalDate.parse(to);
+
+        List<TT88StockRow> data = reportService.getTT88Stock(fromDate, toDate);
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=so-ton-kho-TT88.xlsx");
+
+        TT88ExcelExporter.exportStock(data, response.getOutputStream());
     }
 
     // Hàm phụ tính ngày bắt đầu

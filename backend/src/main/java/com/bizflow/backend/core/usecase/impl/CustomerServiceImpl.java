@@ -29,13 +29,13 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Page<CustomerDTO> getCustomersByStore(Long storeId, String search, Pageable pageable) {
         String searchKey = (search != null) ? search.trim() : "";
-        return customerRepository.findAllActiveWithSearch(searchKey, pageable)
+        return customerRepository.findAllActiveWithSearch(storeId, searchKey, pageable)
                 .map(this::mapToDTO);
     }
 
     @Override
     public Page<CustomerDTO> getAllActiveCustomers(Long storeId, Pageable pageable) {
-        return customerRepository.findAllActiveWithSearch("", pageable)
+        return customerRepository.findAllActiveWithSearch(storeId, "", pageable)
                 .map(this::mapToDTO);
     }
 

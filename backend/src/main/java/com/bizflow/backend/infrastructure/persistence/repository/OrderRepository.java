@@ -152,4 +152,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
         @Query("SELECT COUNT(o) FROM Order o WHERE (:startDate IS NULL OR o.createdAt >= :startDate) AND (:endDate IS NULL OR o.createdAt <= :endDate)")
         long countOrders(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+        // 8. TT88 EXPORT
+        List<Order> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
 }

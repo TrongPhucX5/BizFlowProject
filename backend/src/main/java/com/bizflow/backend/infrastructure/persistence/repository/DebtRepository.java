@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -30,4 +31,12 @@ public interface DebtRepository extends JpaRepository<Debt, Long> {
 
     // Tìm debt chưa thanh toán của khách hàng
     java.util.List<Debt> findByCustomerIdAndStoreIdAndStatusNot(Long customerId, Long storeId, Debt.DebtStatus status);
+
+    // TT88: Tổng nợ gốc phát sinh TRƯỚC ngày from
+    @Query("SELECT COALESCE(SUM(d.originalAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.customerId = :customerId AND d.createdAt < :date")
+    BigDecimal sumOriginalAmountBefore(@Param("storeId") Long storeId, @Param("customerId") Long customerId, @Param("date") LocalDateTime date);
+
+    // TT88: Tổng nợ gốc phát sinh TRONG KHOẢNG from - to
+    @Query("SELECT COALESCE(SUM(d.originalAmount), 0) FROM Debt d WHERE d.storeId = :storeId AND d.customerId = :customerId AND d.createdAt BETWEEN :from AND :to")
+    BigDecimal sumOriginalAmountBetween(@Param("storeId") Long storeId, @Param("customerId") Long customerId, @Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

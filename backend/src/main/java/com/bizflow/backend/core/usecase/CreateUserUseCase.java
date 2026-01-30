@@ -1,6 +1,8 @@
 package com.bizflow.backend.core.usecase;
 
+import com.bizflow.backend.core.domain.Store;
 import com.bizflow.backend.core.domain.User;
+import com.bizflow.backend.infrastructure.persistence.repository.StoreRepository;
 import com.bizflow.backend.infrastructure.persistence.repository.UserRepository;
 import com.bizflow.backend.presentation.dto.request.RegisterRequest;
 import com.bizflow.backend.presentation.dto.response.UserDTO;
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 public class CreateUserUseCase {
 
     private final UserRepository userRepository;
+    private final StoreRepository storeRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -34,16 +37,30 @@ public class CreateUserUseCase {
         user.setPhone(request.getPhone());
 
         // 3. Gán các giá trị mặc định
-        user.setRole(User.UserRole.EMPLOYEE);
         user.setStatus(User.UserStatus.ACTIVE);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
-        // 4. Gán Store ID
+        // 4. Gán Store ID và Role
         if (request.getStoreId() == null) {
-            user.setStoreId(1L);
+            // Nếu không có storeId, tạo Store mới và gán user làm OWNER
+            Store newStore = Store.builder()
+                    .name("Cửa hàng của " + request.getFullName())
+                    .status(Store.StoreStatus.ACTIVE)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+            Store savedStore = storeRepository.save(newStore);
+            
+            user.setStoreId(savedStore.getId());
+            user.setRole(User.UserRole.OWNER);
         } else {
+            // Nếu có storeId, gán user làm EMPLOYEE
+            // Kiểm tra store có tồn tại không
+            if (!storeRepository.existsById(request.getStoreId())) {
+                throw new RuntimeException("Cửa hàng không tồn tại");
+            }
             user.setStoreId(request.getStoreId());
+            user.setRole(User.UserRole.EMPLOYEE);
         }
 
         // 5. Lưu xuống Database

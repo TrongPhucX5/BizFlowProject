@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customerService, type Customer } from "@/services/customer.service1";
+import { reportsService } from "@/services/reports.service";
 import { CustomerFormModal } from "./customer-form-modal";
 import { CustomerDetailModal } from "./customer-detail-modal";
 import { toast } from "sonner";
@@ -20,6 +21,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -50,7 +53,9 @@ import {
   Receipt,
   Wallet,
   BarChart3,
-  PieChart as PieIcon
+  PieChart as PieIcon,
+  FileText,
+  Download
 } from "lucide-react";
 
 // --- IMPORT RECHARTS ---
@@ -91,6 +96,11 @@ export default function CustomerPage() {
   const [page, setPage] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // --- TT88 EXPORT STATES ---
+  const [exportFrom, setExportFrom] = useState("");
+  const [exportTo, setExportTo] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -182,6 +192,33 @@ export default function CustomerPage() {
     },
   });
 
+  const handleExportTT88Debt = async () => {
+    if (!exportFrom || !exportTo) {
+      toast.error("Vui lòng chọn khoảng thời gian xuất sổ!");
+      return;
+    }
+
+    try {
+      setExporting(true);
+      const blob = await reportsService.exportTT88Debt(exportFrom, exportTo);
+      
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `so-cong-no-TT88-${exportFrom}-${exportTo}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.success("Đã xuất sổ công nợ TT88!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Xuất sổ thất bại!");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="p-8 space-y-8 bg-[#f8fafc] min-h-screen font-sans">
       {/* Header Section */}
@@ -206,6 +243,56 @@ export default function CustomerPage() {
               onChange={(e) => setInputValue(e.target.value)}
             />
           </div>
+
+          {/* EXPORT TT88 DEBT */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-11 px-6 rounded-xl font-black uppercase shadow-lg border-none bg-white text-slate-700 hover:bg-slate-50"
+              >
+                {exporting ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-5 w-5" />
+                )}
+                Xuất sổ TT88
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-80 p-4 rounded-3xl shadow-2xl border-none">
+              <DropdownMenuLabel className="font-black uppercase text-xs text-slate-400 mb-2">
+                Chọn khoảng thời gian
+              </DropdownMenuLabel>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Từ ngày</span>
+                  <Input 
+                    type="date" 
+                    value={exportFrom}
+                    onChange={(e) => setExportFrom(e.target.value)}
+                    className="h-10 rounded-xl font-bold text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Đến ngày</span>
+                  <Input 
+                    type="date" 
+                    value={exportTo}
+                    onChange={(e) => setExportTo(e.target.value)}
+                    className="h-10 rounded-xl font-bold text-xs"
+                  />
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={handleExportTT88Debt}
+                className="p-3 rounded-xl font-bold cursor-pointer hover:bg-rose-50 hover:text-rose-600"
+              >
+                <FileText className="mr-2 h-4 w-4" /> Xuất Sổ Công Nợ
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             className="bg-indigo-600 hover:bg-indigo-700 h-11 px-8 rounded-xl font-bold shadow-lg shadow-indigo-200"
             onClick={() => { setSelectedCustomer(null); setModalOpen(true); }}

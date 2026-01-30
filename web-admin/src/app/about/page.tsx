@@ -66,8 +66,14 @@ export default function AboutPage() {
             <Button 
               variant="outline"
               size="lg"
-              className="border-white/10 hover:bg-white/5 text-white rounded-full px-8 h-14 text-lg font-semibold"
-              asChild
+              className="
+                  border-white/20
+                  text-slate-200
+                  hover:text-white
+                  hover:border-blue-500/50
+                  hover:bg-blue-500/10
+                  rounded-full px-8 h-14 text-lg font-semibold"
+                asChild
             >
               <Link href="https://github.com/" target="_blank">
                 <Github className="mr-2" size={20} /> GitHub

@@ -9,6 +9,7 @@ import com.bizflow.backend.presentation.exception.BusinessException;
 import com.bizflow.backend.presentation.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,7 @@ public class OrderService {
     // ================== CÁC PHƯƠNG THỨC CHÍNH (PUBLIC) ==================
 
     @Transactional
-    @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_ORDER", entityType = "ORDER")
+    @CacheEvict(value = "products_page", allEntries = true)
     public OrderDTO createOrder(CreateOrderRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         String createdBy = UserContext.getCurrentUsername();
@@ -68,7 +69,7 @@ public class OrderService {
     }
 
     @Transactional
-    @com.bizflow.backend.core.annotation.AuditAction(action = "UPDATE_ORDER", entityType = "ORDER")
+    @CacheEvict(value = "products_page", allEntries = true)
     public OrderDTO updateOrder(Long orderId, CreateOrderRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
         Order order = orderRepository.findById(orderId)
@@ -98,7 +99,7 @@ public class OrderService {
     }
 
     @Transactional
-    @com.bizflow.backend.core.annotation.AuditAction(action = "CANCEL_ORDER", entityType = "ORDER")
+    @CacheEvict(value = "products_page", allEntries = true)
     public void cancelOrder(Long orderId) {
         Long storeId = UserContext.getCurrentStoreId();
         Order order = orderRepository.findById(orderId)
@@ -161,7 +162,10 @@ public class OrderService {
         for (CreateOrderRequest.OrderItemRequest req : itemRequests) {
             Product prod = productRepository.findById(req.getProductId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
-
+            if (!prod.getStoreId().equals(storeId)) {
+                throw new ResourceNotFoundException("Product not found in your store");
+                // Báo lỗi không tìm thấy luôn để hacker không biết là sản phẩm tồn tại
+            }
             // Find or create inventory for product
             Inventory inv = inventoryRepository.findByStoreIdAndProductId(storeId, prod.getId())
                     .orElseGet(() -> {

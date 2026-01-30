@@ -1,6 +1,7 @@
 "use client";
 
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -135,7 +136,6 @@ export default function ReportsPage() {
 
         // Auto refresh data
         queryClient.invalidateQueries();
-
       } catch (e) {
         console.error("Error parsing WS message", e);
       }
@@ -170,7 +170,9 @@ export default function ReportsPage() {
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
   // Drill-down state
-  const [selectedDrillDate, setSelectedDrillDate] = useState<string | null>(null);
+  const [selectedDrillDate, setSelectedDrillDate] = useState<string | null>(
+    null,
+  );
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -263,9 +265,9 @@ export default function ReportsPage() {
 
     try {
       // Gửi kèm lịch sử để AI hiểu ngữ cảnh
-      const apiHistory = chatHistory.map(msg => ({
+      const apiHistory = chatHistory.map((msg) => ({
         role: msg.role === "model" ? "model" : "user",
-        content: msg.content
+        content: msg.content,
       }));
 
       const data = await reportsService.chatWithAi(userMsg, apiHistory);
@@ -369,20 +371,36 @@ export default function ReportsPage() {
     });
   };
 
-  const handleExport = async () => {
+  const handleExport = () => {
     try {
-      const blob = await reportsService.exportGeneralReport();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `bao-cao-tong-quan-${format(new Date(), "dd-MM-yyyy")}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // lấy dữ liệu đang có trên dashboard (ví dụ: revenue)
+      const data = realRevenueData.map((r) => ({
+        Ngày: r.date,
+        "Doanh thu": r.revenue,
+        "Lợi nhuận": r.profit,
+        "Số đơn": r.orders,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCao");
+
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      saveAs(
+        blob,
+        `bao-cao-tong-quan-${format(new Date(), "dd-MM-yyyy")}.xlsx`,
+      );
     } catch (error) {
       console.error("Export failed:", error);
-      alert("Xuất báo cáo thất bại.");
+      alert("Xuất Excel thất bại.");
     }
   };
 
@@ -405,7 +423,9 @@ export default function ReportsPage() {
             className="bg-white"
             disabled={isRefreshing}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
             {isRefreshing ? "Đang tải..." : "Làm mới"}
           </Button>
           <Button
@@ -427,10 +447,11 @@ export default function ReportsPage() {
           <button
             key={p.id}
             onClick={() => setPeriod(p.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p.id
-              ? "bg-indigo-600 text-white shadow-sm"
-              : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
-              }`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              period === p.id
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+            }`}
           >
             {p.label}
           </button>
@@ -443,7 +464,7 @@ export default function ReportsPage() {
                 "px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all",
                 period.startsWith("custom")
                   ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600",
               )}
             >
               <Calendar className="h-4 w-4" />
@@ -475,8 +496,8 @@ export default function ReportsPage() {
                   setPeriod(
                     `custom:${format(range.from, "yyyy-MM-dd")}:${format(
                       range.to,
-                      "yyyy-MM-dd"
-                    )}`
+                      "yyyy-MM-dd",
+                    )}`,
                   );
                 }
               }}
@@ -493,7 +514,9 @@ export default function ReportsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-emerald-800 mb-1">Doanh thu hôm nay</p>
+                <p className="text-sm font-medium text-emerald-800 mb-1">
+                  Doanh thu hôm nay
+                </p>
                 <p className="text-3xl font-bold text-emerald-700">
                   {stats.revenueToday?.toLocaleString()}đ
                 </p>
@@ -517,7 +540,9 @@ export default function ReportsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-800 mb-1">Tổng đơn hôm nay</p>
+                <p className="text-sm font-medium text-blue-800 mb-1">
+                  Tổng đơn hôm nay
+                </p>
                 <p className="text-3xl font-bold text-blue-700">
                   {stats.ordersToday}
                 </p>
@@ -538,7 +563,9 @@ export default function ReportsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-amber-800 mb-1">Tổng công nợ</p>
+                <p className="text-sm font-medium text-amber-800 mb-1">
+                  Tổng công nợ
+                </p>
                 <p className="text-3xl font-bold text-amber-700">
                   {stats.totalDebt?.toLocaleString()}đ
                 </p>
@@ -562,9 +589,12 @@ export default function ReportsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-red-800 mb-1">Sắp hết hàng</p>
+                <p className="text-sm font-medium text-red-800 mb-1">
+                  Sắp hết hàng
+                </p>
                 <p className="text-3xl font-bold text-red-700">
-                  {stats.warningProducts} <span className="text-lg font-normal text-red-600">sp</span>
+                  {stats.warningProducts}{" "}
+                  <span className="text-lg font-normal text-red-600">sp</span>
                 </p>
                 <div className="flex items-center mt-2 gap-1 text-xs font-semibold text-red-600 bg-red-100/50 w-fit px-2 py-1 rounded-full">
                   <AlertTriangle className="h-3 w-3" />
@@ -580,15 +610,28 @@ export default function ReportsPage() {
       </div>
 
       {/* TABS CONTENT */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="bg-white p-1 rounded-xl shadow-sm border">
-          <TabsTrigger value="revenue" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="revenue"
+            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+          >
             <BarChart3 className="mr-2 h-4 w-4" /> Doanh thu & Lợi nhuận
           </TabsTrigger>
-          <TabsTrigger value="inventory" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="inventory"
+            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+          >
             <Package className="mr-2 h-4 w-4" /> Tồn kho & Sản phẩm
           </TabsTrigger>
-          <TabsTrigger value="debt" className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+          <TabsTrigger
+            value="debt"
+            className="rounded-lg data-[state=active]:bg-indigo-600 data-[state=active]:text-white"
+          >
             <DollarSign className="mr-2 h-4 w-4" /> Công nợ khách hàng
           </TabsTrigger>
         </TabsList>
@@ -611,12 +654,17 @@ export default function ReportsPage() {
                       data={realRevenueData}
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                       onClick={(data: any) => {
-                        if (data && data.activePayload && data.activePayload.length > 0) {
+                        if (
+                          data &&
+                          data.activePayload &&
+                          data.activePayload.length > 0
+                        ) {
                           const payload = data.activePayload[0].payload;
                           if (payload && payload.fullDate) {
                             setSelectedDrillDate(payload.fullDate);
                             // Scroll to orders section gently
-                            const element = document.getElementById("orders-section");
+                            const element =
+                              document.getElementById("orders-section");
                             if (element) {
                               element.scrollIntoView({ behavior: "smooth" });
                             }
@@ -626,16 +674,48 @@ export default function ReportsPage() {
                       className="cursor-pointer"
                     >
                       <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        <linearGradient
+                          id="colorRevenue"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#10b981"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#10b981"
+                            stopOpacity={0}
+                          />
                         </linearGradient>
-                        <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                        <linearGradient
+                          id="colorProfit"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#f59e0b"
+                            stopOpacity={0.8}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#f59e0b"
+                            stopOpacity={0}
+                          />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="#e2e8f0"
+                      />
                       <XAxis
                         dataKey="date"
                         stroke="#94a3b8"
@@ -671,7 +751,12 @@ export default function ReportsPage() {
                         strokeWidth={3}
                         fill="url(#colorRevenue)"
                         activeDot={{ r: 6, strokeWidth: 0 }}
-                        dot={{ r: 4, fill: "#10b981", strokeWidth: 2, stroke: "#fff" }}
+                        dot={{
+                          r: 4,
+                          fill: "#10b981",
+                          strokeWidth: 2,
+                          stroke: "#fff",
+                        }}
                       />
                       <Area
                         type="monotone"
@@ -680,7 +765,12 @@ export default function ReportsPage() {
                         strokeWidth={3}
                         fill="url(#colorProfit)"
                         activeDot={{ r: 6, strokeWidth: 0 }}
-                        dot={{ r: 4, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
+                        dot={{
+                          r: 4,
+                          fill: "#f59e0b",
+                          strokeWidth: 2,
+                          stroke: "#fff",
+                        }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -723,10 +813,18 @@ export default function ReportsPage() {
                     <thead>
                       <tr className="border-b text-slate-500">
                         <th className="text-left font-medium py-3">Mã đơn</th>
-                        <th className="text-left font-medium py-3">Khách hàng</th>
-                        <th className="text-left font-medium py-3">Tổng tiền</th>
-                        <th className="text-left font-medium py-3">Trạng thái</th>
-                        <th className="text-left font-medium py-3">Thời gian</th>
+                        <th className="text-left font-medium py-3">
+                          Khách hàng
+                        </th>
+                        <th className="text-left font-medium py-3">
+                          Tổng tiền
+                        </th>
+                        <th className="text-left font-medium py-3">
+                          Trạng thái
+                        </th>
+                        <th className="text-left font-medium py-3">
+                          Thời gian
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
@@ -759,7 +857,11 @@ export default function ReportsPage() {
                                       : "bg-slate-100 text-slate-700 hover:bg-slate-100 border-slate-200"
                                 }
                               >
-                                {order.status === "PAID" ? "Đã thanh toán" : order.status === "UNPAID" ? "Chưa thanh toán" : order.status}
+                                {order.status === "PAID"
+                                  ? "Đã thanh toán"
+                                  : order.status === "UNPAID"
+                                    ? "Chưa thanh toán"
+                                    : order.status}
                               </Badge>
                             </td>
                             <td className="py-3 text-slate-500 text-xs">
@@ -769,7 +871,10 @@ export default function ReportsPage() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="text-center py-8 text-slate-400">
+                          <td
+                            colSpan={5}
+                            className="text-center py-8 text-slate-400"
+                          >
                             Chưa có đơn hàng nào
                           </td>
                         </tr>
@@ -790,21 +895,37 @@ export default function ReportsPage() {
                 <div className="space-y-4">
                   {topCustomers && topCustomers.length > 0 ? (
                     topCustomers.map((customer: any, index: number) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                      >
                         <div className="flex items-center gap-3">
-                          <div className={`
+                          <div
+                            className={`
                             w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                            ${index === 0 ? 'bg-yellow-100 text-yellow-700 ring-2 ring-yellow-200' :
-                              index === 1 ? 'bg-slate-200 text-slate-700' :
-                                index === 2 ? 'bg-orange-100 text-orange-800' : 'bg-slate-100 text-slate-600'}
-                          `}>
+                            ${
+                              index === 0
+                                ? "bg-yellow-100 text-yellow-700 ring-2 ring-yellow-200"
+                                : index === 1
+                                  ? "bg-slate-200 text-slate-700"
+                                  : index === 2
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-slate-100 text-slate-600"
+                            }
+                          `}
+                          >
                             {index + 1}
                           </div>
                           <div>
-                            <p className="font-medium text-sm text-slate-900 truncate w-[100px] sm:w-auto" title={customer.name}>
+                            <p
+                              className="font-medium text-sm text-slate-900 truncate w-[100px] sm:w-auto"
+                              title={customer.name}
+                            >
                               {customer.name}
                             </p>
-                            <p className="text-xs text-slate-500">{customer.orderCount} đơn hàng</p>
+                            <p className="text-xs text-slate-500">
+                              {customer.orderCount} đơn hàng
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -829,7 +950,6 @@ export default function ReportsPage() {
         {/* TAB 2: INVENTORY */}
         <TabsContent value="inventory" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
             {/* LOW STOCK TABLE */}
             <Card className="shadow-sm border-red-100">
               <CardHeader>
@@ -837,7 +957,9 @@ export default function ReportsPage() {
                   <AlertTriangle className="h-5 w-5" />
                   Sản phẩm cần nhập thêm
                 </CardTitle>
-                <CardDescription>Danh sách sản phẩm dưới định mức tồn kho</CardDescription>
+                <CardDescription>
+                  Danh sách sản phẩm dưới định mức tồn kho
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
@@ -853,14 +975,23 @@ export default function ReportsPage() {
                       {lowStockProducts && lowStockProducts.length > 0 ? (
                         lowStockProducts.map((p: any) => (
                           <tr key={p.id} className="hover:bg-red-50/50">
-                            <td className="py-2 text-slate-900 font-medium">{p.name}</td>
-                            <td className="py-2 text-red-600 font-bold">{p.stockQuantity}</td>
-                            <td className="py-2 text-slate-600">{p.costPrice?.toLocaleString()}đ</td>
+                            <td className="py-2 text-slate-900 font-medium">
+                              {p.name}
+                            </td>
+                            <td className="py-2 text-red-600 font-bold">
+                              {p.stockQuantity}
+                            </td>
+                            <td className="py-2 text-slate-600">
+                              {p.costPrice?.toLocaleString()}đ
+                            </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={3} className="text-center py-4 text-slate-400">
+                          <td
+                            colSpan={3}
+                            className="text-center py-4 text-slate-400"
+                          >
                             Tồn kho ổn định
                           </td>
                         </tr>
@@ -969,105 +1100,6 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* AI CHATBOT INTERFACE */}
-      <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200 shadow-md flex flex-col h-[600px]">
-        <CardHeader className="border-b border-indigo-100 bg-white/50 backdrop-blur-sm rounded-t-xl">
-          <CardTitle className="flex items-center gap-2 text-indigo-800">
-            <Sparkles className="h-5 w-5 text-indigo-600" />
-            Trợ lý AI Phân tích & Đề xuất
-          </CardTitle>
-          <CardDescription>
-            Hỏi chi tiết về doanh thu, tồn kho, hoặc yêu cầu lên đơn hàng.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-          {chatHistory.length === 0 && isLoadingAi ? (
-            <div className="flex items-start gap-3">
-              <div className="bg-indigo-100 p-2 rounded-full">
-                <Sparkles className="h-4 w-4 text-indigo-600 animate-pulse" />
-              </div>
-              <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm text-sm text-slate-600 animate-pulse">
-                Đang phân tích dữ liệu...
-              </div>
-            </div>
-          ) : (
-            <>
-              {chatHistory.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex w-full ${msg.role === "user" ? "justify-end" : "justify-start"
-                    }`}
-                >
-                  <div
-                    className={`flex items-start max-w-[80%] gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"
-                      }`}
-                  >
-                    <div
-                      className={`p-2 rounded-full shadow-sm ${msg.role === "user"
-                        ? "bg-slate-700 text-white"
-                        : "bg-white text-indigo-600 border border-indigo-100"
-                        }`}
-                    >
-                      {msg.role === "user" ? (
-                        <Users className="h-4 w-4" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div
-                      className={`p-3 rounded-2xl text-sm shadow-sm ${msg.role === "user"
-                        ? "bg-slate-700 text-white rounded-tr-none"
-                        : "bg-white text-slate-700 border border-indigo-50 rounded-tl-none"
-                        }`}
-                    >
-                      {msg.content}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {isChatSending && (
-                <div className="flex items-start gap-3">
-                  <div className="bg-indigo-100 p-2 rounded-full">
-                    <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" />
-                  </div>
-                  <div className="bg-white p-3 rounded-2xl rounded-tl-none border shadow-sm text-sm text-slate-500 italic">
-                    AI đang soạn tin...
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </CardContent>
-        <div className="p-4 border-t bg-white/50 backdrop-blur-sm rounded-b-xl">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleSendChat();
-            }}
-            className="flex gap-2"
-          >
-            <Input
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Nhập câu hỏi của bạn..."
-              className="flex-1 bg-white border-indigo-200 focus-visible:ring-indigo-500"
-            />
-            <Button
-              type="submit"
-              disabled={isChatSending}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
-            >
-              {isChatSending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Gửi"
-              )}
-            </Button>
-          </form>
-        </div>
-      </Card>
-
       {/* DIALOG THANH TOÁN NỢ */}
       <Dialog open={isPayDebtDialogOpen} onOpenChange={setIsPayDebtDialogOpen}>
         <DialogContent>
@@ -1123,6 +1155,6 @@ export default function ReportsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div >
+    </div>
   );
 }
