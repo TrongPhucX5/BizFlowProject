@@ -36,13 +36,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Query("SELECT o FROM Order o WHERE " +
                         "o.storeId = :storeId AND " +
                         "(:status IS NULL OR o.status = :status) AND " +
-                        "(:customerId IS NULL OR o.customerId = :customerId) AND " +
+                        "(:customerId IS NULL OR CAST(o.customerId AS string) LIKE %:customerId%) AND " +
                         "(:startDate IS NULL OR o.createdAt >= :startDate) AND " +
                         "(:endDate IS NULL OR o.createdAt <= :endDate)")
         Page<Order> findAllWithFilters(
                         @Param("storeId") Long storeId,
                         @Param("status") Order.OrderStatus status,
-                        @Param("customerId") Long customerId,
+                        @Param("customerId") String customerId,
                         @Param("startDate") LocalDateTime startDate,
                         @Param("endDate") LocalDateTime endDate,
                         Pageable pageable);

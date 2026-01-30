@@ -2,7 +2,7 @@ import axios from "@/lib/axios-client";
 
 /** * KHỚP 100% VỚI DATABASE ENUM
  */
-export type PaymentType = 'CASH' | 'CREDIT' | 'TRANSFER'; 
+export type PaymentType = 'CASH' | 'CREDIT' | 'TRANSFER';
 
 /** * KHỚP VỚI OrderStatus.java TRONG BACKEND
  */
@@ -11,11 +11,11 @@ export type OrderStatus = 'CONFIRMED' | 'PAID' | 'PAID_PARTIAL' | 'UNPAID' | 'CA
 export interface OrderFilterParams {
   page?: number;
   size?: number;
-  status?: string;     
-  startDate?: string;  
-  endDate?: string;    
-  customerId?: number; 
-  sort?: string;       
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  customerId?: string;
+  sort?: string;
 }
 
 export interface OrderItemDTO {
@@ -24,12 +24,13 @@ export interface OrderItemDTO {
   quantity: number;
   unitPrice: number;
   totalAmount: number;
-  productName?: string; 
+  productName?: string;
 }
 
 export interface OrderDTO {
   id: number;
-  orderNumber: string;
+  orderNumber?: string;
+  orderCode?: string;
   customerId: number;
   customerName?: string;
   subtotal: number;
@@ -44,29 +45,29 @@ export interface OrderDTO {
 
 export interface CreateOrderRequest {
   customerId: number;
-  items: { 
-    productId: number; 
-    quantity: number; 
-    unitPrice: number; 
+  items: {
+    productId: number;
+    quantity: number;
+    unitPrice: number;
   }[];
   discountAmount: number;
-  paymentType: PaymentType; 
-  status: OrderStatus; 
+  paymentType: PaymentType;
+  status: OrderStatus;
   notes?: string;
 }
 
 export interface PageResponse<T> {
-  content: T[]; 
+  content: T[];
   totalElements: number;
   totalPages: number;
   size: number;
-  number: number; 
+  number: number;
 }
 
 export interface ApiResponse<T> {
   code: number;
   message: string;
-  result: T; 
+  result: T;
 }
 
 export const orderService = {
@@ -86,7 +87,7 @@ export const orderService = {
     if (!cleanParams.sort) {
       cleanParams.sort = 'createdAt,desc';
     }
-    
+
     const response = await axios.get("/v1/orders", { params: cleanParams });
     return response.data;
   },

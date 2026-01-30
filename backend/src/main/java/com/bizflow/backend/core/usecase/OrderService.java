@@ -142,7 +142,7 @@ public class OrderService {
         return mapToDTO(savedOrder, orderItemRepository.findByOrderId(savedOrder.getId()));
     }
 
-    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId,
+    public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, String customerId,
             Pageable pageable) {
         Long storeId = UserContext.getCurrentStoreId();
         LocalDateTime start = (startDate != null) ? startDate.atStartOfDay() : null;

@@ -32,7 +32,7 @@ public class OrderController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) String customerId,
             Pageable pageable) {
 
         Page<OrderDTO> orders = orderService.getAllOrders(status, startDate, endDate, customerId, pageable);
