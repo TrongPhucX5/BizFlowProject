@@ -5,6 +5,7 @@ import { formatVND } from "@/lib/utils";
 
 interface RecentTenantsProps {
   data?: {
+    id: number; // Thêm id vào interface
     name: string;
     email: string;
     amount: number;
@@ -25,7 +26,7 @@ export function RecentTenants({ data = [] }: RecentTenantsProps) {
   return (
     <div className="space-y-6">
       {data.map((tenant) => (
-        <div key={tenant.email} className="flex items-center group cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors">
+        <div key={tenant.id} className="flex items-center group cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors">
           <Avatar className="h-10 w-10 border border-slate-200">
             <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${tenant.initials}&backgroundColor=3b82f6`} alt="Avatar" />
             <AvatarFallback>{tenant.initials}</AvatarFallback>
