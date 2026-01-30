@@ -39,6 +39,84 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
+  Future<void> _cancelOrder() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Xác nhận hủy"),
+        content: const Text("Bạn có chắc chắn muốn hủy đơn hàng này? Hàng sẽ được hoàn lại vào kho."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("KHÔNG")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true), 
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("HỦY ĐƠN")
+          ),
+        ],
+      )
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _repository.cancelOrder(widget.orderId);
+      await _fetchOrderDetail();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã hủy đơn hàng thành công"), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _markAsPaid() async {
+    setState(() => _isLoading = true);
+    try {
+      await _repository.updateOrderStatus(widget.orderId, 'PAID');
+      await _fetchOrderDetail();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã chuyển trạng thái sang Đã thanh toán"), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _undoPayment() async {
+    setState(() => _isLoading = true);
+    try {
+      await _repository.updateOrderStatus(widget.orderId, 'CONFIRMED');
+      await _fetchOrderDetail();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã hoàn tác trạng thái thanh toán"), backgroundColor: Colors.blue),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Lỗi: ${e.toString()}"), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -72,27 +150,91 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       const SizedBox(height: 16),
                       _buildPaymentSection(),
                       const SizedBox(height: 16),
-                      _buildNoteSection(),
+                       _buildNoteSection(),
+                      const SizedBox(height: 30),
+                      _buildActionButtons(),
                       const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => PrintOrderScreen(orderId: widget.orderId)));
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Theme.of(context).primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          icon: const Icon(Icons.print),
-                          label: const Text("IN HÓA ĐƠN", style: TextStyle(fontWeight: FontWeight.bold)),
-                        ),
-                      )
                     ],
                   ),
                 ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final status = _order!['status'] ?? 'PENDING';
+    final isCancelled = status == 'CANCELLED';
+    final isPaid = status == 'PAID';
+
+    return Column(
+      children: [
+        if (!isPaid && !isCancelled) ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _markAsPaid,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.check_circle_outline),
+              label: const Text("XÁC NHẬN ĐÃ THANH TOÁN", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (isPaid) ...[
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _undoPayment,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.undo_rounded),
+              label: const Text("HOÀN TÁC THANH TOÁN", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (!isCancelled) ...[
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _cancelOrder,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.cancel_outlined),
+              label: const Text("HỦY ĐƠN HÀNG", style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => PrintOrderScreen(orderId: widget.orderId)));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.print),
+            label: const Text("IN HÓA ĐƠN", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
     );
   }
 
@@ -109,7 +251,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_order!['orderCode'] ?? '#${_order!['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              Expanded(
+                child: Text(_order!['orderCode'] ?? '#${_order!['id']}', 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),

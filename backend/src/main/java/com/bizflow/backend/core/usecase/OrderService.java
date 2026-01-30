@@ -118,6 +118,30 @@ public class OrderService {
         orderRepository.save(order);
     }
 
+    @Transactional
+    @CacheEvict(value = "products_page", allEntries = true)
+    public OrderDTO updateOrderStatus(Long orderId, String status) {
+        Long storeId = UserContext.getCurrentStoreId();
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng: " + orderId));
+
+        if (!order.getStoreId().equals(storeId)) {
+            throw new BusinessException(4003, "Bạn không có quyền sửa đơn hàng này");
+        }
+
+        Order.OrderStatus newStatus = Order.OrderStatus.valueOf(status.toUpperCase());
+
+        // Nếu chuyển sang CANCELLED thì gọi hàm cancel để hoàn kho
+        if (newStatus == Order.OrderStatus.CANCELLED) {
+            cancelOrder(orderId);
+            return getOrderById(orderId);
+        }
+
+        order.setStatus(newStatus);
+        Order savedOrder = orderRepository.save(order);
+        return mapToDTO(savedOrder, orderItemRepository.findByOrderId(savedOrder.getId()));
+    }
+
     public Page<OrderDTO> getAllOrders(String status, LocalDate startDate, LocalDate endDate, Long customerId,
             Pageable pageable) {
         Long storeId = UserContext.getCurrentStoreId();
@@ -181,16 +205,23 @@ public class OrderService {
                                     .build();
                             return inventoryRepository.save(newInv);
                         } else {
-                            // Product có theo dõi kho nhưng chưa nhập -> tạo với số lượng 0
+                            // Di cư số liệu từ sản phẩm (legacy) sang bản ghi inventory mới
+                            int legacyStock = prod.getStockQuantity() != null ? prod.getStockQuantity() : 0;
+
                             Inventory newInv = Inventory.builder()
                                     .storeId(storeId)
                                     .productId(prod.getId())
-                                    .quantity(0)
-                                    .availableQuantity(0)
+                                    .quantity(legacyStock)
+                                    .availableQuantity(legacyStock)
                                     .build();
                             inventoryRepository.save(newInv);
-                            throw new BusinessException(4005,
-                                    "Sản phẩm '" + prod.getName() + "' hết hàng. Vui lòng nhập kho trước.");
+
+                            // Nếu sau khi kế thừa mà vẫn không đủ số lượng yêu cầu mới báo lỗi thực sự
+                            if (legacyStock < req.getQuantity()) {
+                                throw new BusinessException(4005,
+                                        "Sản phẩm '" + prod.getName() + "' không đủ hàng. Tồn kho: " + legacyStock);
+                            }
+                            return newInv;
                         }
                     });
 

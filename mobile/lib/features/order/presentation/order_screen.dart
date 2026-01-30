@@ -28,6 +28,16 @@ class _OrderScreenState extends State<OrderScreen> {
   List<Map<String, dynamic>> _orders = [];
   Map<String, List<Map<String, dynamic>>> _groupedOrders = {};
 
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -88,7 +98,15 @@ class _OrderScreenState extends State<OrderScreen> {
 
   void _groupOrdersByDate() {
     _groupedOrders = {};
+    final query = _searchController.text.toLowerCase();
+
     for (var order in _orders) {
+      if (_isSearching && query.isNotEmpty) {
+        final code = (order['orderCode'] ?? '').toLowerCase();
+        final name = (order['customerName'] ?? '').toLowerCase();
+        if (!code.contains(query) && !name.contains(query)) continue;
+      }
+
       final dateStr = order['createdAt'] ?? DateTime.now().toString();
       final date = DateTime.parse(dateStr);
       final key = DateFormat('dd/MM/yyyy').format(date);
@@ -153,12 +171,36 @@ class _OrderScreenState extends State<OrderScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC), 
       appBar: AppBar(
-        title: const Text('Quản lý đơn hàng', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: _isSearching 
+          ? TextField(
+              controller: _searchController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Tìm theo mã hoặc tên khách...',
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: Colors.black38),
+              ),
+              onChanged: (_) => setState(() => _groupOrdersByDate()),
+            )
+          : const Text('Quản lý đơn hàng', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.search, color: Colors.black54), onPressed: () {}),
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.black54), 
+            onPressed: () {
+              setState(() {
+                if (_isSearching) {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _groupOrdersByDate();
+                } else {
+                  _isSearching = true;
+                }
+              });
+            }
+          ),
         ],
       ),
       body: Column(

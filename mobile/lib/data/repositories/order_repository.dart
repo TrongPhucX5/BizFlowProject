@@ -12,8 +12,43 @@ class OrderRepository {
     try {
       await _dio.post(ApiConstants.ordersEndpoint, data: orderData);
     } on DioException catch (e) {
-      // Xử lý lỗi từ server trả về (nếu có message)
       throw Exception(e.response?.data['message'] ?? 'Tạo đơn hàng thất bại');
+    } catch (e) {
+      throw Exception('Lỗi kết nối: $e');
+    }
+  }
+
+  /// Cập nhật đơn hàng (Dùng để đổi trạng thái, sửa thông tin)
+  Future<void> updateOrder(int orderId, Map<String, dynamic> orderData) async {
+    try {
+      await _dio.put('${ApiConstants.ordersEndpoint}/$orderId', data: orderData);
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Cập nhật đơn hàng thất bại');
+    } catch (e) {
+      throw Exception('Lỗi kết nối: $e');
+    }
+  }
+
+  /// Cập nhật trạng thái đơn hàng (Dùng PATCH để nhẹ và chính xác hơn)
+  Future<void> updateOrderStatus(int orderId, String status) async {
+    try {
+      await _dio.patch(
+        '${ApiConstants.ordersEndpoint}/$orderId/status',
+        queryParameters: {'status': status},
+      );
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Cập nhật trạng thái thất bại');
+    } catch (e) {
+      throw Exception('Lỗi kết nối: $e');
+    }
+  }
+
+  /// Hủy đơn hàng (Hoàn kho)
+  Future<void> cancelOrder(int orderId) async {
+    try {
+      await _dio.delete('${ApiConstants.ordersEndpoint}/$orderId');
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Hủy đơn hàng thất bại');
     } catch (e) {
       throw Exception('Lỗi kết nối: $e');
     }

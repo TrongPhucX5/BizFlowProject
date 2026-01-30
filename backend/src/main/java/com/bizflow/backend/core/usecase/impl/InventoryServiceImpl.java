@@ -101,14 +101,17 @@ public class InventoryServiceImpl implements InventoryService {
 
         // 2. Get or Create Inventory
         Inventory inventory = inventoryRepository.findByStoreIdAndProductId(storeId, request.getProductId())
-                .orElseGet(() -> Inventory.builder()
-                        .storeId(storeId)
-                        .productId(request.getProductId())
-                        .quantity(0)
-                        .reservedQuantity(0)
-                        .availableQuantity(0)
-                        // .lastRestockedAt(LocalDateTime.now()) // Removed: Field does not exist
-                        .build());
+                .orElseGet(() -> {
+                    // Kế thừa tồn kho cũ từ cột stock_quantity trong bảng products
+                    int legacyStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+                    return Inventory.builder()
+                            .storeId(storeId)
+                            .productId(request.getProductId())
+                            .quantity(legacyStock)
+                            .reservedQuantity(0)
+                            .availableQuantity(legacyStock)
+                            .build();
+                });
 
         // 3. Update Inventory
         inventory.setQuantity(inventory.getQuantity() + request.getQuantity());

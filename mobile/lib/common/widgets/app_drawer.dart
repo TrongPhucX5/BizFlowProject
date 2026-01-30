@@ -133,29 +133,6 @@ class _AppDrawerState extends State<AppDrawer> {
                     );
                   },
                 ),
-                _drawerItem(
-                  icon: Icons.account_balance_wallet,
-                  title: "Sổ quỹ (Thu tiền)",
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const FinanceScreen()),
-                    );
-                  },
-                ),
-                _drawerItem(
-                  icon: Icons.inventory,
-                  title: "Kiểm kê kho",
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const StockAdjustmentScreen()),
-                    );
-                  },
-                ),
-                
                 const Divider(),
                 
                 _drawerItem(

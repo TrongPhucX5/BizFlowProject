@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/features/product/presentation/product_create_screen.dart';
-import 'package:mobile/features/product/presentation/hourly_service_screen.dart';
-import 'package:mobile/features/product/presentation/batch_product_create_screen.dart';
 import 'package:mobile/features/product/presentation/stock_in_screen.dart';
 import 'package:mobile/features/product/data/repositories/product_repository.dart';
 import 'package:mobile/data/repositories/inventory_repository.dart';
@@ -120,52 +118,12 @@ class ProductScreenState extends State<ProductScreen> with SingleTickerProviderS
   }
 
 
-  void _showProductCreateOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 24),
-            _buildOptionItem(Icons.shopping_bag_outlined, "Sản phẩm thường", "Theo dõi tồn kho cơ bản", () async {
-              Navigator.pop(context);
-              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const ProductCreateScreen()));
-              if (result == true) _fetchProducts();
-            }),
-            _buildOptionItem(Icons.access_time_rounded, "Dịch vụ theo giờ", "Tính tiền theo thời gian sử dụng", () async {
-              Navigator.pop(context);
-              final result = await Navigator.push(context, MaterialPageRoute(builder: (context) => const HourlyProductCreateScreen()));
-              if (result == true) _fetchProducts();
-            }),
-            _buildOptionItem(Icons.copy_rounded, "Tạo hàng loạt", "Import nhiều sản phẩm cùng lúc", () async {
-              Navigator.pop(context);
-              await Navigator.push(context, MaterialPageRoute(builder: (context) => const BatchProductCreateScreen()));
-              _fetchProducts();
-            }),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+  Future<void> _addNewProduct() async {
+    final result = await Navigator.push(
+      context, 
+      MaterialPageRoute(builder: (context) => const ProductCreateScreen())
     );
-  }
-
-  Widget _buildOptionItem(IconData icon, String title, String sub, VoidCallback onTap) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
-        child: Icon(icon, color: const Color(0xFF475569)),
-      ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-      subtitle: Text(sub, style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFCBD5E1)),
-    );
+    if (result == true) _fetchProducts();
   }
 
   @override
@@ -228,7 +186,7 @@ class ProductScreenState extends State<ProductScreen> with SingleTickerProviderS
 
   Widget _buildProductsTab() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_products.isEmpty) return _buildEmptyState(Icons.inventory_2_outlined, "Chưa có sản phẩm nào", "Thêm sản phẩm để bắt đầu kinh doanh", _showProductCreateOptions);
+    if (_products.isEmpty) return _buildEmptyState(Icons.inventory_2_outlined, "Chưa có sản phẩm nào", "Thêm sản phẩm để bắt đầu kinh doanh", _addNewProduct);
     
     return RefreshIndicator(
       onRefresh: _fetchProducts,
@@ -302,7 +260,7 @@ class ProductScreenState extends State<ProductScreen> with SingleTickerProviderS
        return Column(
          children: [
            if (_showOnlyLowStock) _buildLowStockFilterHeader(),
-           Expanded(child: _buildEmptyState(Icons.warehouse_outlined, _showOnlyLowStock ? "Không có hàng sắp hết" : "Chưa có dữ liệu kho", _showOnlyLowStock ? "Mọi thứ đều đang ổn định" : "Thêm sản phẩm để theo dõi tồn kho", _showOnlyLowStock ? () => setState(() => _showOnlyLowStock = false) : _showProductCreateOptions)),
+           Expanded(child: _buildEmptyState(Icons.warehouse_outlined, _showOnlyLowStock ? "Không có hàng sắp hết" : "Chưa có dữ liệu kho", _showOnlyLowStock ? "Mọi thứ đều đang ổn định" : "Thêm sản phẩm để theo dõi tồn kho", _showOnlyLowStock ? () => setState(() => _showOnlyLowStock = false) : _addNewProduct)),
          ],
        );
     }
@@ -378,7 +336,7 @@ class ProductScreenState extends State<ProductScreen> with SingleTickerProviderS
     ]));
   }
 
-  Widget _buildFab() => FloatingActionButton(onPressed: _showProductCreateOptions, child: const Icon(Icons.add));
+  Widget _buildFab() => FloatingActionButton(onPressed: _addNewProduct, child: const Icon(Icons.add));
 
   Widget _buildProductImage(String? imageUrl, {bool isGrid = false}) {
     if (imageUrl == null || imageUrl.isEmpty) return Container(color: Colors.grey.shade100, child: const Icon(Icons.image, color: Colors.grey));

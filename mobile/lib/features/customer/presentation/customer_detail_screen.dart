@@ -62,7 +62,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Single
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(widget.customer['fullName'] ?? 'Chi tiết khách hàng'),
+        title: Text(widget.customer['name'] ?? 'Chi tiết khách hàng'),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.blue,
@@ -93,7 +93,7 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> with Single
       child: Column(
         children: [
           _buildInfoCard("Thông tin cơ bản", [
-            _buildInfoRow(Icons.person, "Họ tên", c['fullName']),
+            _buildInfoRow(Icons.person, "Họ tên", c['name']),
             _buildInfoRow(Icons.phone, "Số điện thoại", c['phone']),
             _buildInfoRow(Icons.email, "Email", c['email'] ?? "Chưa có"),
             _buildInfoRow(Icons.location_on, "Địa chỉ", c['address'] ?? "Chưa có"),

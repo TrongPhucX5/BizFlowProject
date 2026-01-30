@@ -164,7 +164,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                 return CheckboxListTile(
                   value: _customers[index]['isSelected'] ?? false,
                   activeColor: const Color(0xFF3B66FF),
-                  title: Text(_customers[index]['fullName'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(_customers[index]['name'] ?? 'Không tên', style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(_customers[index]['phone']),
                   onChanged: (val) {
                     setState(() {

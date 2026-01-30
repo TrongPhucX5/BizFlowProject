@@ -17,6 +17,14 @@ class _CustomerScreenState extends State<CustomerScreen> {
   bool _isLoading = false;
 
   List<Map<String, dynamic>> customers = [];
+  List<Map<String, dynamic>> filteredCustomers = [];
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
 
   @override
@@ -31,6 +39,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
       final results = await _authRepository.getCustomers();
       setState(() {
         customers = results;
+        _filterCustomers();
       });
     } catch (e) {
       print("Lỗi tải dữ liệu: $e");
@@ -47,7 +56,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
   void _showCustomerForm({Map<String, dynamic>? existingCustomer}) {
     final idController = TextEditingController(text: (existingCustomer?['id'] ?? _generateCustomerId()).toString());
-    final nameController = TextEditingController(text: (existingCustomer?['fullName'] ?? '').toString());
+    final nameController = TextEditingController(text: (existingCustomer?['name'] ?? '').toString());
     final phoneController = TextEditingController(text: (existingCustomer?['phone'] ?? '').toString());
     final emailController = TextEditingController(text: (existingCustomer?['email'] ?? '').toString());
     final dobController = TextEditingController(text: (existingCustomer?['dob'] ?? '').toString());
@@ -127,7 +136,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                       final storeId = await _authRepository.getCurrentStoreId();
                       final data = {
                         "id": idController.text,
-                        "fullName": nameController.text,
+                        "name": nameController.text,
                         "phone": phoneController.text,
                         "gender": selectedGender,
                         "address": addressController.text,
@@ -155,6 +164,22 @@ class _CustomerScreenState extends State<CustomerScreen> {
     );
   }
 
+  void _filterCustomers() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      if (query.isEmpty) {
+        filteredCustomers = List.from(customers);
+      } else {
+        filteredCustomers = customers.where((c) {
+          final name = (c['name'] ?? '').toString().toLowerCase();
+          final phone = (c['phone'] ?? '').toString().toLowerCase();
+          final id = (c['id'] ?? '').toString().toLowerCase();
+          return name.contains(query) || phone.contains(query) || id.contains(query);
+        }).toList();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,7 +193,29 @@ class _CustomerScreenState extends State<CustomerScreen> {
           ),
         ],
       ),
-      body: _buildCustomerList(),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (_) => _filterCustomers(),
+              decoration: InputDecoration(
+                hintText: "Tìm kiếm tên, SĐT, mã KH...",
+                prefixIcon: const Icon(Icons.search, size: 20),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          Expanded(child: _buildCustomerList()),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCustomerForm,
         child: const Icon(Icons.add_rounded, size: 28),
@@ -179,16 +226,16 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
   Widget _buildCustomerList() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (customers.isEmpty) return _buildEmptyState(Icons.people_outline_rounded, "Chưa có khách hàng", "Thêm khách hàng để bắt đầu quản lý thông tin và công nợ");
+    if (filteredCustomers.isEmpty) return _buildEmptyState(Icons.people_outline_rounded, "Chưa có khách hàng", "Thêm khách hàng để bắt đầu quản lý thông tin và công nợ");
 
     return RefreshIndicator(
       onRefresh: _fetchData,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: customers.length,
+        itemCount: filteredCustomers.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
-          final item = customers[index];
+          final item = filteredCustomers[index];
           final type = item['type'] ?? 'RETAIL';
           final gender = (item['gender'] ?? '').toString().toUpperCase();
           final isFemale = gender.contains('NỮ') || gender.contains('NU');
@@ -226,7 +273,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
                           children: [
                             Row(
                               children: [
-                                Expanded(child: Text(item['fullName'], style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+                                Expanded(child: Text(item['name'] ?? 'Không tên', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
                                 const SizedBox(width: 8),
                                 _buildTypeBadge(type),
                               ],

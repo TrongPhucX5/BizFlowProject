@@ -166,16 +166,16 @@ public class OrderController {
         html.append("</body></html>");
         return html.toString();
     }
-    // @PatchMapping("/{id}/status")
-    // @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
-    // public ResponseEntity<ApiResponse<OrderDTO>> updateOrderStatus(
-    // @PathVariable Long id,
-    // @RequestParam String status) {
 
-    // OrderDTO order = orderService.updateOrderStatus(id, status);
-    // return ResponseEntity.ok(ApiResponse.success(order, "Order status updated
-    // successfully"));
-    // }
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
+    public ResponseEntity<ApiResponse<OrderDTO>> updateOrderStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+
+        OrderDTO order = orderService.updateOrderStatus(id, status);
+        return ResponseEntity.ok(ApiResponse.success(order, "Cập nhật trạng thái thành công"));
+    }
 
     // @PostMapping("/{id}/pay")
     // @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")

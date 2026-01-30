@@ -29,6 +29,13 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
   List<OrderItemData> _orderItems = [];
   String? _notes;
   File? _orderImage;
+  String _selectedPaymentType = 'CASH';
+  
+  final List<Map<String, dynamic>> _paymentTypes = [
+    {'id': 'CASH', 'label': 'Tiền mặt', 'icon': Icons.money},
+    {'id': 'CREDIT', 'label': 'Khách nợ', 'icon': Icons.hourglass_empty},
+    {'id': 'TRANSFER', 'label': 'Chuyển khoản (Đang phát triển)', 'icon': Icons.swap_horiz},
+  ];
   
   @override
   void initState() {
@@ -105,6 +112,8 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
             _orderItems.add(OrderItemData(
               productId: product['id'],
               productName: product['name'] ?? 'Sản phẩm',
+              sku: product['sku'] ?? 'N/A',
+              currentStock: product['stock'] ?? 0,
               quantity: quantity,
               unitPrice: price,
             ));
@@ -153,7 +162,7 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
           'unitPrice': item.unitPrice,
         }).toList(),
         'notes': _notes ?? '',
-        'paymentType': 'CASH',
+        'paymentType': _selectedPaymentType,
         'discountAmount': 0,
       };
       
@@ -216,6 +225,14 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
                   ),
                   const SizedBox(height: 16),
                   
+                  // Payment Type
+                  _buildSectionCard(
+                    title: 'Hình thức thanh toán',
+                    icon: Icons.payments_outlined,
+                    child: _buildPaymentTypeSelector(primaryBlue),
+                  ),
+                  const SizedBox(height: 16),
+
                   // Image Upload
                   _buildSectionCard(
                     title: 'Hình ảnh đơn hàng',
@@ -485,8 +502,36 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
                 children: [
                   Text(
                     item.productName,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'SKU: ${item.sku}',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[700], fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Tồn: ${item.currentStock}',
+                        style: TextStyle(
+                          fontSize: 10, 
+                          color: item.currentStock > 0 ? Colors.green[700] : Colors.red[700],
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     '${item.quantity} x ${_formatCurrency(item.unitPrice)}',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
@@ -498,6 +543,7 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
               _formatCurrency(item.quantity * item.unitPrice),
               style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
                 color: primaryBlue,
               ),
             ),
@@ -558,18 +604,65 @@ class _ManualOrderScreenState extends State<ManualOrderScreen> {
       ),
     );
   }
+
+  Widget _buildPaymentTypeSelector(Color primaryBlue) {
+    return Column(
+      children: _paymentTypes.map((type) {
+        final bool isSelected = _selectedPaymentType == type['id'];
+        return InkWell(
+          onTap: () => setState(() => _selectedPaymentType = type['id']),
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isSelected ? primaryBlue : Colors.grey.shade300,
+                width: isSelected ? 2 : 1,
+              ),
+              borderRadius: BorderRadius.circular(12),
+              color: isSelected ? primaryBlue.withOpacity(0.05) : Colors.transparent,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  type['icon'],
+                  color: isSelected ? primaryBlue : Colors.grey,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  type['label'],
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? primaryBlue : Colors.black87,
+                  ),
+                ),
+                const Spacer(),
+                if (isSelected)
+                  Icon(Icons.check_circle, color: primaryBlue, size: 20),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
 }
 
 // Helper class for order items
 class OrderItemData {
   final int productId;
   final String productName;
+  final String sku;
+  final int currentStock;
   final int quantity;
   final double unitPrice;
 
   OrderItemData({
     required this.productId,
     required this.productName,
+    required this.sku,
+    required this.currentStock,
     required this.quantity,
     required this.unitPrice,
   });
@@ -591,8 +684,29 @@ class _ProductSelector extends StatefulWidget {
 
 class _ProductSelectorState extends State<_ProductSelector> {
   Map<String, dynamic>? _selectedProduct;
+  late TextEditingController _qtyController;
   int _quantity = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _qtyController = TextEditingController(text: '$_quantity');
+  }
+
+  @override
+  void dispose() {
+    _qtyController.dispose();
+    super.dispose();
+  }
   
+  void _updateQuantity(int newQty) {
+    if (newQty < 1) return;
+    setState(() {
+      _quantity = newQty;
+      _qtyController.text = '$_quantity';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -625,9 +739,33 @@ class _ProductSelectorState extends State<_ProductSelector> {
               isExpanded: true,
               underline: const SizedBox(),
               items: widget.products.map((product) {
+                final int stock = product['stock'] ?? 0;
+                final String sku = product['sku'] ?? 'N/A';
                 return DropdownMenuItem(
                   value: product,
-                  child: Text(product['name'] ?? 'Sản phẩm'),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(product['name'] ?? 'Sản phẩm', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('SKU: $sku', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Tồn: $stock',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: stock > 0 ? Colors.green : Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }).toList(),
               onChanged: (value) => setState(() => _selectedProduct = value),
@@ -642,15 +780,30 @@ class _ProductSelectorState extends State<_ProductSelector> {
               const SizedBox(width: 16),
               IconButton(
                 icon: const Icon(Icons.remove_circle_outline),
-                onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null,
+                onPressed: _quantity > 1 ? () => _updateQuantity(_quantity - 1) : null,
               ),
-              Text(
-                '$_quantity',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              SizedBox(
+                width: 60,
+                child: TextField(
+                  controller: _qtyController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    final newQty = int.tryParse(value);
+                    if (newQty != null && newQty > 0) {
+                      setState(() => _quantity = newQty);
+                    }
+                  },
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
-                onPressed: () => setState(() => _quantity++),
+                onPressed: () => _updateQuantity(_quantity + 1),
               ),
             ],
           ),
@@ -671,11 +824,22 @@ class _ProductSelectorState extends State<_ProductSelector> {
             child: ElevatedButton(
               onPressed: _selectedProduct == null
                   ? null
-                  : () => widget.onSelect(
+                  : () {
+                      final int stock = _selectedProduct!['stock'] ?? 0;
+                      if (stock <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Sản phẩm này hiện đang hết hàng (Tồn: 0). Vui lòng nhập kho trước."),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                      widget.onSelect(
                         _selectedProduct!,
                         _quantity,
                         (_selectedProduct!['price'] ?? 0).toDouble(),
-                      ),
+                      );
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1565C0),
                 foregroundColor: Colors.white,
