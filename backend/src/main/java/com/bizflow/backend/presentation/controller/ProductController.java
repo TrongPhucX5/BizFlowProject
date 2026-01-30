@@ -34,9 +34,20 @@ public class ProductController {
     @GetMapping
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ApiResponse<Page<ProductDTO>>> getProducts(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false, defaultValue = "ALL") String status,
             @PageableDefault(size = 20) Pageable pageable) {
         Long storeId = UserContext.getCurrentStoreId();
-        Page<ProductDTO> products = productService.getProductsByStore(storeId, pageable);
+        // Nâng cấp: gọi hàm searchProducts nếu có search param
+        Page<ProductDTO> products;
+        if (search != null && !search.isEmpty()) {
+            products = productService.searchProducts(search, storeId, pageable);
+        } else {
+            // Cần sửa Service để nhận thêm StoreId lọc theo status nếu cần (nhưng hiện tại
+            // searchProducts bên dưới sẽ cover luôn phần này nếu ta gộp logic)
+            // Tạm thời vẫn dùng hàm getProductsByStore
+            products = productService.getProductsByStore(storeId, pageable);
+        }
         return ResponseEntity.ok(ApiResponse.success(products, "Products retrieved successfully"));
     }
 

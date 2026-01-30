@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @SpringBootApplication
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 @EnableJpaRepositories(basePackages = "com.bizflow.backend.infrastructure.persistence.repository")
+@org.springframework.boot.autoconfigure.domain.EntityScan(basePackages = "com.bizflow.backend.core.domain")
 public class BizFlowBackendApplication {
 
 	public static void main(String[] args) {

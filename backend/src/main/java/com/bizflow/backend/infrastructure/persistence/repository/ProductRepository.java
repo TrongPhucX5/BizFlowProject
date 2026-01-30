@@ -26,5 +26,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     List<Product> findByStoreIdAndStockQuantityLessThanEqual(Long storeId, Integer quantity, Pageable pageable);
 
+    // Tìm kiếm theo Name hoặc SKU
+    Page<Product> findByStoreIdAndNameContainingIgnoreCaseOrStoreIdAndSkuContainingIgnoreCase(
+            Long storeId1, String name,
+            Long storeId2, String sku,
+            Pageable pageable);
+
     List<Product> findByStoreIdAndNameContainingIgnoreCase(Long storeId, String name);
 }

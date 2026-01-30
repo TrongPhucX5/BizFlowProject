@@ -191,8 +191,13 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public Page<ProductDTO> searchProducts(String k, Long s, Pageable p) {
-        return Page.empty();
+    public Page<ProductDTO> searchProducts(String keyword, Long storeId, Pageable pageable) {
+        if (keyword == null || keyword.isEmpty()) {
+            return getProductsByStore(storeId, pageable);
+        }
+        return productRepository.findByStoreIdAndNameContainingIgnoreCaseOrStoreIdAndSkuContainingIgnoreCase(
+                storeId, keyword, storeId, keyword, pageable)
+                .map(this::mapToDTO);
     }
 
     @Override
