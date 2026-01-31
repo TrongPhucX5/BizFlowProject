@@ -243,10 +243,13 @@ export default function SystemLogsPage() {
   const safeParse = (jsonStr: string | null) => {
     if (!jsonStr) return {};
     try {
-      return JSON.parse(jsonStr);
+      const trimmed = jsonStr.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        return JSON.parse(jsonStr);
+      }
+      return { _is_plain_text: true, message: jsonStr };
     } catch (e) {
-      console.error("Failed to parse JSON:", e);
-      return { _error: "Dữ liệu bị quá tải hoặc lỗi định dạng", _raw: jsonStr };
+      return { _is_plain_text: true, message: jsonStr };
     }
   };
 
@@ -504,12 +507,12 @@ export default function SystemLogsPage() {
                       </div>
                       Bản ghi sự kiện #{selectedLog?.id}
                    </div>
-                   <h2 className="text-2xl font-black text-slate-900 tracking-tight">Chi tiết thay đổi hệ thống</h2>
-                   <p className="text-slate-500 font-medium text-sm">
+                   <DialogTitle className="text-2xl font-black text-slate-900 tracking-tight">Chi tiết thay đổi hệ thống</DialogTitle>
+                   <DialogDescription className="text-slate-500 font-medium text-sm">
                      Người thực hiện: <span className="text-slate-900 font-bold">{selectedLog?.userFullName || selectedLog?.userName}</span> 
                      <span className="mx-2 text-slate-300">|</span> 
                      Thời gian: <span className="text-slate-900 font-bold">{selectedLog?.createdAt && format(new Date(selectedLog.createdAt), "HH:mm:ss - dd/MM/yyyy", { locale: vi })}</span>
-                   </p>
+                   </DialogDescription>
                 </div>
                 <div className="scale-105">
                   {selectedLog?.action && getActionBadge(selectedLog.action)}

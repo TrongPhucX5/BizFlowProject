@@ -1,5 +1,7 @@
 package com.bizflow.backend.presentation.controller;
 
+import com.bizflow.backend.core.domain.AuditLog;
+import com.bizflow.backend.core.usecase.AuditLogService;
 import com.bizflow.backend.core.usecase.CreateUserUseCase;
 import com.bizflow.backend.core.usecase.UserService;
 import com.bizflow.backend.presentation.dto.request.LoginRequest;
@@ -10,6 +12,8 @@ import com.bizflow.backend.presentation.dto.response.ApiResponse;
 import com.bizflow.backend.presentation.dto.response.LoginResponse;
 import com.bizflow.backend.presentation.dto.response.UserDTO;
 import com.bizflow.backend.infrastructure.security.CustomUserDetails;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
 
 /**
  * AuthController: Authentication and User management endpoints
@@ -31,19 +36,52 @@ public class AuthController {
 
         private final UserService userService;
         private final CreateUserUseCase createUserUseCase;
+        private final AuditLogService auditLogService;
+        private final ObjectMapper objectMapper;
 
         /**
          * POST /v1/auth/login
          */
         @PostMapping("/login")
         public ResponseEntity<ApiResponse<LoginResponse>> login(
-                @Valid @RequestBody LoginRequest request) {
+                        @Valid @RequestBody LoginRequest request,
+                        HttpServletRequest servletRequest) {
                 log.info("Login request for user: {}", request.getUsername());
                 LoginResponse response = userService.login(request);
                 log.info("Login successful for user: {}", request.getUsername());
 
+                // Ghi nhật ký đăng nhập thủ công
+                try {
+                    String ipAddress = servletRequest.getHeader("X-Forwarded-For");
+                    if (ipAddress == null || ipAddress.isEmpty()) {
+                        ipAddress = servletRequest.getRemoteAddr();
+                    } else {
+                        ipAddress = ipAddress.split(",")[0];
+                    }
+
+                    AuditLog logEntry = AuditLog.builder()
+                            .userId(response.getUser().getId())
+                            .userName(response.getUser().getUsername())
+                            .userFullName(response.getUser().getFullName())
+                            .action("LOGIN")
+                            .entityType("USER")
+                            .entityId(response.getUser().getId())
+                            .ipAddress(ipAddress)
+                            .createdAt(LocalDateTime.now())
+                            .newValue(objectMapper.writeValueAsString(java.util.Map.of(
+                                    "status", "Thành công",
+                                    "message", "Người dùng đăng nhập thành công",
+                                    "loginTime", LocalDateTime.now().toString()
+                            )))
+                            .build();
+
+                    auditLogService.createLog(logEntry);
+                } catch (Exception e) {
+                    log.error("Failed to create login audit log", e);
+                }
+
                 return ResponseEntity.ok(
-                        ApiResponse.success(response, "Login successful"));
+                                ApiResponse.success(response, "Login successful"));
         }
 
         /**
