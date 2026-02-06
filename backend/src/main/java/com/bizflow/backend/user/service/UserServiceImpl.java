@@ -93,6 +93,13 @@ public class UserServiceImpl implements UserService {
             throw new UnauthorizedException("Sai mật khẩu");
         }
 
+        if (user.getStoreId() != null) {
+            Store store = storeRepository.findById(user.getStoreId()).orElse(null);
+            if (store != null && store.getStatus() == Store.StoreStatus.LOCKED) {
+                throw new UnauthorizedException("Tài khoản cửa hàng đã bị khóa. Vui lòng liên hệ quản trị viên hệ thống.");
+            }
+        }
+
         CustomUserDetails userDetails = new CustomUserDetails(
                 user.getId(),
                 user.getStoreId(),

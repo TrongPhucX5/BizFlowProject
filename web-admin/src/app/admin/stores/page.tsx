@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Lock, Unlock, Search, Loader2 } from "lucide-react";
+import { MoreHorizontal, Lock, Unlock, Search, Loader2, Trash } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,7 +44,7 @@ export default function StoresPage() {
 
   // For confirmation dialog
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [actionType, setActionType] = useState<"LOCK" | "UNLOCK" | null>(null);
+  const [actionType, setActionType] = useState<"LOCK" | "UNLOCK" | "DELETE" | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchStores = async () => {
@@ -74,12 +74,16 @@ export default function StoresPage() {
     if (!selectedStore || !actionType) return;
 
     try {
-      const newStatus = actionType === "LOCK" ? "LOCKED" : "ACTIVE";
-      await storeService.updateStoreStatus(selectedStore.id, newStatus);
+      if (actionType === "DELETE") {
+         await storeService.deleteStore(selectedStore.id);
+      } else {
+         const newStatus = actionType === "LOCK" ? "LOCKED" : "ACTIVE";
+         await storeService.updateStoreStatus(selectedStore.id, newStatus);
+      }
       fetchStores(); // Refresh list
     } catch (error) {
       console.error("Failed to update status:", error);
-      alert("Cập nhật trạng thái thất bại!");
+      alert("Thao tác thất bại!");
     } finally {
       setIsDialogOpen(false);
       setSelectedStore(null);
@@ -87,7 +91,7 @@ export default function StoresPage() {
     }
   };
 
-  const openConfirmDialog = (store: Store, type: "LOCK" | "UNLOCK") => {
+  const openConfirmDialog = (store: Store, type: "LOCK" | "UNLOCK" | "DELETE") => {
     setSelectedStore(store);
     setActionType(type);
     setIsDialogOpen(true);
@@ -178,10 +182,13 @@ export default function StoresPage() {
                                 <Unlock className="mr-2 h-4 w-4" /> Mở khóa
                              </DropdownMenuItem>
                         ) : (
-                             <DropdownMenuItem onClick={() => openConfirmDialog(store, "LOCK")} className="text-red-600">
+                             <DropdownMenuItem onClick={() => openConfirmDialog(store, "LOCK")} className="text-yellow-600">
                                 <Lock className="mr-2 h-4 w-4" /> Khóa tài khoản
                              </DropdownMenuItem>
                         )}
+                        <DropdownMenuItem onClick={() => openConfirmDialog(store, "DELETE")} className="text-red-600">
+                           <Trash className="mr-2 h-4 w-4" /> Xóa
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -219,24 +226,34 @@ export default function StoresPage() {
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận thay đổi trạng thái</AlertDialogTitle>
+            <AlertDialogTitle>
+                {actionType === "DELETE" ? "Xác nhận xóa cửa hàng?" : "Xác nhận thay đổi trạng thái"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn {actionType === "LOCK" ? "KHÓA" : "MỞ KHÓA"} cửa hàng{" "}
-              <span className="font-bold text-foreground">{selectedStore?.name}</span> không?
-              {actionType === "LOCK" && (
-                <span className="block mt-2 text-red-500 text-sm">
-                  Lưu ý: Khi bị khóa, toàn bộ nhân viên của cửa hàng này sẽ không thể truy cập hệ thống.
-                </span>
+              {actionType === "DELETE" ? (
+                  <span className="text-red-600">
+                      Hành động này không thể hoàn tác. Dữ liệu của cửa hàng <strong>{selectedStore?.name}</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.
+                  </span>
+              ) : (
+                  <>
+                    Bạn có chắc chắn muốn {actionType === "LOCK" ? "KHÓA" : "MỞ KHÓA"} cửa hàng{" "}
+                    <span className="font-bold text-foreground">{selectedStore?.name}</span> không?
+                    {actionType === "LOCK" && (
+                        <span className="block mt-2 text-red-500 text-sm">
+                          Lưu ý: Khi bị khóa, toàn bộ nhân viên của cửa hàng này sẽ không thể truy cập hệ thống.
+                        </span>
+                    )}
+                  </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Hủy bỏ</AlertDialogCancel>
             <AlertDialogAction
-                className={actionType === "LOCK" ? "bg-red-600 hover:bg-red-700" : ""}
+                className={actionType === "LOCK" || actionType === "DELETE" ? "bg-red-600 hover:bg-red-700" : ""}
                 onClick={handleStatusChange}
             >
-              {actionType === "LOCK" ? "Xác nhận Khóa" : "Xác nhận Mở"}
+              {actionType === "DELETE" ? "Xóa vĩnh viễn" : actionType === "LOCK" ? "Xác nhận Khóa" : "Xác nhận Mở"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

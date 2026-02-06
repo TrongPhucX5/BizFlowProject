@@ -64,4 +64,11 @@ public class StoreController {
         StoreDTO updatedStore = storeService.updateStoreInfo(storeId, request);
         return ResponseEntity.ok(ApiResponse.success(updatedStore, "Cập nhật thông tin cửa hàng thành công"));
     }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteStore(@PathVariable Long id) {
+        storeService.deleteStore(id);
+        return ResponseEntity.ok(ApiResponse.success(null, "Xóa cửa hàng thành công"));
+    }
 }

@@ -63,6 +63,13 @@ public class StoreServiceImpl implements StoreService {
         return mapToDTO(store);
     }
 
+    @Override
+    public void deleteStore(Long id) {
+        Store store = storeRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+        storeRepository.delete(store);
+    }
+
     private StoreDTO mapToDTO(Store store) {
         return StoreDTO.builder()
                 .id(store.getId())

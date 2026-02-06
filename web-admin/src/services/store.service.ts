@@ -48,4 +48,10 @@ export const storeService = {
     const response = await axiosClient.get<ApiResponse<Store>>(`/v1/stores/${id}`);
     return response.data;
   },
+
+  // Xóa store
+  deleteStore: async (id: number) => {
+    const response = await axiosClient.delete<ApiResponse<null>>(`/v1/stores/${id}`);
+    return response.data;
+  },
 };

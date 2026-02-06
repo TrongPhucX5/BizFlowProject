@@ -13,4 +13,6 @@ public interface StoreService {
     StoreDTO getStoreById(Long id);
 
     StoreDTO updateStoreInfo(Long id, java.util.Map<String, Object> request);
+
+    void deleteStore(Long id);
 }
