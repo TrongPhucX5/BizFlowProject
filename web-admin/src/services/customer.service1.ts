@@ -9,9 +9,9 @@ export interface Customer {
   address: string;
   type: "RETAIL" | "WHOLESALE" | "CORPORATE"; 
   status: "ACTIVE" | "INACTIVE"; 
-  totalDebt: number;
-  totalPurchaseAmount: number;
-  totalOrders: number;
+  totalDebt: number;           
+  totalPurchaseAmount: number; 
+  totalOrders: number;         
   taxCode?: string;
   notes?: string;
   contactPerson?: string;
@@ -43,45 +43,42 @@ export const customerService = {
 
     const data = response.data;
     
-    // 1. Xác định vị trí mảng content (Dựa trên JSON bạn gửi là data.result.content)
-    const rawContent = data?.result?.content || data?.content || data?.data?.content || [];
+    // 1. Xác định vị trí mảng content linh hoạt hơn
+    const rawContent = data?.result?.content || data?.content || data?.data || [];
     
-    // 2. Định dạng lại dữ liệu số để tránh lỗi hiển thị "0" do sai kiểu dữ liệu
+    // 2. Định dạng dữ liệu: Ép kiểu nghiêm ngặt và kiểm tra đa dạng tên biến
     const formattedContent = Array.isArray(rawContent) 
       ? rawContent.map((item: any) => ({
           ...item,
-          // Đảm bảo các trường này luôn là Number để Frontend tính được tổng (reduce)
-          totalDebt: Number(item.totalDebt || 0),
-          totalPurchaseAmount: Number(item.totalPurchaseAmount || 0),
-          totalOrders: Number(item.totalOrders || 0)
+          // Kiểm tra tất cả các trường có thể chứa giá trị nợ từ Backend
+          totalDebt: Number(item.totalDebt ?? item.debt ?? item.currentDebt ?? item.balance ?? 0),
+          totalPurchaseAmount: Number(item.totalPurchaseAmount ?? item.purchaseAmount ?? item.totalSpent ?? 0),
+          totalOrders: Number(item.totalOrders ?? item.orderCount ?? item.numOrders ?? 0)
         }))
       : [];
 
-    // 3. Trả về cấu trúc phẳng để CustomerPage.tsx dễ xử lý
+    // 3. Trả về cấu trúc chuẩn để đồng bộ với logic phân trang của UI
     return {
       content: formattedContent,
-      totalElements: data?.result?.page?.totalElements || data?.page?.totalElements || 0,
+      totalElements: data?.result?.page?.totalElements || data?.page?.totalElements || data?.totalElements || formattedContent.length,
       totalPages: data?.result?.page?.totalPages || data?.page?.totalPages || 1
     };
   },
 
-  getTotalActiveCount: async (): Promise<number> => {
-    try {
-      const response = await axiosClient.get(BASE_URL, {
-        params: { size: 1, page: 0, status: "ACTIVE" }
-      });
-      const res = response.data as any;
-      // Kiểm tra tất cả các lớp bọc của Backend
-      return res?.result?.page?.totalElements ?? res?.page?.totalElements ?? 0;
-    } catch (error) {
-      return 0;
-    }
+  // Lấy chi tiết 1 khách hàng (Cần thiết khi cập nhật đơn hàng xong phải load lại nợ)
+  getCustomerById: async (id: number | string): Promise<Customer> => {
+    const response = await axiosClient.get(`${BASE_URL}/${id}`);
+    const item = response.data?.result || response.data?.data || response.data;
+    return {
+      ...item,
+      totalDebt: Number(item.totalDebt ?? item.debt ?? 0),
+      totalPurchaseAmount: Number(item.totalPurchaseAmount ?? item.purchaseAmount ?? 0),
+    };
   },
 
   createCustomer: async (data: Partial<Customer>): Promise<ApiResponse<Customer>> => {
     const payload = {
       ...data,
-      // Đảm bảo gửi lên Backend đúng kiểu số
       totalOrders: Number(data.totalOrders || 0),
       totalPurchaseAmount: Number(data.totalPurchaseAmount || 0),
       totalDebt: Number(data.totalDebt || 0),
@@ -96,7 +93,6 @@ export const customerService = {
       totalPurchaseAmount: Number(data.totalPurchaseAmount || 0),
       totalDebt: Number(data.totalDebt || 0),
     };
-    // Sử dụng Number(id) để tránh lỗi URL nếu id truyền vào là string
     return (await axiosClient.put<ApiResponse<Customer>>(`${BASE_URL}/${Number(id)}`, payload)).data;
   },
 

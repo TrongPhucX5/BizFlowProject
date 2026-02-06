@@ -47,8 +47,7 @@ public class CustomerServiceImpl implements CustomerService {
     @com.bizflow.backend.core.annotation.AuditAction(action = "CREATE_CUSTOMER", entityType = "CUSTOMER")
     public CustomerDTO createCustomer(CreateCustomerRequest request) {
         Long storeId = UserContext.getCurrentStoreId();
-        if (storeId == null)
-            storeId = 1L;
+        if (storeId == null) storeId = 1L;
 
         if (request.getPhone() != null && !request.getPhone().isEmpty()) {
             Customer existing = customerRepository.findByStoreIdAndPhone(storeId, request.getPhone());
@@ -57,7 +56,7 @@ public class CustomerServiceImpl implements CustomerService {
             }
         }
 
-        // CẬP NHẬT: Gán dữ liệu tài chính từ request khi tạo mới
+        // Khởi tạo Entity với các giá trị từ request
         Customer customer = Customer.builder()
                 .storeId(storeId)
                 .name(request.getFullName())
@@ -75,13 +74,14 @@ public class CustomerServiceImpl implements CustomerService {
                 .gender(request.getGender())
                 .dob(request.getDob())
                 .groupId(request.getGroupId())
-                // Lưu các giá trị số từ request, mặc định là 0 nếu null
+                // Lưu nợ đầu kỳ vào DB
                 .totalDebt(request.getTotalDebt() != null ? request.getTotalDebt() : BigDecimal.ZERO)
                 .totalPurchaseAmount(
                         request.getTotalPurchaseAmount() != null ? request.getTotalPurchaseAmount() : BigDecimal.ZERO)
                 .totalOrders(request.getTotalOrders() != null ? request.getTotalOrders() : 0)
                 .build();
 
+        // Lưu và map trả về DTO ngay lập tức
         return mapToDTO(customerRepository.save(customer));
     }
 
@@ -92,7 +92,6 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng"));
 
-        // CẬP NHẬT THÔNG TIN CƠ BẢN
         customer.setName(request.getFullName());
         customer.setPhone(request.getPhone());
         customer.setEmail(request.getEmail());
@@ -102,21 +101,17 @@ public class CustomerServiceImpl implements CustomerService {
         customer.setNotes(request.getNotes());
         customer.setGender(request.getGender());
         customer.setDob(request.getDob());
+
         if (request.getGroupId() != null) {
             customer.setGroupId(request.getGroupId());
         }
+
         customer.setUpdatedAt(LocalDateTime.now());
 
-        // CẬP NHẬT TRỰC TIẾP CÁC TRƯỜNG TÀI CHÍNH (Sửa lỗi luôn bằng 0)
-        if (request.getTotalDebt() != null) {
-            customer.setTotalDebt(request.getTotalDebt());
-        }
-        if (request.getTotalPurchaseAmount() != null) {
-            customer.setTotalPurchaseAmount(request.getTotalPurchaseAmount());
-        }
-        if (request.getTotalOrders() != null) {
-            customer.setTotalOrders(request.getTotalOrders());
-        }
+        // Cập nhật các trường tài chính nếu có trong request
+        if (request.getTotalDebt() != null) customer.setTotalDebt(request.getTotalDebt());
+        if (request.getTotalPurchaseAmount() != null) customer.setTotalPurchaseAmount(request.getTotalPurchaseAmount());
+        if (request.getTotalOrders() != null) customer.setTotalOrders(request.getTotalOrders());
 
         if (request.getType() != null) {
             try {
@@ -135,7 +130,6 @@ public class CustomerServiceImpl implements CustomerService {
             @CacheEvict(value = "customers", key = "#id"),
             @CacheEvict(value = "customers_page", allEntries = true)
     })
-    @com.bizflow.backend.core.annotation.AuditAction(action = "DELETE_CUSTOMER", entityType = "CUSTOMER")
     public void deleteCustomer(Long id) {
         Customer customer = customerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng"));
@@ -170,11 +164,24 @@ public class CustomerServiceImpl implements CustomerService {
         return null;
     }
 
+    /**
+     * Chuyển đổi từ Entity sang DTO và xử lý logic hiển thị công nợ
+     */
     private CustomerDTO mapToDTO(Customer customer) {
+        // 1. Lấy nợ từ bảng chi tiết (debts) - nợ phát sinh từ hóa đơn
+        BigDecimal dynamicDebt = debtRepository.sumUnpaidByCustomerId(customer.getId());
+
+        // 2. Logic xử lý:
+        // Nếu bảng nợ chi tiết chưa có gì (null/0) thì lấy nợ tĩnh trong bảng Customer (nợ đầu kỳ).
+        // Nếu bảng chi tiết có dữ liệu, ưu tiên lấy số liệu chi tiết để đảm bảo chính xác.
+        BigDecimal displayDebt = (dynamicDebt == null || dynamicDebt.compareTo(BigDecimal.ZERO) == 0)
+                ? customer.getTotalDebt()
+                : dynamicDebt;
+
         return CustomerDTO.builder()
                 .id(customer.getId())
-                .name(customer.getName()) // Ánh xạ name cho frontend cũ
-                .fullName(customer.getName()) // Ánh xạ name sang fullName cho Frontend mới
+                .name(customer.getName())
+                .fullName(customer.getName())
                 .phone(customer.getPhone())
                 .email(customer.getEmail())
                 .address(customer.getAddress())
@@ -183,10 +190,8 @@ public class CustomerServiceImpl implements CustomerService {
                 .notes(customer.getNotes())
                 .status(customer.getStatus() != null ? customer.getStatus().toString() : "ACTIVE")
                 .type(customer.getType() != null ? customer.getType().toString() : "RETAIL")
-                // Tính công nợ thực tế từ bảng debts thay vì dùng số tĩnh
-                .totalDebt(debtRepository.sumUnpaidByCustomerId(customer.getId()))
-                .totalPurchaseAmount(
-                        customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
+                .totalDebt(displayDebt != null ? displayDebt : BigDecimal.ZERO)
+                .totalPurchaseAmount(customer.getTotalPurchaseAmount() != null ? customer.getTotalPurchaseAmount() : BigDecimal.ZERO)
                 .totalOrders(customer.getTotalOrders() != null ? customer.getTotalOrders() : 0)
                 .storeId(customer.getStoreId())
                 .gender(customer.getGender())

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { customerService, type Customer } from "@/services/customer.service1";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden"; // Đảm bảo đã npm install @radix-ui/react-visually-hidden
 import {
   Dialog,
   DialogContent,
@@ -33,7 +34,6 @@ import {
   Briefcase
 } from "lucide-react";
 
-// Định nghĩa Interface nội bộ cho Form
 interface CustomerFormInput {
   fullName: string;
   phone: string;
@@ -84,7 +84,6 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
 
   const selectedType = watch("type");
 
-  // Đổ dữ liệu vào form khi mở Modal
   useEffect(() => {
     if (isOpen && customer) {
       reset({
@@ -97,7 +96,6 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
         taxCode: customer.taxCode || "",
         contactPerson: customer.contactPerson || "",
         notes: customer.notes || "",
-        // Ép kiểu Number để chắc chắn các ô input số nhận đúng giá trị
         totalOrders: Number(customer.totalOrders || 0),
         totalPurchaseAmount: Number(customer.totalPurchaseAmount || 0),
         totalDebt: Number(customer.totalDebt || 0),
@@ -122,12 +120,11 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
 
   const mutation = useMutation({
     mutationFn: (data: CustomerFormInput) => {
-      // Làm sạch dữ liệu trước khi gửi lên Backend
       const payload = {
         ...data,
         fullName: data.fullName.trim(),
         phone: data.phone.trim(),
-        // Chuyển đổi các trường số
+        // Dữ liệu số đã được valueAsNumber xử lý, nhưng vẫn ép kiểu lại cho chắc chắn
         totalOrders: Number(data.totalOrders || 0),
         totalPurchaseAmount: Number(data.totalPurchaseAmount || 0),
         totalDebt: Number(data.totalDebt || 0),
@@ -138,7 +135,6 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
         : customerService.createCustomer(payload);
     },
     onSuccess: () => {
-      // Invalidate cả list và các query liên quan để cập nhật UI ngay lập tức
       queryClient.invalidateQueries({ queryKey: ["customers-list"] });
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success(customer ? "Cập nhật thành công!" : "Đã thêm đối tác mới!");
@@ -154,6 +150,7 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[850px] max-h-[90vh] overflow-y-auto border-none shadow-2xl rounded-[1.5rem] p-0">
         <DialogHeader className="p-6 bg-slate-50/50 border-b sticky top-0 z-10 backdrop-blur-sm">
+          {/* CẢI THIỆN ACCESSIBILITY: Tiêu đề thật hiển thị cho người dùng */}
           <DialogTitle className="text-indigo-900 text-xl font-black flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
@@ -167,6 +164,11 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
               </Badge>
             )}
           </DialogTitle>
+          
+          {/* SỬA LỖI ĐỎ: Một Title ẩn để Radix UI không báo lỗi console */}
+          <VisuallyHidden.Root>
+            <DialogTitle>Customer Management Form</DialogTitle>
+          </VisuallyHidden.Root>
         </DialogHeader>
 
         <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="p-6 space-y-8">
@@ -232,17 +234,18 @@ export function CustomerFormModal({ customer, isOpen, onClose }: Props) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase text-slate-500">Tổng đơn</Label>
-                  <Input type="number" {...register("totalOrders")} className="h-11 rounded-xl bg-slate-50/50 font-bold" />
+                  {/* valueAsNumber giúp dữ liệu luôn là kiểu Number */}
+                  <Input type="number" {...register("totalOrders", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/50 font-bold" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase text-slate-500">Công nợ (đ)</Label>
-                  <Input type="number" {...register("totalDebt")} className="h-11 rounded-xl bg-rose-50/50 text-rose-600 font-bold" />
+                  <Input type="number" {...register("totalDebt", { valueAsNumber: true })} className="h-11 rounded-xl bg-rose-50/50 text-rose-600 font-bold" />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase text-slate-500">Tổng mua (đ)</Label>
-                <Input type="number" {...register("totalPurchaseAmount")} className="h-11 rounded-xl bg-slate-50/50 font-bold" />
+                <Input type="number" {...register("totalPurchaseAmount", { valueAsNumber: true })} className="h-11 rounded-xl bg-slate-50/50 font-bold" />
               </div>
 
               <div className="space-y-2">

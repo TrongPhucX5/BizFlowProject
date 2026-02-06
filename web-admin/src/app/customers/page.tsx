@@ -45,12 +45,9 @@ import {
   MoreHorizontal,
   Search,
   TrendingUp,
-  UserCircle,
   Sparkles,
-  ArrowRight,
   Trash2,
   Eye,
-  Receipt,
   Wallet,
   BarChart3,
   PieChart as PieIcon,
@@ -58,7 +55,6 @@ import {
   Download
 } from "lucide-react";
 
-// --- IMPORT RECHARTS ---
 import {
   BarChart,
   Bar,
@@ -86,6 +82,8 @@ interface PageResponse<T> {
 
 export default function CustomerPage() {
   const queryClient = useQueryClient();
+  
+  // --- States Điều khiển Modal & Dialog ---
   const [modalOpen, setModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -93,15 +91,17 @@ export default function CustomerPage() {
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
 
+  // --- States Tìm kiếm & Phân trang ---
   const [page, setPage] = useState(0);
   const [inputValue, setInputValue] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // --- TT88 EXPORT STATES ---
+  // --- States Xuất báo cáo ---
   const [exportFrom, setExportFrom] = useState("");
   const [exportTo, setExportTo] = useState("");
   const [exporting, setExporting] = useState(false);
 
+  // Debounce tìm kiếm
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(inputValue);
@@ -110,6 +110,7 @@ export default function CustomerPage() {
     return () => clearTimeout(timer);
   }, [inputValue]);
 
+  // --- Query lấy danh sách khách hàng ---
   const {
     data: customersRes,
     isLoading,
@@ -126,6 +127,7 @@ export default function CustomerPage() {
       }),
   });
 
+  // Chuẩn hóa dữ liệu trả về từ API
   const pageData = useMemo(() => {
     if (!customersRes) return null;
     const raw = (customersRes as any)?.result || (customersRes as any)?.data || customersRes;
@@ -141,9 +143,8 @@ export default function CustomerPage() {
 
   const customerList = useMemo(() => pageData?.content || [], [pageData]);
 
-  // --- LOGIC XỬ LÝ DỮ LIỆU BIỂU ĐỒ ---
+  // --- Xử lý dữ liệu biểu đồ ---
   const chartStats = useMemo(() => {
-    // 1. Dữ liệu Bar Chart: Top 5 mua hàng nhiều nhất trang này
     const top5 = [...customerList]
       .sort((a, b) => Number(b.totalPurchaseAmount) - Number(a.totalPurchaseAmount))
       .slice(0, 5)
@@ -154,7 +155,6 @@ export default function CustomerPage() {
         "Nợ": Number(c.totalDebt) || 0,
       }));
 
-    // 2. Dữ liệu Pie Chart: Phân loại Sỉ/Lẻ
     const wholesale = customerList.filter((c) => c.type === "WHOLESALE").length;
     const retail = customerList.filter((c) => c.type === "RETAIL").length;
     const pieData = [
@@ -165,6 +165,7 @@ export default function CustomerPage() {
     return { top5, pieData };
   }, [customerList]);
 
+  // --- Thống kê nhanh ---
   const stats = useMemo(() => {
     const totalCount = pageData?.totalElements || 0;
     const pageDebt = customerList.reduce((sum, c) => sum + (Number(c.totalDebt) || 0), 0);
@@ -180,6 +181,7 @@ export default function CustomerPage() {
     };
   }, [pageData, customerList]);
 
+  // --- Xử lý Xóa ---
   const deleteMutation = useMutation({
     mutationFn: (id: number) => customerService.deleteCustomer(id),
     onSuccess: () => {
@@ -192,6 +194,7 @@ export default function CustomerPage() {
     },
   });
 
+  // --- Xử lý Xuất file Excel TT88 ---
   const handleExportTT88Debt = async () => {
     if (!exportFrom || !exportTo) {
       toast.error("Vui lòng chọn khoảng thời gian xuất sổ!");
@@ -221,7 +224,7 @@ export default function CustomerPage() {
 
   return (
     <div className="p-8 space-y-8 bg-[#f8fafc] min-h-screen font-sans">
-      {/* Header Section */}
+      {/* --- Header & Search Bar --- */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
         <div className="space-y-1">
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tight italic">
@@ -229,7 +232,7 @@ export default function CustomerPage() {
           </h1>
           <p className="text-sm text-slate-500 font-medium flex items-center gap-2">
             <Users className="h-4 w-4 text-indigo-500" /> 
-            Hệ thống có <span className="text-indigo-600 font-bold">{stats.totalCount}</span> đối tác đang hoạt động
+            Hệ thống có <span className="text-indigo-600 font-bold">{stats.totalCount}</span> đối tác hoạt động
           </p>
         </div>
 
@@ -244,50 +247,31 @@ export default function CustomerPage() {
             />
           </div>
 
-          {/* EXPORT TT88 DEBT */}
+          {/* Nút Xuất Báo Cáo */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="h-11 px-6 rounded-xl font-black uppercase shadow-lg border-none bg-white text-slate-700 hover:bg-slate-50"
+                className="h-11 px-6 rounded-xl font-black uppercase shadow-sm border-none bg-white text-slate-700 hover:bg-slate-50"
               >
-                {exporting ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-5 w-5" />
-                )}
+                {exporting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Download className="mr-2 h-5 w-5" />}
                 Xuất sổ TT88
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-80 p-4 rounded-3xl shadow-2xl border-none">
-              <DropdownMenuLabel className="font-black uppercase text-xs text-slate-400 mb-2">
-                Chọn khoảng thời gian
-              </DropdownMenuLabel>
+              <DropdownMenuLabel className="font-black uppercase text-xs text-slate-400 mb-2">Chọn khoảng thời gian</DropdownMenuLabel>
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Từ ngày</span>
-                  <Input 
-                    type="date" 
-                    value={exportFrom}
-                    onChange={(e) => setExportFrom(e.target.value)}
-                    className="h-10 rounded-xl font-bold text-xs"
-                  />
+                  <Input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className="h-10 rounded-xl font-bold text-xs" />
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold uppercase text-slate-400">Đến ngày</span>
-                  <Input 
-                    type="date" 
-                    value={exportTo}
-                    onChange={(e) => setExportTo(e.target.value)}
-                    className="h-10 rounded-xl font-bold text-xs"
-                  />
+                  <Input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className="h-10 rounded-xl font-bold text-xs" />
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={handleExportTT88Debt}
-                className="p-3 rounded-xl font-bold cursor-pointer hover:bg-rose-50 hover:text-rose-600"
-              >
+              <DropdownMenuItem onClick={handleExportTT88Debt} className="p-3 rounded-xl font-bold cursor-pointer hover:bg-rose-50 hover:text-rose-600">
                 <FileText className="mr-2 h-4 w-4" /> Xuất Sổ Công Nợ
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -303,28 +287,14 @@ export default function CustomerPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        {/* --- Cột Chính (Stats & Table & Bar Chart) --- */}
         <div className="lg:col-span-3 space-y-8">
-          {/* Dashboard Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
-              title="Tổng đối tác" 
-              value={stats.totalCount.toLocaleString()} 
-              icon={<Users className="text-blue-600" />} 
-            />
-            <StatCard 
-              title="Nợ trên trang" 
-              value={`${stats.pageDebt.toLocaleString()}đ`} 
-              icon={<CreditCard className="text-rose-600" />} 
-              alert={stats.pageDebt > 0} 
-            />
-            <StatCard 
-              title="Doanh số trang" 
-              value={`${stats.pageSales.toLocaleString()}đ`} 
-              icon={<TrendingUp className="text-emerald-600" />} 
-            />
+            <StatCard title="Tổng đối tác" value={stats.totalCount.toLocaleString()} icon={<Users className="text-blue-600" />} />
+            <StatCard title="Nợ trên trang" value={`${stats.pageDebt.toLocaleString()}đ`} icon={<CreditCard className="text-rose-600" />} alert={stats.pageDebt > 0} />
+            <StatCard title="Doanh số trang" value={`${stats.pageSales.toLocaleString()}đ`} icon={<TrendingUp className="text-emerald-600" />} />
           </div>
 
-          {/* Table Container */}
           <Card className="border-none shadow-xl bg-white overflow-hidden rounded-2xl relative">
             {(isLoading || isPlaceholderData) && (
               <div className="absolute inset-0 bg-white/60 z-20 flex items-center justify-center backdrop-blur-[1px]">
@@ -356,10 +326,7 @@ export default function CustomerPage() {
                               {item.fullName?.charAt(0).toUpperCase() || "C"}
                             </div>
                             <div className="flex flex-col">
-                              <span 
-                                className="font-bold text-sm text-slate-900 uppercase cursor-pointer hover:text-indigo-600"
-                                onClick={() => {setViewingCustomer(item); setDetailOpen(true);}}
-                              >
+                              <span className="font-bold text-sm text-slate-900 uppercase cursor-pointer hover:text-indigo-600" onClick={() => {setViewingCustomer(item); setDetailOpen(true);}}>
                                 {item.fullName}
                               </span>
                               <span className="text-[11px] text-slate-500 font-medium">{item.phone}</span>
@@ -371,9 +338,7 @@ export default function CustomerPage() {
                             {item.type === "WHOLESALE" ? "Sỉ" : "Lẻ"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-black text-sm text-slate-900">
-                          {(Number(item.totalPurchaseAmount) || 0).toLocaleString()}đ
-                        </TableCell>
+                        <TableCell className="text-right font-black text-sm text-slate-900">{(Number(item.totalPurchaseAmount) || 0).toLocaleString()}đ</TableCell>
                         <TableCell className="text-right font-black text-sm">
                           <span className={Number(item.totalDebt) > 0 ? "text-rose-600" : "text-slate-400"}>
                             {(Number(item.totalDebt) || 0).toLocaleString()}đ
@@ -396,7 +361,7 @@ export default function CustomerPage() {
                 </TableBody>
               </Table>
 
-              {/* Pagination Section */}
+              {/* Phân trang */}
               <div className="p-6 border-t border-slate-50 flex items-center justify-between bg-slate-50/30">
                 <div className="flex flex-col">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Trang {page + 1} / {stats.totalPages}</p>
@@ -410,24 +375,21 @@ export default function CustomerPage() {
             </CardContent>
           </Card>
 
-          {/* --- BIỂU ĐỒ BAR CHART DOANH THU & NỢ --- */}
+          {/* Bar Chart */}
           <Card className="border-none shadow-xl bg-white rounded-3xl p-8">
             <CardHeader className="p-0 mb-8 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-indigo-600" /> Top 5 Mua hàng & Nợ (Trang này)
-                </CardTitle>
-              </div>
+              <CardTitle className="text-sm font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-indigo-600" /> Top 5 Mua hàng & Nợ (Trang này)
+              </CardTitle>
             </CardHeader>
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartStats.top5} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <BarChart data={chartStats.top5}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 700, fill: '#64748b'}} dy={10} />
                   <YAxis hide />
                   <Tooltip 
-                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '12px'}}
-                    cursor={{fill: '#f8fafc'}}
+                    contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)'}}
                     formatter={(value: any) => [`${value.toLocaleString()}đ`]}
                   />
                   <Bar dataKey="Mua hàng" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={35} />
@@ -438,24 +400,16 @@ export default function CustomerPage() {
           </Card>
         </div>
 
-        {/* Sidebar Insights */}
+        {/* --- Cột Phụ (Pie Chart & AI Insights) --- */}
         <div className="lg:col-span-1 space-y-6">
-          {/* PIE CHART TỶ LỆ ĐỐI TÁC */}
-          <Card className="border-none shadow-2xl bg-slate-900 text-white overflow-hidden rounded-3xl p-6 relative group">
+          <Card className="border-none shadow-2xl bg-slate-900 text-white overflow-hidden rounded-3xl p-6 relative">
             <h2 className="text-sm font-black tracking-widest uppercase mb-6 flex items-center gap-2">
               <PieIcon className="h-4 w-4 text-indigo-400" /> Tỷ lệ đối tác
             </h2>
-            
             <div className="h-[220px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={chartStats.pieData}
-                    innerRadius={65}
-                    outerRadius={85}
-                    paddingAngle={10}
-                    dataKey="value"
-                  >
+                  <Pie data={chartStats.pieData} innerRadius={65} outerRadius={85} paddingAngle={10} dataKey="value">
                     {chartStats.pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                     ))}
@@ -468,7 +422,6 @@ export default function CustomerPage() {
                 <span className="text-[10px] uppercase font-bold text-slate-400">Trên trang</span>
               </div>
             </div>
-
             <div className="mt-8 space-y-3">
               {chartStats.pieData.map((item) => (
                 <div key={item.name} className="flex justify-between items-center bg-white/5 p-3 rounded-2xl border border-white/5">
@@ -482,28 +435,24 @@ export default function CustomerPage() {
             </div>
           </Card>
 
-          {/* AI / Insight Card */}
           <Card className="border-none shadow-2xl bg-indigo-600 text-white rounded-3xl p-6">
             <h2 className="text-sm font-black uppercase mb-4 flex items-center gap-2">
               <Sparkles className="h-4 w-4" /> AI Phân tích
             </h2>
             <div className="bg-white/10 rounded-2xl p-4 text-[11px] leading-relaxed italic border border-white/10">
-              {stats.pageDebt > (stats.pageSales * 0.3) ? (
-                <p className="text-rose-100 font-bold">⚠️ Cảnh báo: Tỷ lệ nợ trên doanh số trang này cao ({( (stats.pageDebt / stats.pageSales) * 100).toFixed(0)}%). Cần rà soát các khoản nợ quá hạn.</p>
+              {stats.pageSales > 0 && stats.pageDebt > (stats.pageSales * 0.3) ? (
+                <p className="text-rose-100 font-bold">⚠️ Cảnh báo: Tỷ lệ nợ cao ({( (stats.pageDebt / stats.pageSales) * 100).toFixed(0)}%). Cần rà soát nợ quá hạn.</p>
               ) : (
                 <p>✅ Chỉ số dòng tiền ổn định. Các khoản nợ nằm trong tầm kiểm soát.</p>
               )}
             </div>
-            <Button className="w-full mt-4 bg-white text-indigo-600 font-black text-[10px] rounded-xl">CHI TIẾT RỦI RO</Button>
           </Card>
 
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Sức khỏe tài chính</h3>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                    <Wallet className="h-3 w-3" /> Tỷ lệ nợ/mua:
-                </span>
+                <span className="text-xs text-slate-500 font-medium flex items-center gap-1"><Wallet className="h-3 w-3" /> Tỷ lệ nợ/mua:</span>
                 <span className={`text-sm font-black ${stats.pageSales > 0 && (stats.pageDebt / stats.pageSales) > 0.25 ? "text-rose-600" : "text-emerald-600"}`}>
                   {stats.pageSales > 0 ? ((stats.pageDebt / stats.pageSales) * 100).toFixed(1) : 0}%
                 </span>
@@ -519,23 +468,23 @@ export default function CustomerPage() {
         </div>
       </div>
 
+      {/* --- Modals & Dialogs --- */}
       <CustomerFormModal isOpen={modalOpen} onClose={() => setModalOpen(false)} customer={selectedCustomer} />
       <CustomerDetailModal isOpen={detailOpen} onClose={() => setDetailOpen(false)} customer={viewingCustomer} />
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="rounded-3xl p-8 max-w-md border-none shadow-2xl">
           <AlertDialogHeader>
             <div className="mx-auto bg-rose-50 w-20 h-20 rounded-3xl flex items-center justify-center mb-6">
               <Trash2 className="h-10 w-10 text-rose-600" />
             </div>
-            <AlertDialogTitle className="text-2xl font-black uppercase text-center text-slate-900">Xác nhận xóa?</AlertDialogTitle>
-            <AlertDialogDescription className="text-center font-medium py-2 text-slate-500">
+            <AlertDialogTitle className="text-2xl font-black uppercase text-center">Xác nhận xóa?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center font-medium py-2">
               Mọi dữ liệu của đối tác <span className="text-indigo-600 font-bold italic">"{customerToDelete?.fullName}"</span> sẽ bị xóa vĩnh viễn.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 flex gap-3 sm:justify-center">
-            <AlertDialogCancel className="flex-1 rounded-xl font-bold h-12 border-slate-200 text-slate-500">HỦY</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 rounded-xl font-bold h-12">HỦY</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => customerToDelete && deleteMutation.mutate(customerToDelete.id)} 
               className="flex-1 rounded-xl font-bold bg-rose-600 h-12 hover:bg-rose-700 shadow-lg"
@@ -549,6 +498,7 @@ export default function CustomerPage() {
   );
 }
 
+// Sub-component cho StatCard
 function StatCard({ title, value, icon, alert }: { title: string; value: string; icon: React.ReactNode; alert?: boolean }) {
   return (
     <Card className="border-none shadow-lg bg-white rounded-2xl overflow-hidden hover:shadow-indigo-100 transition-all group cursor-default">
