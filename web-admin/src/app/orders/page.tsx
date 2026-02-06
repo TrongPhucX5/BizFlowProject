@@ -127,12 +127,16 @@ export default function OrderPage() {
   const handlePrintReceipt = (order: any) => {
     const printWindow = window.open("", "_blank", "width=900,height=1000");
     if (!printWindow) {
-      toast.error("Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép 'Popup' để in hóa đơn.");
+      toast.error(
+        "Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép 'Popup' để in hóa đơn.",
+      );
       return;
     }
 
     try {
-      const itemsHtml = (order.items || []).map((item: any) => `
+      const itemsHtml = (order.items || [])
+        .map(
+          (item: any) => `
         <tr style="border-bottom: 1px solid #e2e8f0;">
           <td style="padding: 15px 10px; font-size: 16px; vertical-align: top;">
             <div style="font-weight: 700; color: #1e293b;">${item.productName || "Sản phẩm #" + item.productId}</div>
@@ -148,7 +152,9 @@ export default function OrderPage() {
             ${((item.quantity || 0) * (item.unitPrice || 0)).toLocaleString()}đ
           </td>
         </tr>
-      `).join("");
+      `,
+        )
+        .join("");
 
       const createdAtStr = order.createdAt
         ? format(new Date(order.createdAt), "dd/MM/yyyy HH:mm")
@@ -316,7 +322,6 @@ export default function OrderPage() {
         printWindow.print();
         // Cửa sổ in sẽ được người dùng đóng thủ công
       }, 500);
-
     } catch (err) {
       console.error("Print error:", err);
       toast.error("Có lỗi xảy ra khi tạo bản in.");
@@ -336,7 +341,13 @@ export default function OrderPage() {
   const [orderStatus, setOrderStatus] = useState<OrderStatus>("PAID");
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<
-    { productId: number; quantity: number; unitPrice: number; stock?: number; open?: boolean }[]
+    {
+      productId: number;
+      quantity: number;
+      unitPrice: number;
+      stock?: number;
+      open?: boolean;
+    }[]
   >([{ productId: 0, quantity: 1, unitPrice: 0, stock: 0, open: false }]);
   const [openCustomer, setOpenCustomer] = useState(false);
 
@@ -370,9 +381,7 @@ export default function OrderPage() {
         size: 10,
         sort: "createdAt,desc",
         status: filterStatus === "ALL" ? undefined : filterStatus,
-        customerId: debouncedCustomerId
-          ? debouncedCustomerId
-          : undefined,
+        customerId: debouncedCustomerId ? debouncedCustomerId : undefined,
       });
       return response;
     },
@@ -406,7 +415,8 @@ export default function OrderPage() {
       toast.success("Đã cập nhật trạng thái đơn hàng!");
       queryClient.invalidateQueries({ queryKey: ["orders-list"] });
     },
-    onError: (err: any) => toast.error(err.response?.data?.message || "Lỗi cập nhật"),
+    onError: (err: any) =>
+      toast.error(err.response?.data?.message || "Lỗi cập nhật"),
   });
 
   const createMutation = useMutation({
@@ -498,9 +508,12 @@ export default function OrderPage() {
       const blob = await reportsService.exportTT88Revenue(exportFrom, exportTo);
 
       const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `so - doanh - thu - TT88 - ${exportFrom} - ${exportTo}.xlsx`);
+      link.setAttribute(
+        "download",
+        `so - doanh - thu - TT88 - ${exportFrom} - ${exportTo}.xlsx`,
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -545,36 +558,6 @@ export default function OrderPage() {
 
         {/* ACTION BUTTONS */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* FROM */}
-          <Input
-            type="date"
-            value={exportFrom}
-            onChange={(e) => setExportFrom(e.target.value)}
-            className="h-12 rounded-xl font-bold w-auto"
-          />
-
-          {/* TO */}
-          <Input
-            type="date"
-            value={exportTo}
-            onChange={(e) => setExportTo(e.target.value)}
-            className="h-12 rounded-xl font-bold w-auto"
-          />
-
-          {/* EXPORT TT88 */}
-          <Button
-            onClick={handleExportTT88Revenue}
-            disabled={exporting}
-            className="bg-emerald-600 hover:bg-emerald-700 h-12 px-6 rounded-xl font-black uppercase shadow-xl"
-          >
-            {exporting ? (
-              <Loader2 className="animate-spin mr-2" />
-            ) : (
-              <FileText className="mr-2 h-5 w-5" />
-            )}
-            Xuất TT88
-          </Button>
-
           {/* CREATE ORDER */}
           <Button
             onClick={handleOpenCreate}
@@ -625,7 +608,7 @@ export default function OrderPage() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              const today = new Date().toISOString().split('T')[0];
+              const today = new Date().toISOString().split("T")[0];
               setExportFrom(today);
               setExportTo(today);
             }}
@@ -639,8 +622,8 @@ export default function OrderPage() {
             onClick={() => {
               const d = new Date();
               d.setDate(d.getDate() - 7);
-              setExportFrom(d.toISOString().split('T')[0]);
-              setExportTo(new Date().toISOString().split('T')[0]);
+              setExportFrom(d.toISOString().split("T")[0]);
+              setExportTo(new Date().toISOString().split("T")[0]);
             }}
             className="rounded-xl font-bold text-[11px] uppercase hover:bg-slate-100"
           >
@@ -681,7 +664,10 @@ export default function OrderPage() {
           {isLoading ? (
             <div className="p-8 space-y-4">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4 p-4 rounded-3xl bg-slate-50/50 animate-pulse">
+                <div
+                  key={i}
+                  className="flex items-center gap-4 p-4 rounded-3xl bg-slate-50/50 animate-pulse"
+                >
                   <div className="h-12 w-[150px] bg-slate-200 rounded-xl" />
                   <div className="h-12 flex-1 bg-slate-200 rounded-xl" />
                   <div className="h-8 w-24 bg-slate-200 rounded-full" />
@@ -753,9 +739,9 @@ export default function OrderPage() {
                               <Clock className="h-3 w-3 mr-1.5" />{" "}
                               {order.createdAt
                                 ? format(
-                                  new Date(order.createdAt),
-                                  "dd/MM/yyyy HH:mm",
-                                )
+                                    new Date(order.createdAt),
+                                    "dd/MM/yyyy HH:mm",
+                                  )
                                 : "---"}
                             </span>
                           </div>
@@ -780,7 +766,8 @@ export default function OrderPage() {
                                 variant="outline"
                                 className={cn(
                                   "font-bold uppercase text-[10px] px-2 py-1 h-6 border-0 cursor-pointer hover:ring-2 ring-indigo-200 transition-all",
-                                  order.status === "PAID" || order.status === "CONFIRMED"
+                                  order.status === "PAID" ||
+                                    order.status === "CONFIRMED"
                                     ? "bg-emerald-100 text-emerald-700"
                                     : order.status === "UNPAID"
                                       ? "bg-rose-100 text-rose-700"
@@ -791,16 +778,37 @@ export default function OrderPage() {
                               </Badge>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="rounded-xl font-bold">
-                              <DropdownMenuItem onClick={() => quickStatusMutation.mutate({ id: order.id, status: 'PAID' })}>
-                                <Check className="h-4 w-4 mr-2 text-emerald-500" /> Đã thanh toán
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  quickStatusMutation.mutate({
+                                    id: order.id,
+                                    status: "PAID",
+                                  })
+                                }
+                              >
+                                <Check className="h-4 w-4 mr-2 text-emerald-500" />{" "}
+                                Đã thanh toán
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => quickStatusMutation.mutate({ id: order.id, status: 'UNPAID' })}>
-                                <Clock className="h-4 w-4 mr-2 text-rose-500" /> Chưa thanh toán
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  quickStatusMutation.mutate({
+                                    id: order.id,
+                                    status: "UNPAID",
+                                  })
+                                }
+                              >
+                                <Clock className="h-4 w-4 mr-2 text-rose-500" />{" "}
+                                Chưa thanh toán
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 variant="destructive"
-                                onClick={() => quickStatusMutation.mutate({ id: order.id, status: 'CANCELLED' })}
+                                onClick={() =>
+                                  quickStatusMutation.mutate({
+                                    id: order.id,
+                                    status: "CANCELLED",
+                                  })
+                                }
                               >
                                 <Trash2 className="h-4 w-4 mr-2" /> Hủy đơn
                               </DropdownMenuItem>
@@ -895,7 +903,10 @@ export default function OrderPage() {
                       Chi tiết đơn hàng
                     </SheetTitle>
                     <p className="text-indigo-100 font-bold mt-1">
-                      Mã đơn: {viewingOrder.orderCode || viewingOrder.orderNumber || "#" + viewingOrder.id}
+                      Mã đơn:{" "}
+                      {viewingOrder.orderCode ||
+                        viewingOrder.orderNumber ||
+                        "#" + viewingOrder.id}
                     </p>
                   </div>
                   <Badge className="bg-white/20 text-white border-none uppercase font-black px-4 py-2 rounded-xl">
@@ -924,7 +935,8 @@ export default function OrderPage() {
                         Khách hàng
                       </p>
                       <p className="text-xl font-black text-slate-900">
-                        {viewingOrder.customerName || `ID: ${viewingOrder.customerId}`}
+                        {viewingOrder.customerName ||
+                          `ID: ${viewingOrder.customerId}`}
                       </p>
                     </div>
                   </div>
@@ -945,7 +957,8 @@ export default function OrderPage() {
                             </div>
                             <div>
                               <p className="font-black text-slate-900">
-                                {item.productName || `Sản phẩm ID ${item.productId}`}
+                                {item.productName ||
+                                  `Sản phẩm ID ${item.productId}`}
                               </p>
                               <p className="text-xs text-slate-400 font-bold uppercase">
                                 SL: {item.quantity} ×{" "}
@@ -977,9 +990,9 @@ export default function OrderPage() {
                       <p className="font-black text-blue-900">
                         {viewingOrder.createdAt
                           ? format(
-                            new Date(viewingOrder.createdAt),
-                            "dd/MM/yyyy",
-                          )
+                              new Date(viewingOrder.createdAt),
+                              "dd/MM/yyyy",
+                            )
                           : "---"}
                       </p>
                     </div>
@@ -1060,7 +1073,9 @@ export default function OrderPage() {
                           className="h-14 w-full justify-between rounded-2xl font-bold bg-white border-slate-200"
                         >
                           {customerId
-                            ? customers.find((c: any) => c.id.toString() === customerId)?.fullName
+                            ? customers.find(
+                                (c: any) => c.id.toString() === customerId,
+                              )?.fullName
                             : "Chọn khách hàng..."}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
@@ -1069,7 +1084,9 @@ export default function OrderPage() {
                         <Command>
                           <CommandInput placeholder="Tìm khách hàng..." />
                           <CommandList>
-                            <CommandEmpty>Không tìm thấy khách hàng.</CommandEmpty>
+                            <CommandEmpty>
+                              Không tìm thấy khách hàng.
+                            </CommandEmpty>
                             <CommandGroup>
                               <CommandItem
                                 value="0"
@@ -1081,7 +1098,9 @@ export default function OrderPage() {
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    customerId === "0" ? "opacity-100" : "opacity-0"
+                                    customerId === "0"
+                                      ? "opacity-100"
+                                      : "opacity-0",
                                   )}
                                 />
                                 Khách lẻ
@@ -1089,7 +1108,9 @@ export default function OrderPage() {
                               {customers.map((c: any) => (
                                 <CommandItem
                                   key={c.id}
-                                  value={c.id + " " + c.fullName + " " + c.phone}
+                                  value={
+                                    c.id + " " + c.fullName + " " + c.phone
+                                  }
                                   onSelect={() => {
                                     setCustomerId(c.id.toString());
                                     setOpenCustomer(false);
@@ -1148,7 +1169,12 @@ export default function OrderPage() {
                       onClick={() =>
                         setItems([
                           ...items,
-                          { productId: 0, quantity: 1, unitPrice: 0, open: false },
+                          {
+                            productId: 0,
+                            quantity: 1,
+                            unitPrice: 0,
+                            open: false,
+                          },
                         ])
                       }
                       variant="ghost"
@@ -1183,16 +1209,23 @@ export default function OrderPage() {
                               className="h-12 w-full justify-between rounded-xl font-bold bg-white text-left px-3"
                             >
                               {item.productId
-                                ? products.find((p: any) => p.id === item.productId)?.name
+                                ? products.find(
+                                    (p: any) => p.id === item.productId,
+                                  )?.name
                                 : "Chọn sản phẩm..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0 rounded-xl" align="start">
+                          <PopoverContent
+                            className="w-[400px] p-0 rounded-xl"
+                            align="start"
+                          >
                             <Command>
                               <CommandInput placeholder="Tìm sản phẩm (Tên, SKU)..." />
                               <CommandList>
-                                <CommandEmpty>Không tìm thấy sản phẩm.</CommandEmpty>
+                                <CommandEmpty>
+                                  Không tìm thấy sản phẩm.
+                                </CommandEmpty>
                                 <CommandGroup>
                                   {products.map((p: any) => (
                                     <CommandItem
@@ -1214,20 +1247,29 @@ export default function OrderPage() {
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          item.productId === p.id ? "opacity-100" : "opacity-0"
+                                          item.productId === p.id
+                                            ? "opacity-100"
+                                            : "opacity-0",
                                         )}
                                       />
                                       <div className="flex flex-col w-full">
                                         <div className="flex justify-between">
                                           <span>{p.name}</span>
-                                          <span className={cn(
-                                            "font-bold text-xs",
-                                            (p.stock || 0) <= 0 ? "text-red-500" : "text-emerald-600"
-                                          )}>
+                                          <span
+                                            className={cn(
+                                              "font-bold text-xs",
+                                              (p.stock || 0) <= 0
+                                                ? "text-red-500"
+                                                : "text-emerald-600",
+                                            )}
+                                          >
                                             Kho: {p.stock || 0}
                                           </span>
                                         </div>
-                                        <span className="text-xs text-slate-400">SKU: {p.sku} | Giá: {p.price.toLocaleString()}đ</span>
+                                        <span className="text-xs text-slate-400">
+                                          SKU: {p.sku} | Giá:{" "}
+                                          {p.price.toLocaleString()}đ
+                                        </span>
                                       </div>
                                     </CommandItem>
                                   ))}
@@ -1337,9 +1379,9 @@ export default function OrderPage() {
 
                   editingOrderId
                     ? updateMutation.mutate({
-                      id: editingOrderId,
-                      data: payload,
-                    })
+                        id: editingOrderId,
+                        data: payload,
+                      })
                     : createMutation.mutate(payload);
                 }}
                 disabled={createMutation.isPending || updateMutation.isPending}

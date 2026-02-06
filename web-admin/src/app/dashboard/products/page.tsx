@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { dashboardService } from "@/services/dashboard.service";
-import { reportsService } from "@/services/reports.service";
 import {
   Table,
   TableBody,
@@ -84,11 +83,6 @@ export default function ProductsPage() {
   const [size, setSize] = useState(50);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-
-  // --- TT88 EXPORT STATES ---
-  const [exportFrom, setExportFrom] = useState("");
-  const [exportTo, setExportTo] = useState("");
-  const [exporting, setExporting] = useState(false);
 
   const [currentProduct, setCurrentProduct] =
     useState<Partial<ExtendedProduct> | null>(null);
@@ -191,7 +185,9 @@ export default function ProductsPage() {
       if (error?.response?.status === 403) {
         toast.error("Bạn không có quyền thực hiện hành động này.");
       } else {
-        toast.error("Không thể xóa sản phẩm này (có thể do ràng buộc dữ liệu hoặc lỗi server).");
+        toast.error(
+          "Không thể xóa sản phẩm này (có thể do ràng buộc dữ liệu hoặc lỗi server).",
+        );
       }
     },
   });
@@ -326,33 +322,6 @@ export default function ProductsPage() {
     document.body.removeChild(link);
   };
 
-  const handleExportTT88Stock = async () => {
-    if (!exportFrom || !exportTo) {
-      toast.error("Vui lòng chọn khoảng thời gian xuất sổ!");
-      return;
-    }
-
-    try {
-      setExporting(true);
-      const blob = await reportsService.exportTT88Stock(exportFrom, exportTo);
-
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `so-ton-kho-TT88-${exportFrom}-${exportTo}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      toast.success("Đã xuất sổ tồn kho TT88!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Xuất sổ thất bại!");
-    } finally {
-      setExporting(false);
-    }
-  };
-
   // --- LOGIC LỌC Client-side removed in favor of Server-side ---
   const products = data?.result?.content || [];
   const totalPages = data?.result?.totalPages || 0;
@@ -371,55 +340,6 @@ export default function ProductsPage() {
           </p>
         </div>
         <div className="flex gap-3">
-          {/* EXPORT TT88 STOCK */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="bg-white"
-              >
-                {exporting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                Xuất sổ TT88
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-80 p-4 rounded-xl shadow-xl border-none">
-              <DropdownMenuLabel className="font-bold uppercase text-xs text-slate-400 mb-2">
-                Chọn khoảng thời gian
-              </DropdownMenuLabel>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-400">Từ ngày</span>
-                  <Input
-                    type="date"
-                    value={exportFrom}
-                    onChange={(e) => setExportFrom(e.target.value)}
-                    className="h-9 rounded-lg font-bold text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-slate-400">Đến ngày</span>
-                  <Input
-                    type="date"
-                    value={exportTo}
-                    onChange={(e) => setExportTo(e.target.value)}
-                    className="h-9 rounded-lg font-bold text-xs"
-                  />
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleExportTT88Stock}
-                className="p-2 rounded-lg font-bold cursor-pointer hover:bg-emerald-50 hover:text-emerald-600"
-              >
-                <FileText className="mr-2 h-4 w-4" /> Xuất Sổ Tồn Kho
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <Button
             variant="outline"
             className="bg-white"
@@ -641,7 +561,9 @@ export default function ProductsPage() {
       {/* PAGINATION */}
       <div className="flex items-center justify-between mt-4">
         <div className="text-sm text-slate-500 font-medium">
-          Hiển thị {(page * size) + 1} - {Math.min((page + 1) * size, data?.result?.totalElements || 0)} trên tổng {data?.result?.totalElements || 0} sản phẩm
+          Hiển thị {page * size + 1} -{" "}
+          {Math.min((page + 1) * size, data?.result?.totalElements || 0)} trên
+          tổng {data?.result?.totalElements || 0} sản phẩm
         </div>
         <div className="flex gap-2">
           <Button
@@ -702,7 +624,11 @@ export default function ProductsPage() {
               <div className="space-y-2">
                 <Label htmlFor="unit">Đơn vị tính</Label>
                 <Select
-                  value={currentProduct?.unitId ? currentProduct.unitId.toString() : ""}
+                  value={
+                    currentProduct?.unitId
+                      ? currentProduct.unitId.toString()
+                      : ""
+                  }
                   onValueChange={(val) =>
                     setCurrentProduct({
                       ...currentProduct,
