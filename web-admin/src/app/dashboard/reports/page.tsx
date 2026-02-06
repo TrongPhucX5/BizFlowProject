@@ -35,6 +35,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   BarChart3,
   TrendingUp,
   DollarSign,
@@ -48,6 +54,8 @@ import {
   CreditCard,
   Sparkles,
   Calendar,
+  Printer,
+
 } from "lucide-react";
 import {
   BarChart,
@@ -97,7 +105,12 @@ const inventoryAlertData = [
 
 import { toast } from "sonner";
 
+import { VoucherDialog } from "@/components/reports/voucher-dialog";
+
 export default function ReportsPage() {
+  const [voucherType, setVoucherType] = useState<"receipt" | "payment">("receipt");
+  const [isVoucherDialogOpen, setIsVoucherDialogOpen] = useState(false);
+
   const router = useRouter();
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("week");
@@ -428,6 +441,39 @@ export default function ReportsPage() {
             />
             {isRefreshing ? "Đang tải..." : "Làm mới"}
           </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="bg-white">
+                <Printer className="mr-2 h-4 w-4" /> In phiếu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setVoucherType("receipt");
+                  setIsVoucherDialogOpen(true);
+                }}
+              >
+                In Phiếu Thu (Mẫu 01)
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setVoucherType("payment");
+                  setIsVoucherDialogOpen(true);
+                }}
+              >
+                In Phiếu Chi (Mẫu 02)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <VoucherDialog
+            open={isVoucherDialogOpen}
+            onOpenChange={setIsVoucherDialogOpen}
+            type={voucherType}
+          />
+
           <Button
             className="bg-indigo-600 hover:bg-indigo-700"
             onClick={handleExport}
@@ -448,8 +494,8 @@ export default function ReportsPage() {
             key={p.id}
             onClick={() => setPeriod(p.id)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${period === p.id
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
+              ? "bg-indigo-600 text-white shadow-sm"
+              : "text-slate-600 hover:bg-slate-50 hover:text-indigo-600"
               }`}
           >
             {p.label}
@@ -1153,6 +1199,6 @@ export default function ReportsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
