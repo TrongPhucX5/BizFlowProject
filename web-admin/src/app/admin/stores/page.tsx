@@ -224,9 +224,9 @@ export default function StoresPage() {
               Bạn có chắc chắn muốn {actionType === "LOCK" ? "KHÓA" : "MỞ KHÓA"} cửa hàng{" "}
               <span className="font-bold text-foreground">{selectedStore?.name}</span> không?
               {actionType === "LOCK" && (
-                <p className="mt-2 text-red-500 text-sm">
+                <span className="block mt-2 text-red-500 text-sm">
                   Lưu ý: Khi bị khóa, toàn bộ nhân viên của cửa hàng này sẽ không thể truy cập hệ thống.
-                </p>
+                </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
