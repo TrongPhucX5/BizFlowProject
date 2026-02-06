@@ -65,6 +65,15 @@ public class StoreController {
         return ResponseEntity.ok(ApiResponse.success(updatedStore, "Cập nhật thông tin cửa hàng thành công"));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<StoreDTO>> updateStoreInfoById(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        StoreDTO updatedStore = storeService.updateStoreInfo(id, request);
+        return ResponseEntity.ok(ApiResponse.success(updatedStore, "Cập nhật thông tin cửa hàng thành công"));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteStore(@PathVariable Long id) {

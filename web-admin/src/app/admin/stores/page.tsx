@@ -20,7 +20,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Lock, Unlock, Search, Loader2, Trash } from "lucide-react";
+import { MoreHorizontal, Lock, Unlock, Search, Loader2, Trash, Edit } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 
@@ -46,6 +55,11 @@ export default function StoresPage() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [actionType, setActionType] = useState<"LOCK" | "UNLOCK" | "DELETE" | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Edit Dialog
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<Store>>({});
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchStores = async () => {
     try {
@@ -96,6 +110,33 @@ export default function StoresPage() {
     setActionType(type);
     setIsDialogOpen(true);
   };
+
+  const openEditDialog = (store: Store) => {
+      setEditFormData({
+          id: store.id,
+          name: store.name,
+          email: store.email || "",
+          phone: store.phone || "",
+          address: store.address || "",
+          taxCode: store.taxCode || ""
+      });
+      setIsEditDialogOpen(true);
+  }
+
+  const handleUpdateStore = async () => {
+      if (!editFormData.id) return;
+      try {
+          setIsUpdating(true);
+          await storeService.updateStoreInfo(editFormData.id, editFormData);
+          // Refresh list
+          fetchStores();
+          setIsEditDialogOpen(false);
+      } catch (error) {
+          console.error("Update failed", error);
+      } finally {
+          setIsUpdating(false);
+      }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -154,13 +195,21 @@ export default function StoresPage() {
                   <TableCell>{store.id}</TableCell>
                   <TableCell>
                     <div className="font-medium">{store.name}</div>
-                    <div className="text-xs text-muted-foreground">{store.address}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {store.address || <span className="italic opacity-50">Chưa cập nhật địa chỉ</span>}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm">{store.email}</div>
-                    <div className="text-xs text-muted-foreground">{store.phone}</div>
+                    {!store.email && !store.phone ? (
+                        <span className="text-muted-foreground text-xs italic">Chưa cập nhật TT</span>
+                    ) : (
+                        <>
+                            {store.email ? <div className="text-sm">{store.email}</div> : <span className="text-xs italic text-muted-foreground">Chưa có Email</span>}
+                            {store.phone && <div className="text-xs text-muted-foreground">{store.phone}</div>}
+                        </>
+                    )}
                   </TableCell>
-                  <TableCell>{store.taxCode}</TableCell>
+                  <TableCell>{store.taxCode || <span className="text-muted-foreground">-</span>}</TableCell>
                   <TableCell>
                     <Badge variant={store.status === "ACTIVE" ? "default" : store.status === "LOCKED" ? "destructive" : "secondary"}>
                       {store.status === "ACTIVE" ? "Hoạt động" : store.status === "LOCKED" ? "Đã khóa" : store.status}
@@ -177,6 +226,9 @@ export default function StoresPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Thao tác</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => openEditDialog(store)}>
+                            <Edit className="mr-2 h-4 w-4" /> Cập nhật TT
+                        </DropdownMenuItem>
                         {store.status === "LOCKED" ? (
                              <DropdownMenuItem onClick={() => openConfirmDialog(store, "UNLOCK")}>
                                 <Unlock className="mr-2 h-4 w-4" /> Mở khóa
@@ -258,6 +310,82 @@ export default function StoresPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Cập nhật thông tin</DialogTitle>
+            <DialogDescription>
+              Thay đổi thông tin cửa hàng tại đây. Nhấn lưu để hoàn tất.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Tên
+              </Label>
+              <Input
+                id="name"
+                value={editFormData.name || ""}
+                onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input
+                id="email"
+                value={editFormData.email || ""}
+                onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="phone" className="text-right">
+                SĐT
+              </Label>
+              <Input
+                id="phone"
+                value={editFormData.phone || ""}
+                onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="address" className="text-right">
+                Địa chỉ
+              </Label>
+              <Input
+                id="address"
+                value={editFormData.address || ""}
+                onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="taxCode" className="text-right">
+                MST
+              </Label>
+              <Input
+                id="taxCode"
+                value={editFormData.taxCode || ""}
+                onChange={(e) => setEditFormData({...editFormData, taxCode: e.target.value})}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setIsEditDialogOpen(false)}>Hủy</Button>
+            <Button type="submit" onClick={handleUpdateStore} disabled={isUpdating}>
+              {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Lưu thay đổi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

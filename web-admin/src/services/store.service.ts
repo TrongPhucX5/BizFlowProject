@@ -43,6 +43,12 @@ export const storeService = {
     return response.data;
   },
 
+  // Cập nhật thông tin store (Admin)
+  updateStoreInfo: async (id: number, data: Partial<Store>) => {
+    const response = await axiosClient.put<ApiResponse<Store>>(`/v1/stores/${id}`, data);
+    return response.data;
+  },
+
   // Lấy chi tiết store
   getStoreById: async (id: number) => {
     const response = await axiosClient.get<ApiResponse<Store>>(`/v1/stores/${id}`);
